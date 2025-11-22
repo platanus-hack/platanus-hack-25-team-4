@@ -1,0 +1,4 @@
+{
+  "baseUrl": "https://api.example.com",
+  "mockAuth": true
+}
