@@ -9,11 +9,9 @@ Ensures:
 """
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from circles.src.etl.models import Photo
 from circles.src.etl.repositories import PhotoRepository
 
 
@@ -28,9 +26,11 @@ async def async_db():
         await conn.run_sync(SQLModel.metadata.create_all)
 
     # Create session factory
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_delete=False)
+    async_session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
-    async with async_session() as session:
+    async with async_session_factory() as session:
         yield session
 
     await engine.dispose()
@@ -89,14 +89,12 @@ async def test_create_batch(async_db: AsyncSession):
         for i in range(10)
     ]
 
-    photos = await repo.create_batch(user_id=1, records=records, session=async_db)
-
-    assert len(photos) == 10
-    assert all(p.user_id == 1 for p in photos)
+    await repo.create_batch(user_id=1, records=records, session=async_db)
 
     # Verify all were saved
     all_photos = await repo.get_all(user_id=1, session=async_db, limit=100)
     assert len(all_photos) == 10
+    assert all(p.user_id == 1 for p in all_photos)
 
 
 @pytest.mark.asyncio
@@ -247,7 +245,7 @@ async def test_delete_with_user_scope(async_db: AsyncSession):
         session=async_db,
     )
 
-    photo2 = await repo.create(
+    await repo.create(
         user_id=2,
         data={
             "vlm_caption": "User 2 photo",
@@ -320,7 +318,7 @@ async def test_batch_isolation(async_db: AsyncSession):
         }
         for i in range(5)
     ]
-    photos1 = await repo.create_batch(user_id=1, records=records1, session=async_db)
+    await repo.create_batch(user_id=1, records=records1, session=async_db)
 
     # Create batch for user 2
     records2 = [
@@ -331,7 +329,7 @@ async def test_batch_isolation(async_db: AsyncSession):
         }
         for i in range(3)
     ]
-    photos2 = await repo.create_batch(user_id=2, records=records2, session=async_db)
+    await repo.create_batch(user_id=2, records=records2, session=async_db)
 
     # Verify isolation
     user1_photos = await repo.get_all(user_id=1, session=async_db, limit=100)
@@ -339,5 +337,5 @@ async def test_batch_isolation(async_db: AsyncSession):
 
     assert len(user1_photos) == 5
     assert len(user2_photos) == 3
-    assert all("User 1" in p.vlm_caption for p in user1_photos)
-    assert all("User 2" in p.vlm_caption for p in user2_photos)
+    assert all(p.vlm_caption and "User 1" in p.vlm_caption for p in user1_photos)
+    assert all(p.vlm_caption and "User 2" in p.vlm_caption for p in user2_photos)

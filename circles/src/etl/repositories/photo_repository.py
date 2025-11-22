@@ -4,9 +4,9 @@ Photo Repository - Specialized repository for Photo model operations.
 Extends BaseRepository with photo-specific queries and batch operations.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Photo
@@ -40,10 +40,10 @@ class PhotoRepository(BaseRepository[Photo]):
             List of photo records
         """
         stmt = select(Photo).where(
-            (Photo.source_id == source_id) & (Photo.user_id == user_id)
+            and_(Photo.source_id == source_id, Photo.user_id == user_id)  # type: ignore[arg-type]
         )
-        result = await session.exec(stmt)
-        return result.all()
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_recent(
         self, user_id: int, session: AsyncSession, limit: int = 50
@@ -65,8 +65,8 @@ class PhotoRepository(BaseRepository[Photo]):
             .order_by(Photo.created_at.desc())
             .limit(limit)
         )
-        result = await session.exec(stmt)
-        return result.all()
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     async def create_from_processor_result(
         self,
@@ -178,8 +178,8 @@ class PhotoRepository(BaseRepository[Photo]):
             )
             .limit(limit)
         )
-        result = await session.exec(stmt)
-        return result.all()
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     async def count_by_source(
         self, source_id: int, user_id: int, session: AsyncSession
@@ -197,9 +197,9 @@ class PhotoRepository(BaseRepository[Photo]):
         """
         from sqlalchemy import func
 
-        stmt = select(func.count(Photo.id)).where(
-            (Photo.source_id == source_id) & (Photo.user_id == user_id)
+        stmt = select(func.count(Photo.id)).where(  # type: ignore[arg-type]
+            and_(Photo.source_id == source_id, Photo.user_id == user_id)  # type: ignore[arg-type]
         )
-        result = await session.exec(stmt)
-        count = result.first()
+        result = await session.execute(stmt)
+        count = result.scalar_one()
         return count or 0

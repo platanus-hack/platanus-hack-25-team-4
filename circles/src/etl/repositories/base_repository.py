@@ -7,7 +7,7 @@ Ensures all queries are automatically scoped to prevent cross-user data access.
 
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
@@ -46,10 +46,13 @@ class BaseRepository(Generic[ModelT]):
             Model instance or None if not found
         """
         stmt = select(self.model_class).where(
-            (self.model_class.id == model_id) & (self.model_class.user_id == user_id)
+            and_(
+                self.model_class.id == model_id,  # type: ignore[attr-defined]
+                self.model_class.user_id == user_id,  # type: ignore[attr-defined]
+            )
         )
-        result = await session.exec(stmt)
-        return result.first()
+        result = await session.execute(stmt)
+        return result.scalars().first()
 
     async def get_all(
         self, user_id: int, session: AsyncSession, limit: int = 100, offset: int = 0
@@ -68,12 +71,12 @@ class BaseRepository(Generic[ModelT]):
         """
         stmt = (
             select(self.model_class)
-            .where(self.model_class.user_id == user_id)
+            .where(self.model_class.user_id == user_id)  # type: ignore[attr-defined]
             .limit(limit)
             .offset(offset)
         )
-        result = await session.exec(stmt)
-        return result.all()
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
 
     async def count(self, user_id: int, session: AsyncSession) -> int:
         """
@@ -88,11 +91,11 @@ class BaseRepository(Generic[ModelT]):
         """
         from sqlalchemy import func
 
-        stmt = select(func.count(self.model_class.id)).where(
-            self.model_class.user_id == user_id
+        stmt = select(func.count(self.model_class.id)).where(  # type: ignore[arg-type,attr-defined]
+            self.model_class.user_id == user_id  # type: ignore[attr-defined]
         )
-        result = await session.exec(stmt)
-        count = result.first()
+        result = await session.execute(stmt)
+        count = result.scalar_one()
         return count or 0
 
     async def create(
@@ -186,7 +189,7 @@ class BaseRepository(Generic[ModelT]):
         if not instance:
             return False
 
-        await session.delete(instance)
+        session.delete(instance)
         await session.flush()
         return True
 
@@ -208,14 +211,16 @@ class BaseRepository(Generic[ModelT]):
             raise ValueError(f"{self.model_class.__name__} does not support source_id")
 
         stmt = select(self.model_class).where(
-            (self.model_class.source_id == source_id)
-            & (self.model_class.user_id == user_id)
+            and_(
+                self.model_class.source_id == source_id,  # type: ignore[attr-defined]
+                self.model_class.user_id == user_id,  # type: ignore[attr-defined]
+            )
         )
-        result = await session.exec(stmt)
-        instances = result.all()
+        result = await session.execute(stmt)
+        instances = result.scalars().all()
 
         for instance in instances:
-            await session.delete(instance)
+            session.delete(instance)
 
         await session.flush()
         return len(instances)
