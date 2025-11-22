@@ -8,12 +8,11 @@ Fixtures are organized into sections:
 1. Test Database Configuration (async and sync)
 2. Redis Configuration
 3. Celery Configuration
-4. Mock API Configuration
-5. File Storage Configuration
-6. Sample Data Fixtures (Profile Schema)
-7. Factory Fixtures
-8. Cleanup and Utility Fixtures
-9. Marker Configuration
+4. File Storage Configuration
+5. Sample Data Fixtures (Profile Schema)
+6. Factory Fixtures
+7. Cleanup and Utility Fixtures
+8. Marker Configuration
 """
 
 import tempfile
@@ -45,7 +44,7 @@ from circles.src.profile_schema import (
     UserProfile,
 )
 
-# Try to import async test utilities and mock APIs
+# Try to import async test utilities
 try:
     import pytest_asyncio
 
@@ -75,11 +74,8 @@ try:
 except ImportError:
     Celery = None
 
-# Import mock APIs
 # Load test settings
 from circles.tests.config.test_settings import get_test_settings
-from circles.tests.mocks.mock_claude_api import MockClaudeVisionAPI
-from circles.tests.mocks.mock_whisper_api import MockWhisperAPI
 
 test_settings = get_test_settings()
 
@@ -281,7 +277,7 @@ def celery_app(celery_config):
 
 
 # ============================================================================
-# Mock API Configuration
+# File Storage Configuration
 # ============================================================================
 
 
@@ -295,36 +291,10 @@ def temp_fixtures_dir() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory() as tmpdir:
         fixtures_path = Path(tmpdir)
 
-        # Create subdirectories
-        (fixtures_path / "mock_responses").mkdir(parents=True, exist_ok=True)
+        # Create subdirectories for test data
         (fixtures_path / "sample_files").mkdir(parents=True, exist_ok=True)
 
         yield fixtures_path
-
-
-@pytest.fixture
-def claude_api_mock(temp_fixtures_dir) -> MockClaudeVisionAPI:
-    """
-    Provide a mock Claude Vision API instance.
-
-    Uses temporary fixtures directory that is cleaned up after test.
-    """
-    return MockClaudeVisionAPI(temp_fixtures_dir)
-
-
-@pytest.fixture
-def whisper_api_mock(temp_fixtures_dir) -> MockWhisperAPI:
-    """
-    Provide a mock OpenAI Whisper API instance.
-
-    Uses temporary fixtures directory that is cleaned up after test.
-    """
-    return MockWhisperAPI(temp_fixtures_dir)
-
-
-# ============================================================================
-# File Storage Configuration
-# ============================================================================
 
 
 @pytest.fixture
@@ -356,6 +326,21 @@ def mock_responses_dir(temp_fixtures_dir) -> Path:
     Returns the temporary fixtures directory with mock responses.
     """
     return temp_fixtures_dir / "mock_responses"
+
+
+# ============================================================================
+# Sample Media Files - Binary Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_photo_bytes() -> bytes:
+    """
+    Return minimal valid JPEG bytes for testing photo processors.
+
+    This is a minimal JPEG magic header that's valid for structure testing.
+    """
+    return b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
 
 
 # ============================================================================
