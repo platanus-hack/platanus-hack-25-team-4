@@ -13,7 +13,8 @@ const envSchema = z.object({
   MISSION_WORKER_CONCURRENCY: z
     .string()
     .transform((value) => Number.parseInt(value, 10))
-    .default('5')
+    .default('5'),
+  API_URL: z.string().optional().default('http://localhost:3000')
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -31,5 +32,6 @@ export const env = {
   databaseUrl: parsedEnv.data.DATABASE_URL,
   redisUrl: parsedEnv.data.REDIS_URL,
   missionQueueName: parsedEnv.data.MISSION_QUEUE_NAME,
-  missionWorkerConcurrency: parsedEnv.data.MISSION_WORKER_CONCURRENCY
+  missionWorkerConcurrency: parsedEnv.data.MISSION_WORKER_CONCURRENCY,
+  apiUrl: parsedEnv.data.API_URL
 };
