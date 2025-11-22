@@ -9,7 +9,7 @@ import type {
   OwnerTurnGoal,
   TranscriptMessage
 } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.util.js';
 
 const defaultConfig: InterviewFlowConfig = {
   max_owner_turns: 3

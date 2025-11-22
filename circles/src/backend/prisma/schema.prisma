@@ -30,12 +30,13 @@ model User {
   email         String   @unique
   firstName     String?
   lastName      String?
-  passwordHash  String
+  passwordHash  String?
   profile       Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   persona AgentPersona?
+  magicLinkToken MagicLinkToken?
   circles Circle[]
   matchesAsPrimary   Match[] @relation("UserMatchesPrimary")
   matchesAsSecondary Match[] @relation("UserMatchesSecondary")
@@ -43,6 +44,19 @@ model User {
   chatsAsSecondary   Chat[]  @relation("ChatSecondaryUser")
   sentMessages       Message[] @relation("MessageSender")
   receivedMessages   Message[] @relation("MessageReceiver")
+}
+
+model MagicLinkToken {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [email], references: [email])
+
+  @@index([email])
+  @@index([token])
 }
 
 model AgentPersona {

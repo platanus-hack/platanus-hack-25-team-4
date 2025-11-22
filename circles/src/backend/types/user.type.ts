@@ -27,7 +27,7 @@ export type User = {
   email: string;
   firstName?: string | null;
   lastName?: string | null;
-  passwordHash: string;
+  passwordHash?: string | null; // Optional for magic link auth
   profile: UserProfile | null;
   createdAt: Date;
   updatedAt: Date;
@@ -45,7 +45,7 @@ export type CreateUserInput = {
   email: string;
   firstName?: string;
   lastName?: string;
-  passwordHash: string;
+  passwordHash?: string; // Optional for magic link auth
   profile?: UserProfile;
 };
 
