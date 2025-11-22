@@ -5,7 +5,7 @@ export type Chat = {
   id: string;
   primaryUserId: string;
   secondaryUserId: string;
-  matchId?: string | null;
+  matchId?: string | null | undefined;
   createdAt: Date;
 };
 
@@ -15,7 +15,7 @@ export type Chat = {
 export type CreateChatInput = {
   primaryUserId: string;
   secondaryUserId: string;
-  matchId?: string;
+  matchId?: string | null | undefined;
 };
 
 /**

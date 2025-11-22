@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
-import { profileService } from '../services/profile-service.js';
-import { UserProfile, Interest } from '../types/user.type.js';
+import { ProfileService } from '../services/profile-service.js';
+import { UserService } from '../services/user-service.js';
+import { UserProfile } from '../types/user.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
 const interestSchema = z.object({
@@ -21,7 +22,154 @@ const profileSchema = z.object({
   availability: z.string().trim().min(1).optional()
 });
 
+const updateUserSchema = z.object({
+  firstName: z.string().trim().min(1).optional(),
+  lastName: z.string().trim().min(1).optional()
+});
+
+const updatePositionSchema = z.object({
+  centerLat: z.number().min(-90).max(90),
+  centerLon: z.number().min(-180).max(180)
+});
+
 export const usersRouter = Router();
+
+// Service instances
+const userService = new UserService();
+const profileService = new ProfileService();
+
+// ============================================================================
+// USER CRUD OPERATIONS
+// ============================================================================
+
+/**
+ * GET /users/me
+ * Get current authenticated user
+ */
+usersRouter.get(
+  '/users/me',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const user = await userService.getById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json(user);
+  })
+);
+
+/**
+ * GET /users/:id
+ * Get user by ID (public information only)
+ */
+usersRouter.get(
+  '/users/:id',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (typeof id !== 'string') {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    const user = await userService.getById(id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json(user);
+  })
+);
+
+/**
+ * PATCH /users/me
+ * Update current user (firstName, lastName)
+ */
+usersRouter.patch(
+  '/users/me',
+  requireAuth,
+  validateBody(updateUserSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const parsed = updateUserSchema.parse(req.body);
+    // Build update input with only defined values
+    const updateInput: Partial<{ firstName: string; lastName: string }> = {};
+    if (parsed.firstName !== undefined) {
+      updateInput.firstName = parsed.firstName;
+    }
+    if (parsed.lastName !== undefined) {
+      updateInput.lastName = parsed.lastName;
+    }
+    const user = await userService.update(userId, userId, updateInput);
+    res.json(user);
+  })
+);
+
+/**
+ * DELETE /users/me
+ * Delete current user account
+ */
+usersRouter.delete(
+  '/users/me',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    await userService.delete(userId, userId);
+    res.status(204).send();
+  })
+);
+
+// ============================================================================
+// USER POSITION ENDPOINT
+// ============================================================================
+
+/**
+ * PATCH /users/me/position
+ * Update user's current position (latitude and longitude)
+ * This is used to center circles at the user's location
+ */
+usersRouter.patch(
+  '/users/me/position',
+  requireAuth,
+  validateBody(updatePositionSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const parsed = updatePositionSchema.parse(req.body);
+    const user = await userService.updatePosition(userId, parsed.centerLat, parsed.centerLon);
+    res.json({
+      message: 'Position updated successfully',
+      user
+    });
+  })
+);
+
+// ============================================================================
+// PROFILE ENDPOINTS (Legacy)
+// ============================================================================
 
 usersRouter.get(
   '/users/me/profile',

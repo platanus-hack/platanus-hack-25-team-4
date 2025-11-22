@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { validateBody } from '../middlewares/validate-body.middleware.js';
-import { authService, SignupInput, MagicLinkRequestInput } from '../services/auth-service.js';
+import { AuthService, SignupInput, MagicLinkRequestInput } from '../services/auth-service.js';
 import { AppError } from '../types/app-error.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
@@ -26,6 +26,9 @@ const magicLinkRequestSchema = z.object({
 });
 
 export const authRouter = Router();
+
+// Service instances
+const authService = new AuthService();
 
 /**
  * Traditional signup endpoint

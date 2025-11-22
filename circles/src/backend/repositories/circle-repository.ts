@@ -15,8 +15,6 @@ export class CircleRepository {
       data: {
         userId: input.userId,
         objective: input.objective,
-        centerLat: input.centerLat,
-        centerLon: input.centerLon,
         radiusMeters: input.radiusMeters,
         startAt: input.startAt,
         expiresAt: input.expiresAt,
@@ -51,8 +49,6 @@ export class CircleRepository {
       id: string;
       userId: string;
       objective: string;
-      centerLat: number | null;
-      centerLon: number | null;
       radiusMeters: number | null;
       startAt: Date | null;
       expiresAt: Date | null;
@@ -70,8 +66,6 @@ export class CircleRepository {
       where: { id },
       data: {
         objective: input.objective ?? undefined,
-        centerLat: input.centerLat ?? undefined,
-        centerLon: input.centerLon ?? undefined,
         radiusMeters: input.radiusMeters ?? undefined,
         startAt: input.startAt ?? undefined,
         expiresAt: input.expiresAt ?? undefined,
@@ -98,8 +92,6 @@ export class CircleRepository {
     id: string;
     userId: string;
     objective: string;
-    centerLat: number | null;
-    centerLon: number | null;
     radiusMeters: number | null;
     startAt: Date | null;
     expiresAt: Date | null;
@@ -111,8 +103,6 @@ export class CircleRepository {
       id: circle.id,
       userId: circle.userId,
       objective: circle.objective,
-      centerLat: circle.centerLat,
-      centerLon: circle.centerLon,
       radiusMeters: circle.radiusMeters,
       startAt: circle.startAt,
       expiresAt: circle.expiresAt,

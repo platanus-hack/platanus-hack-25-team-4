@@ -4,8 +4,8 @@ import crypto from 'node:crypto';
 
 import { emailService } from './email-service.js';
 import { env } from '../config/env.js';
-import { magicLinkTokenRepository } from '../repositories/magic-link-token-repository.js';
-import { userRepository } from '../repositories/user-repository.js';
+import { MagicLinkTokenRepository } from '../repositories/magic-link-token-repository.js';
+import { UserRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { AuthPayload, PublicUser, User, CreateUserInput } from '../types/user.type.js';
 
@@ -62,12 +62,19 @@ const generateMagicToken = (): string => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-class AuthService {
+export class AuthService {
+  private readonly userRepository: UserRepository;
+  private readonly magicLinkTokenRepository: MagicLinkTokenRepository;
+
+  constructor() {
+    this.userRepository = new UserRepository();
+    this.magicLinkTokenRepository = new MagicLinkTokenRepository();
+  }
   /**
    * Traditional signup with password (for backwards compatibility)
    */
   async signup(input: SignupInput): Promise<AuthResult> {
-    const existing = await userRepository.findByEmail(input.email);
+    const existing = await this.userRepository.findByEmail(input.email);
     if (existing) {
       throw new AppError('Email already registered', 409);
     }
@@ -81,7 +88,7 @@ class AuthService {
       createInput.lastName = input.lastName;
     }
 
-    const user = await userRepository.create(createInput);
+    const user = await this.userRepository.create(createInput);
     const token = signToken({ userId: user.id, email: user.email });
     return { token, user: toPublicUser(user) };
   }
@@ -90,7 +97,7 @@ class AuthService {
    * Traditional login with password (for backwards compatibility)
    */
   async login(input: LoginInput): Promise<AuthResult> {
-    const user = await userRepository.findByEmail(input.email);
+    const user = await this.userRepository.findByEmail(input.email);
     if (!user) {
       throw new AppError('Invalid credentials', 401);
     }
@@ -117,7 +124,7 @@ class AuthService {
     const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000);
 
     // Create or update magic link token
-    await magicLinkTokenRepository.create({
+    await this.magicLinkTokenRepository.create({
       email,
       token: magicToken,
       expiresAt
@@ -145,28 +152,28 @@ class AuthService {
    */
   async verifyMagicLink(token: string): Promise<AuthResult> {
     // Find token
-    const magicLinkToken = await magicLinkTokenRepository.findByToken(token);
+    const magicLinkToken = await this.magicLinkTokenRepository.findByToken(token);
     if (!magicLinkToken) {
       throw new AppError('Invalid or expired magic link', 401);
     }
 
     // Check expiration
     if (new Date() > magicLinkToken.expiresAt) {
-      await magicLinkTokenRepository.deleteByEmail(magicLinkToken.email);
+      await this.magicLinkTokenRepository.deleteByEmail(magicLinkToken.email);
       throw new AppError('Magic link has expired', 401);
     }
 
     const email = magicLinkToken.email;
 
     // Find or create user
-    let user = await userRepository.findByEmail(email);
+    let user = await this.userRepository.findByEmail(email);
     if (!user) {
       // Create new user with magic link (no password)
       const createInput: CreateUserInput = {
         email,
         profile: { interests: [] }
       };
-      user = await userRepository.create(createInput);
+      user = await this.userRepository.create(createInput);
 
       // Send welcome email (fire and forget)
       emailService.sendWelcome(email, user.firstName ?? undefined).catch((err) => {
@@ -175,12 +182,10 @@ class AuthService {
     }
 
     // Delete used token
-    await magicLinkTokenRepository.deleteByEmail(email);
+    await this.magicLinkTokenRepository.deleteByEmail(email);
 
     // Generate JWT token
     const jwtToken = signToken({ userId: user.id, email: user.email });
     return { token: jwtToken, user: toPublicUser(user) };
   }
 }
-
-export const authService = new AuthService();

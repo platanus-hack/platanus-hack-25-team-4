@@ -29,6 +29,8 @@ export type User = {
   lastName?: string | null;
   passwordHash?: string | null; // Optional for magic link auth
   profile: UserProfile | null;
+  centerLat?: number | null; // User's current latitude
+  centerLon?: number | null; // User's current longitude
   createdAt: Date;
   updatedAt: Date;
 };
@@ -47,12 +49,17 @@ export type CreateUserInput = {
   lastName?: string;
   passwordHash?: string; // Optional for magic link auth
   profile?: UserProfile;
+  centerLat?: number;
+  centerLon?: number;
 };
 
 /**
  * User update input
  */
-export type UpdateUserInput = Partial<Omit<CreateUserInput, 'email'>>;
+export type UpdateUserInput = Partial<Omit<CreateUserInput, 'email'>> & {
+  centerLat?: number | null;
+  centerLon?: number | null;
+};
 
 /**
  * Authentication payload

@@ -63,7 +63,24 @@ export class UserRepository {
         firstName: data.firstName ?? undefined,
         lastName: data.lastName ?? undefined,
         passwordHash: data.passwordHash ?? undefined,
-        profile: data.profile ?? undefined
+        profile: data.profile ?? undefined,
+        centerLat: data.centerLat ?? undefined,
+        centerLon: data.centerLon ?? undefined
+      }
+    });
+
+    return this.mapToUser(user);
+  }
+
+  /**
+   * Update user position
+   */
+  async updatePosition(id: string, centerLat: number, centerLon: number): Promise<User | undefined> {
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        centerLat,
+        centerLon
       }
     });
 
@@ -89,6 +106,8 @@ export class UserRepository {
     lastName: string | null;
     passwordHash: string | null;
     profile: unknown;
+    centerLat: number | null;
+    centerLon: number | null;
     createdAt: Date;
     updatedAt: Date;
   }): User {
@@ -100,6 +119,8 @@ export class UserRepository {
       passwordHash: user.passwordHash,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       profile: user.profile as UserProfile | null,
+      centerLat: user.centerLat,
+      centerLon: user.centerLon,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };

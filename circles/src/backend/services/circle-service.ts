@@ -1,4 +1,4 @@
-import { circleRepository, UpdateCircleInput } from '../repositories/circle-repository.js';
+import { CircleRepository, UpdateCircleInput } from '../repositories/circle-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { Circle, CreateCircleInput } from '../types/circle.type.js';
 
@@ -8,26 +8,31 @@ const ensureOwnership = (circle: Circle, userId: string): void => {
   }
 };
 
-class CircleService {
+export class CircleService {
+  private readonly circleRepository: CircleRepository;
+
+  constructor() {
+    this.circleRepository = new CircleRepository();
+  }
   /**
    * Create a new circle
    */
   async create(input: CreateCircleInput): Promise<Circle> {
-    return circleRepository.create(input);
+    return this.circleRepository.create(input);
   }
 
   /**
    * List all circles for a user
    */
   async listByUser(userId: string): Promise<Circle[]> {
-    return circleRepository.findByUser(userId);
+    return this.circleRepository.findByUser(userId);
   }
 
   /**
    * Get circle by ID (with ownership check)
    */
   async getById(id: string, userId: string): Promise<Circle> {
-    const circle = await circleRepository.findById(id);
+    const circle = await this.circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
@@ -39,13 +44,13 @@ class CircleService {
    * Update circle (with ownership check)
    */
   async update(id: string, userId: string, input: UpdateCircleInput): Promise<Circle> {
-    const circle = await circleRepository.findById(id);
+    const circle = await this.circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
     ensureOwnership(circle, userId);
 
-    const updated = await circleRepository.update(id, input);
+    const updated = await this.circleRepository.update(id, input);
     if (!updated) {
       throw new AppError('Circle not found', 404);
     }
@@ -56,13 +61,11 @@ class CircleService {
    * Delete circle (with ownership check)
    */
   async remove(id: string, userId: string): Promise<void> {
-    const circle = await circleRepository.findById(id);
+    const circle = await this.circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
     ensureOwnership(circle, userId);
-    await circleRepository.delete(id);
+    await this.circleRepository.delete(id);
   }
 }
-
-export const circleService = new CircleService();

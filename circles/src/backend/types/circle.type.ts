@@ -2,13 +2,12 @@ import { CircleStatus } from './enums.type.js';
 
 /**
  * Circle model matching Prisma schema
+ * Position is stored in User; Circle only has radius
  */
 export type Circle = {
   id: string;
   userId: string;
   objective: string;
-  centerLat: number | null;
-  centerLon: number | null;
   radiusMeters: number | null;
   startAt: Date | null;
   expiresAt: Date | null;
@@ -19,12 +18,11 @@ export type Circle = {
 
 /**
  * Circle creation input
+ * Position is taken from User's current location
  */
 export type CreateCircleInput = {
   userId: string;
   objective: string;
-  centerLat: number;
-  centerLon: number;
   radiusMeters: number;
   startAt: Date;
   expiresAt: Date;
