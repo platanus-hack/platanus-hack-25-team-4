@@ -1,8 +1,8 @@
-import type { InterviewMission } from './types.js';
+import { BedrockInterviewAgentsRuntime } from './agentsRuntime.js';
 import { InterviewFlowService } from './interviewFlowService.js';
-import { MockInterviewAgentsRuntime } from './agentsRuntime.js';
-import { MockInterviewJudge } from './judge.js';
+import { BedrockInterviewJudge } from './judge.js';
 import { LoggingNotificationGateway } from './notificationGateway.js';
+import { InterviewMission } from './types.js';
 
 export interface MissionJob {
   id: string;
@@ -23,8 +23,8 @@ export const createMissionJobHandler = (
 
 export const createDefaultMissionJobHandler = (): MissionJobHandler => {
   const flowService = new InterviewFlowService({
-    agentsRuntime: new MockInterviewAgentsRuntime(),
-    judge: new MockInterviewJudge(),
+    agentsRuntime: new BedrockInterviewAgentsRuntime(),
+    judge: new BedrockInterviewJudge(),
     notificationGateway: new LoggingNotificationGateway()
   });
 
