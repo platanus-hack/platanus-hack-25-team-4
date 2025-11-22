@@ -509,7 +509,7 @@ class TestUserProfileBasic:
 
         # Create UserProfile instance (without saving to database)
         profile = UserProfile(
-            user_id="test_user_001",
+            user_id="550e8400-e29b-41d4-a716-446655440001",
             personality_core=personality_core,
             social_interaction_style=social_style,
             motivations_and_goals=motivations,
@@ -522,7 +522,7 @@ class TestUserProfileBasic:
         )
 
         # Assertions
-        assert profile.user_id == "test_user_001"
+        assert profile.user_id == "550e8400-e29b-41d4-a716-446655440001"
         assert profile.is_active is True
         assert profile.personality_core.openness == "High"
         assert profile.social_interaction_style.preferred_group_size == "1:1"
@@ -533,7 +533,7 @@ class TestUserProfileBasic:
         """Test that default values are set correctly."""
         # Create minimal profile to test defaults
         profile = UserProfile(
-            user_id="test_defaults",
+            user_id="550e8400-e29b-41d4-a716-446655440002",
             personality_core=PersonalityCore(
                 openness="H",
                 conscientiousness="M",

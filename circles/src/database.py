@@ -20,11 +20,21 @@ DATABASE_URL = os.getenv(
 )
 
 # Create SQLAlchemy engine (sync)
-engine = create_engine(
-    DATABASE_URL,
-    echo=os.getenv("SQL_ECHO", "False").lower() == "true",
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-)
+# Configuration for production stability
+engine_kwargs = {
+    "echo": os.getenv("SQL_ECHO", "False").lower() == "true",
+}
+
+# Add connection pooling for non-SQLite databases
+if "sqlite" not in DATABASE_URL:
+    engine_kwargs["pool_pre_ping"] = True  # Test connections before use
+    engine_kwargs["pool_recycle"] = 3600  # Recycle connections after 1 hour
+    engine_kwargs["pool_size"] = 10  # Connection pool size
+    engine_kwargs["max_overflow"] = 20  # Overflow connections
+else:
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # Create session factory (sync)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -82,3 +92,32 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
     async with AsyncSessionLocal() as session:
         yield session
+
+
+def check_database_health() -> bool:
+    """Check if database connection is healthy.
+
+    Returns:
+        True if database is reachable, False otherwise
+    """
+    try:
+        session = SessionLocal()
+        session.execute("SELECT 1")
+        session.close()
+        return True
+    except Exception:
+        return False
+
+
+async def check_database_health_async() -> bool:
+    """Check if async database connection is healthy.
+
+    Returns:
+        True if database is reachable, False otherwise
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute("SELECT 1")
+        return True
+    except Exception:
+        return False

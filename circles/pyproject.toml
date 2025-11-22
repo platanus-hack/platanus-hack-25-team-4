@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["src", "src.etl"
+packages = ["src", "src.etl", "src.consolidation"
     "transformers>=4.40.0", # HuggingFace transformers for SmolVLM
     "torch>=2.0.0", # PyTorch with MPS support for Apple Silicon
     "pillow>=10.0.0", # Image processing for VLM

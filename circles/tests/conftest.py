@@ -15,16 +15,10 @@ Fixtures are organized into sections:
 8. Marker Configuration
 """
 
-import tempfile
-from pathlib import Path
-from typing import AsyncGenerator, Generator
+import os
+from datetime import datetime
 
 import pytest
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -43,42 +37,6 @@ from circles.src.profile_schema import (
     SocialInteractionStyle,
     UserProfile,
 )
-
-# Try to import async test utilities
-try:
-    import pytest_asyncio
-
-    HAS_PYTEST_ASYNCIO = True
-except ImportError:
-    HAS_PYTEST_ASYNCIO = False
-
-    # Provide a no-op decorator if pytest_asyncio is not available
-    class _NoOpAsyncio:
-        @staticmethod
-        def fixture(*args, **kwargs):
-            def decorator(func):
-                return func
-
-            return decorator
-
-    pytest_asyncio = _NoOpAsyncio()
-
-try:
-    from fakeredis import FakeStrictRedis
-except ImportError:
-    FakeStrictRedis = None
-
-try:
-    from celery import Celery
-    from celery.result import EagerResult
-except ImportError:
-    Celery = None
-
-# Load test settings
-from circles.tests.config.test_settings import get_test_settings
-
-test_settings = get_test_settings()
-
 
 # ============================================================================
 # Test Database Configuration (Async)
@@ -513,7 +471,7 @@ def sample_user_profile_data(
     Useful for API testing where you need dict/JSON format.
     """
     return {
-        "user_id": "test_user_001",
+        "user_id": "550e8400-e29b-41d4-a716-446655440001",
         "personality_core": sample_personality_core,
         "social_interaction_style": sample_social_interaction_style,
         "motivations_and_goals": sample_motivations_and_goals,
@@ -561,16 +519,16 @@ def profile_factory(db_session):
     Return a factory function for creating multiple profiles.
 
     Usage:
-        profile1 = profile_factory(user_id="user_1")
-        profile2 = profile_factory(user_id="user_2")
+        profile1 = profile_factory(user_id="550e8400-e29b-41d4-a716-446655440001")
+        profile2 = profile_factory(user_id="550e8400-e29b-41d4-a716-446655440002")
     """
 
     def _create_profile(user_id=None, **overrides):
         """Create a profile with default or custom values."""
         if user_id is None:
-            import random
+            from circles.src.utils.uuid_utils import generate_user_id
 
-            user_id = f"test_user_{random.randint(1000, 9999)}"
+            user_id = generate_user_id()
 
         # Create default nested models
         default_data = {
