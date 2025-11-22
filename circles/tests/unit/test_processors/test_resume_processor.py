@@ -380,3 +380,79 @@ class TestResumeProcessorIntegration:
                 # Expected if Claude API is not available in test environment
                 # The implementation has fallback structures, so this is acceptable
                 assert "contact_info" in str(e) or "API" in str(e) or True
+
+    @pytest.mark.asyncio
+    async def test_process_batch_multiple_files(self, resume_processor, tmp_path):
+        """Test batch processing of multiple resume files."""
+        # Create multiple test resume files
+        resume_files = []
+        for i in range(3):
+            resume_path = tmp_path / f"resume_{i}.txt"
+            resume_path.write_text(f"Resume {i}\nSoftware Engineer\nSkills: Python, Java")
+            resume_files.append(resume_path)
+
+        # Process batch
+        results = await resume_processor.process_batch(resume_files)
+
+        # Verify results
+        assert len(results) == 3
+        for result in results:
+            assert isinstance(result, SimpleProcessorResult)
+            assert hasattr(result, "content")
+            assert hasattr(result, "metadata")
+            assert "full_text" in result.content
+            assert "structured" in result.content
+
+    @pytest.mark.asyncio
+    async def test_process_batch_with_errors(self, resume_processor, tmp_path):
+        """Test batch processing handles file errors gracefully."""
+        # Create mix of valid and invalid file paths
+        resume_files = []
+
+        # Valid file
+        valid_path = tmp_path / "valid_resume.txt"
+        valid_path.write_text("Valid Resume\nSoftware Engineer")
+        resume_files.append(valid_path)
+
+        # Non-existent file
+        invalid_path = tmp_path / "nonexistent.txt"
+        resume_files.append(invalid_path)
+
+        # Process batch - should not raise, should handle errors gracefully
+        results = await resume_processor.process_batch(resume_files)
+
+        assert len(results) == 2
+        # First result should be successful
+        assert "processing_error" not in results[0].metadata
+        # Second result should have error
+        assert "processing_error" in results[1].metadata
+
+    @pytest.mark.asyncio
+    async def test_process_batch_concurrency(self, tmp_path):
+        """Test batch processing respects concurrency limits."""
+        # Create processor with low concurrency limit
+        processor = ResumeProcessor(max_concurrent=2)
+
+        # Create multiple resume files
+        resume_files = []
+        for i in range(5):
+            resume_path = tmp_path / f"resume_{i}.txt"
+            resume_path.write_text(f"Resume {i}\nRole: Engineer")
+            resume_files.append(resume_path)
+
+        # Process batch
+        results = await processor.process_batch(resume_files)
+
+        # Verify all files were processed
+        assert len(results) == 5
+        # Verify semaphore was created with correct limit
+        assert processor.max_concurrent == 2
+        assert processor.semaphore._value == 2
+
+    @pytest.mark.asyncio
+    async def test_process_batch_empty_list(self, resume_processor):
+        """Test batch processing with empty file list."""
+        results = await resume_processor.process_batch([])
+
+        assert isinstance(results, list)
+        assert len(results) == 0
