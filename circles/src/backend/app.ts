@@ -3,8 +3,8 @@ import express, { json, type Application, urlencoded } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-import { errorHandler } from './middleware/errorHandler.js';
-import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { errorHandler } from './middlewares/error-handler.middleware.js';
+import { notFoundHandler } from './middlewares/not-found-handler.middleware.js';
 import { apiRouter } from './routes/index.js';
 
 export const createApp = (): Application => {

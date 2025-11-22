@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CircleStatus {
+  active
+  paused
+  expired
+}
+
+enum MatchType {
+  match
+  soft_match
+}
+
+enum MatchStatus {
+  pending_accept
+  active
+  declined
+  expired
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  firstName     String?
+  lastName      String?
+  passwordHash  String
+  profile       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  persona AgentPersona?
+  circles Circle[]
+  matchesAsPrimary   Match[] @relation("UserMatchesPrimary")
+  matchesAsSecondary Match[] @relation("UserMatchesSecondary")
+  chatsAsPrimary     Chat[]  @relation("ChatPrimaryUser")
+  chatsAsSecondary   Chat[]  @relation("ChatSecondaryUser")
+  sentMessages       Message[] @relation("MessageSender")
+  receivedMessages   Message[] @relation("MessageReceiver")
+}
+
+model AgentPersona {
+  userId      String  @id
+  safetyRules Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Circle {
+  id           String       @id @default(uuid())
+  userId       String
+  objective String
+  centerLat    Float
+  centerLon    Float
+  radiusMeters Float
+  startAt      DateTime
+  expiresAt    DateTime
+  status       CircleStatus
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User   @relation(fields: [userId], references: [id])
+  matchesAsPrimary   Match[] @relation("CircleMatchesPrimary")
+  matchesAsSecondary Match[] @relation("CircleMatchesSecondary")
+}
+
+model Match {
+  id                 String      @id @default(uuid())
+  primaryUserId      String
+  secondaryUserId    String
+  primaryCircleId    String
+  secondaryCircleId  String
+  type               MatchType
+  worthItScore       Float
+  status             MatchStatus
+  explanationSummary String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  primaryUser     User   @relation("UserMatchesPrimary", fields: [primaryUserId], references: [id])
+  secondaryUser   User   @relation("UserMatchesSecondary", fields: [secondaryUserId], references: [id])
+  primaryCircle   Circle @relation("CircleMatchesPrimary", fields: [primaryCircleId], references: [id])
+  secondaryCircle Circle @relation("CircleMatchesSecondary", fields: [secondaryCircleId], references: [id])
+  chats           Chat[]
+}
+
+model Chat {
+  id       String   @id @default(uuid())
+  primaryUserId   String
+  secondaryUserId String
+  matchId  String?
+  createdAt DateTime @default(now())
+
+  primaryUser   User   @relation("ChatPrimaryUser", fields: [primaryUserId], references: [id])
+  secondaryUser User   @relation("ChatSecondaryUser", fields: [secondaryUserId], references: [id])
+  messages Message[]
+
+  matches Match[]
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  chatId          String
+  senderUserId    String
+  receiverId      String
+  content         String
+  moderationFlags Json?
+  createdAt       DateTime @default(now())
+
+  chat     Chat @relation(fields: [chatId], references: [id])
+  sender   User @relation("MessageSender", fields: [senderUserId], references: [id])
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+}

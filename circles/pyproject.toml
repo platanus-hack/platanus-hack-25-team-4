@@ -1,7 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "circles"
 version = "0.1.0"
-description = "Add your description here"
+description = "Circles - User profile and matching system"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiofiles>=25.1.0",
+    "anthropic>=0.74.1",
+    "celery>=5.5.3",
+    "fastapi>=0.121.3",
+    "openai>=2.8.1",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
+    "pydub>=0.25.1",
+    "sqlalchemy>=2.0.44",
+    "sqlmodel>=0.0.27",
+]
+
+[tool.setuptools]
+packages = ["src", "src.etl"]

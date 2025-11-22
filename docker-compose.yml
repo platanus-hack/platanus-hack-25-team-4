@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: circles-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-circles_db}
+      # Performance tuning for development
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.utf8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Persistent data storage
+      - postgres_data:/var/lib/postgresql/data
+      # Initialization script to enable extensions
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init-extensions.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-circles_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - circles-network
+
+  backend:
+    build:
+      context: ./circles/src/backend
+      dockerfile: Dockerfile
+    container_name: circles-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-circles_db}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - circles-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  circles-network:
+    driver: bridge
