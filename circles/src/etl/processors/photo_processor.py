@@ -14,6 +14,7 @@ import base64
 import json
 import logging
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,18 +27,13 @@ from ..services import ImageService
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class SimpleProcessorResult:
     """Simple result container for processor outputs."""
 
-    def __init__(
-        self,
-        content: Dict[str, Any],
-        metadata: Dict[str, Any],
-        embeddings: Optional[Dict[str, Any]] = None,
-    ):
-        self.content = content
-        self.metadata = metadata
-        self.embeddings = embeddings or {}
+    content: Dict[str, Any]
+    metadata: Dict[str, Any]
+    embeddings: Optional[Dict[str, Any]] = None
 
 
 class PhotoProcessor:
