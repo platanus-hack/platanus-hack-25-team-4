@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "transformers>=4.40.0", # HuggingFace transformers for SmolVLM
+    "torch>=2.0.0", # PyTorch with MPS support for Apple Silicon
+    "pillow>=10.0.0", # Image processing for VLM
+    "markitdown[all]>=0.1.0", # Markdown conversion from various formats
+    "aiofiles>=23.0.0", # Async file operations
+]
