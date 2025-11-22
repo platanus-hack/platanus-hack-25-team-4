@@ -1,0 +1,109 @@
+{
+  "personality_core": {
+    "openness": "High",
+    "conscientiousness": "High",
+    "extraversion": "Medium-High",
+    "agreeableness": "Medium",
+    "emotional_stability": "Medium",
+    "social_match_implications": "High openness and medium-high extraversion mean they enjoy meeting new people around shared projects and ideas, while high conscientiousness makes them reliable about showing up when a plan is clear. Medium agreeableness and emotional stability mean they prefer low-drama, practical interactions with respectful but direct communication and clear expectations about time and place."
+  },
+  "social_interaction_style": {
+    "preferred_group_size": "1:1 or very small group (2-3 people)",
+    "meeting_structure": "prefers a suggested agenda but open to spontaneity",
+    "tone": "friendly, slightly technical/analytical with a bit of dry humor",
+    "communication_style": "medium-length messages, occasional emojis (😊, 👍), casual first-name basis",
+    "response_latency": "typically within ~2-3 hours in the evening, slower after midnight",
+    "conversation_pacing": "Responds at a steady but not hyper-instant pace; prefers a few focused exchanges leading to a concrete plan over long small-talk threads.",
+    "comfort_zones_and_boundaries": {
+      "energy_constraints": "After work, prefers one focused 1:1 or very small-group meetup rather than multiple back-to-back plans; social battery is lower on weekday mornings.",
+      "safety_preferences": "Prefers to meet in public, well-known cafés or coworking spaces; comfortable with mixed-gender groups but not with very large or noisy parties for first meetings.",
+      "time_of_day_comfort": "Most comfortable with weekday evenings after 18:00 and weekend mornings; avoids very early weekday mornings and late Sunday nights.",
+      "pace_of_progress": "Likes to move from chat to a concrete low-pressure meetup within a few messages if the match looks good, rather than weeks of back-and-forth.",
+      "topics_to_avoid": [
+        "high-conflict political debates in first meetings",
+        "overly personal or dramatic topics before basic rapport is built"
+      ]
+    }
+  },
+  "motivations_and_goals": {
+    "primary_goal": "Connect with fellow developers/entrepreneurs in Santiago to build side-projects and share ideas.",
+    "secondary_goal": "Find a regular conversational-Spanish partner to practice and improve fluency on weekend mornings.",
+    "underlying_needs": [
+      "growth (learning & creation)",
+      "relatedness (meeting like-minded people locally)",
+      "autonomy (choosing his own path)"
+    ]
+  },
+  "skills_and_identity": {
+    "skills": [
+      "Full-stack developer (React / Node.js)",
+      "Prototype app builder",
+      "Hobbyist with Raspberry Pi/hardware projects"
+    ],
+    "skill_levels": {
+      "Full-stack development (React / Node.js)": "Advanced",
+      "Prototype app building": "Advanced",
+      "Hardware tinkering / Raspberry Pi": "Intermediate"
+    },
+    "experience": "5+ years in software engineering; one small startup project; active GitHub contributor",
+    "identity_tags": [
+      "Developer",
+      "Entrepreneur",
+      "Maker",
+      "Chile-resident (Santiago)",
+      "Spanish native / English fluent",
+      "Remote worker",
+      "Expat"
+    ]
+  },
+  "lifestyle_and_rhythms": {
+    "availability": {
+      "weekday_evenings": "after 18:00",
+      "weekend_mornings": "09:00-12:00"
+    },
+    "weekly_rhythm": "Work-focused during weekdays with social and side-project energy mainly concentrated in weekday evenings; reserves weekend mornings for language practice or relaxed coffee meetups.",
+    "mobility": {
+      "preferred_radius_km": 2,
+      "transport_modes": [
+        "public transport",
+        "bike",
+        "comfortable walking up to ~2 km"
+      ]
+    },
+    "preferred_locations": [
+      "coworking spaces",
+      "cafés in Las Condes/Providencia, Santiago"
+    ],
+    "environmental_context": {
+      "local_area_familiarity": "Very familiar with Las Condes and Providencia, especially tech-friendly cafés and coworking spaces.",
+      "high_density_areas_exposure": "Frequently works from or passes through café-dense areas on weekdays, making short-notice evening meetups feasible within a 1–2 km radius."
+    }
+  },
+  "conversation_micro_preferences": {
+    "preferred_opener_style": "Hey — saw you’re into React and hardware; fancy a coffee and code-chat this weekend?",
+    "emoji_usage": "light (😊, 🙂, 👍)",
+    "humor_style": "dry, self-deprecating hobby-maker style (“Yes, the Raspberry Pi project is still in the drawer”).",
+    "formality_level": "informal but respectful — first names used",
+    "preferred_medium": "in-app chat; comfortable with short suggestion + time/location rather than long debate",
+    "default_tone": "calm, friendly, and slightly analytical — focuses on practical details and shared interests rather than high-intensity hype."
+  },
+  "behavioural_history_model": {
+    "match_acceptance_pattern": "Accepts matches where objective closely aligns (tech/entrepreneurial), radius ≤ 2 km, clear time + place.",
+    "match_decline_pattern": "Declines matches if distance > ~3 km or if time window is early morning on a weekday.",
+    "good_outcomes_pattern": "Best outcomes when meeting someone with shared tech interest + immediate agenda (e.g., coffee + brainstorm rather than vague “let’s meet”).",
+    "response_latency_pattern": "Most responsive in early-to-late evenings; replies may be delayed to the next day if messages arrive very late at night or during deep-focus work blocks.",
+    "conversation_patterns": "Tends to keep pre-meetup chats focused and goal-oriented, aiming to converge on a specific time and place within a handful of messages rather than long exploratory conversations."
+  },
+  "agent_persona_heuristic": {
+    "voice": "Friendly, tech-savvy, proactive but respectful of time.",
+    "decision_priorities": {
+      "1": "Shared tech/entrepreneurial interest → high priority",
+      "2": "Radius ≤ 2 km & availability fits evening/weekend windows",
+      "3": "Match type fits 1:1 or small group, clear agenda",
+      "4": "Avoid matches >3 km or time windows outside preferred rhythm"
+    },
+    "tone_guidance": "Suggest matches with: “Here’s someone nearby who shares your developer background and is free this Thursday evening – want me to introduce?”",
+    "risk_tolerance": "Medium – open to new people but sensitive to wasted time; values quality over quantity.",
+    "serendipity_openness": "High for hobby/hardware topics; moderate for purely social “hang out” invites."
+  }
+}
