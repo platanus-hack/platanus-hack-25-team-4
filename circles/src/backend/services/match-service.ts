@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../types/app-error.type.js';
 import type { MatchStatus } from '../types/enums.type.js';
-import type { Match } from '../types/match.type.js';
+import type { MatchWithDetails } from '../types/match.type.js';
 
 export interface MatchQueryParams {
   status?: MatchStatus;
@@ -19,12 +19,15 @@ export class MatchService {
    * Get matches with optional filtering
    */
   async getMatches(params: MatchQueryParams): Promise<{
-    matches: Match[];
+    matches: MatchWithDetails[];
     total: number;
   }> {
     const { status, userId, limit = 20, offset = 0 } = params;
 
-    const where: Record<string, unknown> = {};
+    const where: {
+      status?: MatchStatus;
+      OR?: Array<{ primaryUserId: string } | { secondaryUserId: string }>;
+    } = {};
 
     if (status) {
       where.status = status;
@@ -72,8 +75,8 @@ export class MatchService {
   /**
    * Get a single match by ID
    */
-  async getMatchById(id: string): Promise<Match | null> {
-    return prisma.match.findUnique({
+  async getMatchById(id: string): Promise<MatchWithDetails | null> {
+    const match = await prisma.match.findUnique({
       where: { id },
       include: {
         primaryUser: {
@@ -94,13 +97,15 @@ export class MatchService {
         }
       }
     });
+
+    return match;
   }
 
   /**
    * Accept a match (user agrees to connect)
    * Requires user to be one of the participants
    */
-  async acceptMatch(matchId: string, userId: string): Promise<Match> {
+  async acceptMatch(matchId: string, userId: string): Promise<MatchWithDetails> {
     const match = await prisma.match.findUnique({
       where: { id: matchId }
     });
@@ -120,7 +125,7 @@ export class MatchService {
       throw new AppError(`Cannot accept match with status: ${match.status}`, 400);
     }
 
-    return prisma.match.update({
+    const result = await prisma.match.update({
       where: { id: matchId },
       data: {
         status: 'active'
@@ -144,13 +149,15 @@ export class MatchService {
         }
       }
     });
+
+    return result;
   }
 
   /**
    * Decline a match (user rejects the match)
    * Requires user to be one of the participants
    */
-  async declineMatch(matchId: string, userId: string): Promise<Match> {
+  async declineMatch(matchId: string, userId: string): Promise<MatchWithDetails> {
     const match = await prisma.match.findUnique({
       where: { id: matchId }
     });
@@ -170,7 +177,7 @@ export class MatchService {
       throw new AppError(`Cannot decline match with status: ${match.status}`, 400);
     }
 
-    return prisma.match.update({
+    const result = await prisma.match.update({
       where: { id: matchId },
       data: {
         status: 'declined'
@@ -194,6 +201,8 @@ export class MatchService {
         }
       }
     });
+
+    return result;
   }
 }
 

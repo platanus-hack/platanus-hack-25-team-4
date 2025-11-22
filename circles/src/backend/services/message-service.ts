@@ -155,11 +155,20 @@ export class MessageService {
       })
     ]);
 
-    return {
+    const result: MessageWithDetails = {
       ...message,
-      chat: chat ?? undefined,
-      sender: sender ?? undefined,
-      receiver: receiver ?? undefined
     };
+
+    if (chat) {
+      result.chat = chat;
+    }
+    if (sender) {
+      result.sender = sender;
+    }
+    if (receiver) {
+      result.receiver = receiver;
+    }
+
+    return result;
   }
 }

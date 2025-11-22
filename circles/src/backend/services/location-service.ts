@@ -139,7 +139,7 @@ export class LocationService {
       await prisma.circle.updateMany({
         where: {
           userId,
-          status: 'active',
+          status: 'active' as const,
           expiresAt: { gt: new Date() },
         },
         data: {
@@ -150,8 +150,8 @@ export class LocationService {
 
       // Fetch updated circles for return
       const updated = await prisma.circle.findMany({
-        where: { userId, status: 'active' },
-        select: { id: true, centerLat: true, centerLon: true },
+        where: { userId, status: 'active' as const },
+        select: { id: true },
       });
 
       console.debug('Circle centers updated', { userId, count: updated.length });

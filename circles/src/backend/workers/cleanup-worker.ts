@@ -129,14 +129,12 @@ export class CleanupWorker {
    */
   private async cleanRedisKeys(): Promise<void> {
     try {
-      const cleaned = 0;
-
       // Note: Redis doesn't have a direct way to find all keys without SCAN
       // In production, you should use SCAN to iterate through keys
       // For now, we'll log that this needs to be implemented with proper patterns
       // TODO: Implement Redis key cleanup using SCAN when needed
 
-      console.debug('Redis key cleanup completed', { cleaned });
+      console.debug('Redis key cleanup completed');
     } catch (error) {
       console.error('Failed to clean Redis keys', { error });
     }
