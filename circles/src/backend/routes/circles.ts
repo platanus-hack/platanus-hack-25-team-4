@@ -4,13 +4,11 @@ import { z } from 'zod';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import type { UpdateCircleInput } from '../repositories/circle-repository.js';
-import { circleService } from '../services/circle-service.js';
+import { CircleService } from '../services/circle-service.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
 const circleBaseSchema = z.object({
   objectiveText: z.string().trim().min(1),
-  centerLat: z.number(),
-  centerLon: z.number(),
   radiusMeters: z.number().positive(),
   startAt: z.string().datetime(),
   expiresAt: z.string().datetime()
@@ -23,6 +21,9 @@ const updateCircleSchema = circleBaseSchema
   .extend({ status: z.enum(['active', 'paused', 'expired']).optional() });
 
 export const circlesRouter = Router();
+
+// Service instances
+const circleService = new CircleService();
 
 circlesRouter.post(
   '/circles',
@@ -38,8 +39,6 @@ circlesRouter.post(
     const circle = circleService.create({
       userId: req.user.userId,
       objective: parsed.objectiveText,
-      centerLat: parsed.centerLat,
-      centerLon: parsed.centerLon,
       radiusMeters: parsed.radiusMeters,
       startAt: new Date(parsed.startAt),
       expiresAt: new Date(parsed.expiresAt)
@@ -98,17 +97,11 @@ circlesRouter.patch(
       return;
     }
 
-    const parsed = circleBaseSchema.parse(req.body);
+    const parsed = updateCircleSchema.parse(req.body);
     const updateInput: UpdateCircleInput = {};
 
     if (parsed.objectiveText !== undefined) {
       updateInput.objective = parsed.objectiveText;
-    }
-    if (parsed.centerLat !== undefined) {
-      updateInput.centerLat = parsed.centerLat;
-    }
-    if (parsed.centerLon !== undefined) {
-      updateInput.centerLon = parsed.centerLon;
     }
     if (parsed.radiusMeters !== undefined) {
       updateInput.radiusMeters = parsed.radiusMeters;

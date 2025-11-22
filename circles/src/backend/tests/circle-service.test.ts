@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 
-import { authService } from '../services/auth-service.js';
-import { circleService } from '../services/circle-service.js';
+import { AuthService } from '../services/auth-service.js';
+import { CircleService } from '../services/circle-service.js';
 import { AppError } from '../types/app-error.type.js';
 
 const prisma = new PrismaClient();
@@ -10,16 +10,25 @@ const prisma = new PrismaClient();
 const buildCircleInput = (userId: string) => ({
   userId,
   objective: 'Play tennis',
-  centerLat: -34.6037,
-  centerLon: -58.3816,
   radiusMeters: 500,
   startAt: new Date(),
   expiresAt: new Date(Date.now() + 60 * 60 * 1000)
 });
 
 describe('circleService', () => {
+  let authService: AuthService;
+  let circleService: CircleService;
+
   beforeEach(async () => {
+    authService = new AuthService();
+    circleService = new CircleService();
     // Clean up database before each test
+    await prisma.circle.deleteMany({});
+    await prisma.magicLinkToken.deleteMany({});
+    await prisma.user.deleteMany({});
+  });
+
+  afterEach(async () => {
     await prisma.circle.deleteMany({});
     await prisma.magicLinkToken.deleteMany({});
     await prisma.user.deleteMany({});

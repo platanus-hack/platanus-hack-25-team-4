@@ -1,10 +1,12 @@
+import { PrismaClient } from '@prisma/client';
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { authService } from '../services/auth-service.js';
-import { profileService } from '../services/profile-service.js';
-import { PrismaClient } from '@prisma/client';
+import { AuthService } from '../services/auth-service.js';
+import { ProfileService } from '../services/profile-service.js';
 
 const prisma = new PrismaClient();
+const authService = new AuthService();
+const profileService = new ProfileService();
 
 describe('profileService', () => {
   beforeEach(async () => {
