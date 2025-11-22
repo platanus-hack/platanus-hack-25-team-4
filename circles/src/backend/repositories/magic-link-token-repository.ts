@@ -1,5 +1,4 @@
-import { PrismaClient as client } from '@prisma/client';
-
+import { prisma } from '../lib/prisma.js';
 import { CreateMagicLinkTokenInput, MagicLinkToken } from '../types/magic-link-token.type.js';
 
 export class MagicLinkTokenRepository {
@@ -8,11 +7,11 @@ export class MagicLinkTokenRepository {
    */
   async create(input: CreateMagicLinkTokenInput): Promise<MagicLinkToken> {
     // Delete old token if exists
-    await client.magicLinkToken.deleteMany({
+    await prisma.magicLinkToken.deleteMany({
       where: { email: input.email.toLowerCase() }
     });
 
-    const token = await client.magicLinkToken.create({
+    const token = await prisma.magicLinkToken.create({
       data: {
         email: input.email.toLowerCase(),
         token: input.token,
@@ -27,7 +26,7 @@ export class MagicLinkTokenRepository {
    * Find token by token string
    */
   async findByToken(token: string): Promise<MagicLinkToken | undefined> {
-    const result = await client.magicLinkToken.findUnique({
+    const result = await prisma.magicLinkToken.findUnique({
       where: { token }
     });
 
@@ -38,7 +37,7 @@ export class MagicLinkTokenRepository {
    * Find token by email
    */
   async findByEmail(email: string): Promise<MagicLinkToken | undefined> {
-    const result = await client.magicLinkToken.findUnique({
+    const result = await prisma.magicLinkToken.findUnique({
       where: { email: email.toLowerCase() }
     });
 
@@ -49,7 +48,7 @@ export class MagicLinkTokenRepository {
    * Delete token by ID
    */
   async delete(id: string): Promise<void> {
-    await client.magicLinkToken.delete({
+    await prisma.magicLinkToken.delete({
       where: { id }
     });
   }
@@ -58,7 +57,7 @@ export class MagicLinkTokenRepository {
    * Delete token by email
    */
   async deleteByEmail(email: string): Promise<void> {
-    await client.magicLinkToken.deleteMany({
+    await prisma.magicLinkToken.deleteMany({
       where: { email: email.toLowerCase() }
     });
   }
@@ -67,7 +66,7 @@ export class MagicLinkTokenRepository {
    * Delete token by token string
    */
   async deleteByToken(token: string): Promise<void> {
-    await client.magicLinkToken.deleteMany({
+    await prisma.magicLinkToken.deleteMany({
       where: { token }
     });
   }
@@ -76,7 +75,7 @@ export class MagicLinkTokenRepository {
    * Clean up expired tokens
    */
   async deleteExpired(): Promise<void> {
-    await client.magicLinkToken.deleteMany({
+    await prisma.magicLinkToken.deleteMany({
       where: {
         expiresAt: {
           lt: new Date()
