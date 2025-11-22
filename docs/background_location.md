@@ -1,197 +1,62 @@
-# Background location reporting
+# Background location implementation plan
 
-How to send the user location to the backend every _N_ minutes (configurable by the user), continuing while the app is in background or closed.
+Goal: upgrade from foreground-only location access to periodic background reporting that survives app closes, aligns with Play/App Store policies, and keeps user control clear.
 
-## Research recap
-- `geolocator` provides location access but, per its README, background updates need explicit permissions (`ACCESS_BACKGROUND_LOCATION`) and aren’t processed by the plugin unless you drive them yourself (e.g., via a background task).
-- `workmanager` runs Dart in the background on Android (reliable, min 15 min interval) and iOS (system-controlled frequency; requires iOS 14+, background modes). Quickstart docs outline BGTaskScheduler setup for periodic work with custom frequency.
-- iOS background execution is system-controlled. Background Fetch can run as rarely as ~1x/day; BGProcessing tasks have a 15+ minute floor and only run when the system allows. We should set expectations in the UI.
+## How background location works (platform constraints)
+- Android: background requires `ACCESS_BACKGROUND_LOCATION` and is only shown after the user grants while-in-use. Periodic work is best-effort; WorkManager runs with a 15m+ floor. Foreground services with a persistent notification are needed for tighter intervals.
+- iOS: “Always” is only offered after “While Using”. BGProcessing/BGAppRefresh are system scheduled (can be infrequent). Background modes + plist keys must be present; Apple will reject if justification is weak.
 
-## Proposed stack
-- `geolocator` for permissions + coordinates.
-- `workmanager` for periodic background execution.
-- Reuse `http` + `CredentialsStorage` to attach the auth token; persist the chosen interval in `SharedPreferences`.
-- Start the worker right after login; cancel it on logout.
+## Recommended stack for this app
+- `geolocator` for permission checks and coordinates (foreground + background capable).
+- `workmanager` to run a Dart task that fetches and posts location on both platforms.
+- `shared_preferences` to store auth token, email, base URL, and chosen interval so the background isolate can read them.
 
-## Step-by-step
-1) **Add dependencies**
-   - In `circles/pubspec.yaml` add:
-     ```yaml
-     dependencies:
-       geolocator: ^12.0.0
-       workmanager: ^0.8.0
-     ```
-   - Run `flutter pub get`.
+## Implementation steps
+1) **Dependencies**  
+   - Ensure `geolocator`, `workmanager`, and `shared_preferences` are in `pubspec.yaml`; run `flutter pub get`.
 
-2) **Platform setup**
-   - **Android (`android/app/src/main/AndroidManifest.xml`)**
-     - Add permissions as direct children of `<manifest>`:
-       ```xml
-       <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-       <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-       <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-       <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-       <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-       ```
-     - If you keep a long-running stream, mark the activity for location foreground services:
-       ```xml
-       <activity
-         android:name=".MainActivity"
-         ...
-         android:foregroundServiceType="location">
-       ```
-     - Runtime flow on Android 10+: request `whileInUse` first, then `always` so users see the system “Allow all the time” option.
-   - **iOS (`ios/Runner/Info.plist`)**
-     - Minimum deployment target 14.0+ (per Workmanager).
-     - Add permission texts:
-       ```xml
-       <key>NSLocationWhenInUseUsageDescription</key>
-       <string>Necesitamos tu ubicación para mostrarte personas cercanas.</string>
-       <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-       <string>Seguimos enviando tu ubicación cada cierto tiempo incluso en segundo plano.</string>
-       ```
-     - Background modes (Capabilities in Xcode or directly in Info.plist):
-       ```xml
-       <key>UIBackgroundModes</key>
-       <array>
-         <string>location</string>
-         <string>fetch</string>
-         <string>processing</string>
-       </array>
-       ```
-     - For Workmanager periodic tasks with custom frequency (BGTaskScheduler):
-       ```xml
-       <key>BGTaskSchedulerPermittedIdentifiers</key>
-       <array>
-         <string>com.circles.location.periodic</string>
-       </array>
-       ```
-       And in `ios/Runner/AppDelegate.swift`:
-       ```swift
-       import workmanager_apple
+2) **Platform configuration**  
+   - **Android (`android/app/src/main/AndroidManifest.xml`)**  
+     - Add permissions under `<manifest>`: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`.  
+     - Set `android:foregroundServiceType="location"` on `MainActivity` (or on your foreground service if you add one).  
+     - Runtime flow: request while-in-use first, then background, otherwise the “Allow all the time” option will not appear on Android 10+.  
+   - **iOS (`ios/Runner/Info.plist`)**  
+     - Keys: `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription` with honest copy; add `UIBackgroundModes` entries `location`, `fetch`, `processing`.  
+     - For Workmanager iOS: add `BGTaskSchedulerPermittedIdentifiers` (e.g., `com.example.circles.location.periodic`) and register it in `AppDelegate` via `WorkmanagerPlugin.registerPeriodicTask`. Deployment target 14+.  
+     - Expect iOS to run tasks at its discretion; communicate that frequency is best-effort.
 
-       // In didFinishLaunchingWithOptions
-       WorkmanagerPlugin.registerPeriodicTask(
-         withIdentifier: "com.circles.location.periodic",
-         frequency: NSNumber(value: 15 * 60) // 15 min minimum
-       )
-       ```
-     - Set user expectations: iOS will not honor exact minute-level schedules.
+3) **Permission flow in Dart**  
+   - Keep requesting while-in-use first. If granted, immediately request “always” so Android shows the full-time option and iOS can present the upgrade sheet.  
+   - Gate scheduling on `LocationPermission.always`; if not granted, fall back to foreground-only behavior and surface a message.
 
-3) **Permissions helper (Dart)**
-   - Create `lib/core/location/location_service.dart` with a method like:
-     ```dart
-     import 'package:geolocator/geolocator.dart';
+4) **Background worker (Dart)**  
+   - Use a `@pragma('vm:entry-point')` callback (see `lib/core/background/location_reporting_worker.dart`) that:  
+     - Reads base URL, auth token, and email from `SharedPreferences`.  
+     - Checks `Geolocator.isLocationServiceEnabled()` and permission `always`.  
+     - Calls `Geolocator.getCurrentPosition()` and POSTs to `/ubicaciones` with `lat`, `lng`, `recordedAt`, and `email`.  
+     - Returns `false` on network/location failures so Workmanager can retry.  
+   - Keep the task name stable (e.g., `com.example.circles.location.periodic`).
 
-     class LocationService {
-       Future<Position?> ensurePermissionAndFetch() async {
-         if (!await Geolocator.isLocationServiceEnabled()) return null;
+5) **Scheduling lifecycle**  
+   - After login, store creds/base URL in prefs and call `Workmanager.initialize` once, then `registerPeriodicTask` with the user-selected interval (clamped to 15–180 minutes).  
+   - On logout, clear the stored creds and `cancelByUniqueName` to stop background sends.  
+   - Persist the chosen interval in prefs and re-register the task when the interval changes.
 
-         var permission = await Geolocator.checkPermission();
-         if (permission == LocationPermission.denied) {
-           permission = await Geolocator.requestPermission();
-         }
-         if (permission == LocationPermission.deniedForever ||
-             permission == LocationPermission.denied) {
-           return null;
-         }
+6) **User controls & UX**  
+   - Explain why background access is needed and that iOS cadence is best-effort.  
+   - Provide a selector (slider/dropdown) for “send my location every N minutes” within a sensible range (15–180).  
+   - Surface status/error states (e.g., location services off, permission denied) and a link to system settings to enable background access.
 
-         // Ask for "always" when available so Android 10+/iOS allow background use.
-         if (permission == LocationPermission.whileInUse) {
-           final upgraded = await Geolocator.requestPermission();
-           if (upgraded == LocationPermission.denied ||
-               upgraded == LocationPermission.deniedForever) {
-             return null;
-           }
-         }
+7) **Policy & rollout**  
+   - Update Play Console location declaration (background purpose) and App Store “Always” justification.  
+   - Ship with analytics/logs to measure success/fail counts of the worker and permission grants.
 
-         return Geolocator.getCurrentPosition(
-           desiredAccuracy: LocationAccuracy.high,
-         );
-       }
-     }
-     ```
+8) **Testing checklist**  
+   - Android device: grant “Allow all the time”, background the app, wait >15m, verify backend receives points; reboot to confirm rescheduling.  
+   - iOS device/simulator: use “Simulate Background Fetch”; verify plist keys and BGTask registration; expect sparse runs.  
+   - Deny/disable location to ensure graceful handling; re-enable to confirm recovery.  
+   - Logout/login to confirm tasks stop/start and use the latest creds/interval.
 
-4) **Background worker (Dart)**
-   - Add `lib/core/background/location_reporting_worker.dart`:
-     ```dart
-     import 'dart:convert';
-     import 'package:geolocator/geolocator.dart';
-     import 'package:http/http.dart' as http;
-     import 'package:shared_preferences/shared_preferences.dart';
-     import 'package:workmanager/workmanager.dart';
-
-     const locationTaskName = 'com.circles.location.report';
-
-     @pragma('vm:entry-point')
-     void locationCallbackDispatcher() {
-       Workmanager().executeTask((task, inputData) async {
-         if (task != locationTaskName && task != Workmanager.iOSBackgroundTask) {
-           return Future.value(true);
-         }
-
-         final prefs = await SharedPreferences.getInstance();
-         final token = prefs.getString('auth_token');
-         final email = prefs.getString('auth_email');
-         final baseUrl = prefs.getString('api_base_url');
-         if (token == null || baseUrl == null) return Future.value(false);
-
-         final pos = await Geolocator.getCurrentPosition(
-           desiredAccuracy: LocationAccuracy.high,
-         );
-
-         final body = {
-           'email': email,
-           'lat': pos.latitude,
-           'lng': pos.longitude,
-           'recordedAt': DateTime.now().toUtc().toIso8601String(),
-         };
-
-         final response = await http.post(
-           Uri.parse(baseUrl).resolve('/ubicaciones'),
-           headers: {
-             'Content-Type': 'application/json',
-             'Authorization': 'Bearer $token',
-           },
-           body: jsonEncode(body),
-         );
-
-         return response.statusCode >= 200 && response.statusCode < 300;
-       });
-     }
-     ```
-   - Store `api_base_url` in prefs once (e.g., when loading `AppConfig`) so the background isolate doesn’t need DI.
-
-5) **Initialize and schedule after login**
-   - In `lib/main.dart` (or a new app controller), after a successful login:
-     ```dart
-     await Workmanager().initialize(locationCallbackDispatcher);
-     await Workmanager().registerPeriodicTask(
-       locationTaskName,
-       locationTaskName,
-       existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
-       frequency: Duration(minutes: userIntervalMinutes.clamp(15, 180)),
-       initialDelay: const Duration(minutes: 1),
-     );
-     ```
-   - On logout, call `Workmanager().cancelByUniqueName(locationTaskName);`.
-
-6) **Persist and expose the interval**
-   - Add a small params screen (e.g., under Perfil) with a `Slider`/`DropdownButton` letting users choose every 15–180 minutes.
-   - Save to `SharedPreferences` (`location_interval_minutes`) and re-register the periodic task with `ExistingPeriodicWorkPolicy.update` when it changes.
-   - Show copy that iOS execution is best-effort and may be less frequent.
-
-7) **API contract**
-   - Decide/align with backend on an endpoint like `POST /ubicaciones` with body `{ lat, lng, recordedAt }`. Include auth token in `Authorization: Bearer`.
-   - Consider deduplicating on the backend by `(userId, recordedAt rounded to interval)`.
-
-8) **Testing checklist**
-   - **Android emulator/device:** grant “Allow all the time”, lock the screen, wait >15 minutes, check server logs or add temporary logging inside the worker. Reboot device to confirm tasks reschedule (needs RECEIVE_BOOT_COMPLETED).
-   - **iOS simulator/device:** enable Background Fetch in Debug > Simulate Background Fetch, then test BGProcessing by running via `xcrun simctl` commands; verify Info.plist keys and AppDelegate registration.
-   - Disable location services and confirm the worker exits gracefully and resumes once enabled.
-   - Logout/login flow cancels/restarts the worker as expected.
-
-## Notes
-- Keep background work lightweight (<30s on iOS). If the backend is down, return `false` so Workmanager retries.
-- If you need tighter-than-15-minute Android updates, switch to a foreground location stream with a persistent notification; that is outside Workmanager and requires UX approval.
-- For iOS, if Apple rejects background location, fall back to Background Fetch only (less frequent) and communicate limitations in-app.
+## Current code touchpoints
+- `lib/core/background/location_reporting_worker.dart`: contains the Workmanager dispatcher, permission helper, and scheduler; ensure it’s wired in `main.dart` after auth and on logout.  
+- Verify `baseUrl` and tokens are set into `SharedPreferences` so the background isolate can post while the app is closed.
