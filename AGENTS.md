@@ -44,11 +44,16 @@ It applies to the **entire project tree** unless a more specific `AGENTS.md` is 
 ## 4. TypeScript / JavaScript Guidelines
 
 - Write **TypeScript first**; avoid adding new plain JavaScript files unless required.
-- Use **strict typing** where possible (`strict` mode, explicit types on public APIs).
+- Use **strict TypeScript**:
+  - Enable `strict` mode in `tsconfig`.
+  - Do **not** use `any` (or broad `unknown`) in application code; prefer precise, explicit types.
+  - Do **not** use type assertions / casting (`as`, `<Type>`); instead, model types accurately and refine with type guards.
+  - Avoid `// @ts-ignore` and `// @ts-expect-error` except in rare, well‑documented interop cases.
 - Prefer:
   - ES modules (`import` / `export`).
   - `async` / `await` over raw Promises.
   - Small, composable functions over large, monolithic modules.
+  - Encapsulating domain logic into **services** and **utils**, keeping route handlers / controllers thin and readable.
 - Keep React or UI components (if present) **presentational and focused**; move complex logic into separate modules or hooks.
 - Follow any existing `tsconfig`, `eslint`, or formatter settings if they exist.
 

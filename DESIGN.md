@@ -17,7 +17,7 @@ Circles can have different purposes and are treated as independent; they do not 
 
 ---
 
-## 2. Goals & Non‑Goals
+## 2. Goals
 
 ### 2.1 Goals
 
@@ -26,14 +26,6 @@ Circles can have different purposes and are treated as independent; they do not 
 - Allow multiple, simultaneous Circles per user (different intents, radii, durations).
 - Build rich agent personas from users’ existing digital traces plus onboarding questions.
 - Provide clear, privacy‑preserving explanations for every match through the user’s own agent.
-
-### 2.2 Non‑Goals (v1)
-
-- User‑driven browsing of nearby users or Circles (no map‑based discovery list, no swiping).
-- Group coordination or events beyond 1:1 chat.
-- Fully autonomous agent‑to‑agent relationships that never involve human review.
-- Adjustable “aggressiveness” controls for agent behavior (fixed strategy in v1).
-- Cross‑platform federation with other social networks.
 
 ---
 
@@ -68,14 +60,13 @@ Circles can have different purposes and are treated as independent; they do not 
 
 - **Circle**  
   A context for a single objective:
-  - `owner_user_id`
-  - `objective_text`
-  - `objective_embedding`
-  - `center_lat`, `center_lon` (from GPS)
-  - `radius_m`
-  - `start_at`, `expires_at`
-  - `status` (active, paused, expired)
-  - `purpose` (free‑text/category, non‑competing with other Circles)
+  - `user_id: int`
+  - `objective: str`
+  - `objective_embedding: list[float]`
+  - `center_lat: float`, `center_lon: float` (from GPS)
+  - `radius: float` (in meters)
+  - `start_at: datetime`, `expires_at: datetime`
+  - `status: CircleStatus` (enum: active, paused, expired)
 
   A user can have many Circles active simultaneously, each with a different purpose.
 
@@ -83,7 +74,7 @@ Circles can have different purposes and are treated as independent; they do not 
   - **Match**  
     Both users have Circles with strongly aligned objectives. Chat opens immediately after the agents deem it “worth it”.
   - **Soft Match**  
-    One user’s Circle objective aligns with the other user’s *interests* (but not with one of their active objectives).  
+    One user’s Circle objective aligns with the other user’s *interests* and *profile* (but not with one of their active objectives).  
     The non‑objective user receives a notification and decides whether to accept. Chat opens only on acceptance.
 
 - **Simulated Scenario**  
@@ -99,7 +90,7 @@ Circles can have different purposes and are treated as independent; they do not 
 ### 4.1 Onboarding & Profiling
 
 1. **Sign‑up & Auth**
-   - User signs up via phone/email + code or passwordless link.
+   - User signs up via email + code or passwordless link.
    - Accepts terms, privacy policy, data usage for AI.
 
 2. **Permissions & Data Sources**
@@ -132,9 +123,7 @@ Circles can have different purposes and are treated as independent; they do not 
    - Enters objective as free text.
    - Chooses:
      - Radius (e.g., 100–3000m).
-     - Duration (e.g., 30 minutes to 24 hours).
-     - Optional purpose/category.
-     - Optional filters (e.g., age range) if included in v1.
+     - Duration (e.g., 30 minutes to 1 week).
 
 2. **Circle Lifecycle**
    - `Active` from `start_at` to `expires_at` while location is available.
@@ -207,7 +196,6 @@ Users **do not** browse. The system only surfaces curated opportunities.
   - Simple agent assistance:
     - Suggested replies (“Reply with…”) that users can tap or edit.
     - Possible conversation topics based on objectives.
-  - Agents do **not** send messages autonomously in v1.
 
 ---
 
@@ -298,7 +286,7 @@ When a match or soft match is ready to show:
   - Chat UI with agent suggestions.
 
 - Communication:
-  - REST/GraphQL for standard calls.
+  - REST for standard calls.
   - WebSockets for chat & real‑time events.
 
 ### 6.2 Backend Services
@@ -322,8 +310,8 @@ Logical components:
     - Traits, interests, and safety rules.
     - Embeddings and structured fields.
   - Exposes:
-    - `simulate_interaction(agentA, agentB, context)`.
-    - `suggest_opening_message(match_context)`.
+    - `simulateInteraction(agentA, agentB, context)`.
+    - `suggestOpeningMessage(matchContext)`.
 
 - **Circle Service**
   - Circle CRUD and lifecycle management.
@@ -360,6 +348,26 @@ Logical components:
 - `match_db` – Matches, soft match states, scores, audit logs.
 - `chat_db` – Chats and messages.
 
+### 6.4 Technology Stack
+
+**Backend**
+
+- **Framework**: Express.js (Node.js)
+- **Language**: TypeScript (strict mode)
+- **Database**: PostgreSQL (with PostGIS extension for geospatial queries)
+- **ORM**: Prisma (type-safe, migrations, CLI tooling)
+- **Authentication**: Passport.js (with JWT strategy) + jsonwebtoken + bcrypt
+- **Validation**: Zod (runtime type validation)
+- **API Documentation**: Swagger/OpenAPI
+
+**Key Rationale**
+
+- Express: Simple, widely known, excellent ecosystem.
+- Prisma: Fast development, type-safe, automatic migrations, great DX.
+- Passport.js: Flexible, supports multiple auth strategies (OAuth, JWT, local).
+- PostgreSQL + PostGIS: Native geospatial support for Circle collision detection.
+- Zod: Lightweight runtime validation with TypeScript inference.
+
 ---
 
 ## 7. Data Model (Simplified)
@@ -367,27 +375,22 @@ Logical components:
 ```text
 User
 - id
-- display_name
+- firt_name
+- last_name
 - age (optional, with verification status)
 - avatar_url
 - locale
 - preferences (JSON)
-- permissions (JSON)  // location, social integrations, etc.
 
 AgentPersona
 - user_id (PK/FK)
-- traits (JSON)
-- interests_tags (string[])
-- interests_embedding (vector)
 - safety_rules (JSON)
-- communication_style (JSON)
 
 Circle
 - id
 - user_id
 - objective_text
 - objective_embedding (vector)
-- purpose (string)
 - center_lat, center_lon
 - radius_m
 - start_at, expires_at
