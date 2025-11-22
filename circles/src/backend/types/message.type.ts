@@ -1,11 +1,7 @@
 /**
- * Message moderation flags
+ * Message moderation flags - compatible with Prisma JSON serialization
  */
-export type ModerationFlags = {
-  flagged?: boolean;
-  reason?: string;
-  [key: string]: unknown;
-};
+export type ModerationFlags = Record<string, string | number | boolean | null | undefined>;
 
 /**
  * Message model matching Prisma schema
@@ -40,20 +36,20 @@ export type UpdateMessageInput = Partial<Pick<CreateMessageInput, 'moderationFla
  * Message with related entities (for detailed responses)
  */
 export type MessageWithDetails = Message & {
-  chat?: {
+  chat: {
     id: string;
-  };
-  sender?: {
-    id: string;
-    email: string;
-    firstName?: string | null;
-    lastName?: string | null;
-  };
-  receiver?: {
+  } | undefined;
+  sender: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
-  };
+    firstName: string | null;
+    lastName: string | null;
+  } | undefined;
+  receiver: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  } | undefined;
 };
 

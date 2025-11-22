@@ -13,7 +13,7 @@ export class ChatRepository {
       data: {
         primaryUserId: input.primaryUserId,
         secondaryUserId: input.secondaryUserId,
-        matchId: input.matchId
+        matchId: input.matchId ?? null
       }
     });
 
@@ -103,7 +103,9 @@ export class ChatRepository {
   async update(id: string, input: UpdateChatInput): Promise<Chat | null> {
     const chat = await prisma.chat.update({
       where: { id },
-      data: input
+      data: {
+        matchId: input.matchId ?? null
+      }
     });
 
     return this.mapToChat(chat);

@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 import { User, UserProfile, CreateUserInput } from '../types/user.type.js';
 
@@ -12,7 +14,7 @@ export class UserRepository {
         firstName: input.firstName ?? null,
         lastName: input.lastName ?? null,
         passwordHash: input.passwordHash ?? null,
-        profile: input.profile ?? { interests: [] }
+        profile: input.profile || { interests: [] }
       }
     });
 
@@ -57,16 +59,18 @@ export class UserRepository {
    * Update user
    */
   async update(id: string, data: Partial<CreateUserInput>): Promise<User | undefined> {
+    const updateData: Prisma.UserUpdateInput = {};
+    
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.passwordHash !== undefined) updateData.passwordHash = data.passwordHash;
+    if (data.profile !== undefined) updateData.profile = data.profile;
+    if (data.centerLat !== undefined) updateData.centerLat = data.centerLat;
+    if (data.centerLon !== undefined) updateData.centerLon = data.centerLon;
+    
     const user = await prisma.user.update({
       where: { id },
-      data: {
-        firstName: data.firstName ?? undefined,
-        lastName: data.lastName ?? undefined,
-        passwordHash: data.passwordHash ?? undefined,
-        profile: data.profile ?? undefined,
-        centerLat: data.centerLat ?? undefined,
-        centerLon: data.centerLon ?? undefined
-      }
+      data: updateData
     });
 
     return this.mapToUser(user);
