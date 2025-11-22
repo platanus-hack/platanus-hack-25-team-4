@@ -7,7 +7,10 @@ import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.util.js';
 
 const createConnection = () => {
-  return new Redis(env.redisUrl);
+  return new Redis(env.redisUrl, {
+    // BullMQ requires maxRetriesPerRequest to be null when using blocking commands.
+    maxRetriesPerRequest: null
+  });
 };
 
 const startWorker = (): void => {

@@ -5,7 +5,10 @@ import type { InterviewMission } from './types.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.util.js';
 
-const connection = new Redis(env.redisUrl);
+const connection = new Redis(env.redisUrl, {
+  // BullMQ requires maxRetriesPerRequest to be null when using blocking commands.
+  maxRetriesPerRequest: null
+});
 
 export const missionQueue = new Queue<InterviewMission>(env.missionQueueName, {
   connection
