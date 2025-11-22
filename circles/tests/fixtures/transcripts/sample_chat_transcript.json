@@ -1,0 +1,72 @@
+{
+  "id": "transcript_001",
+  "type": "chat_transcript",
+  "file_name": "slack_export.json",
+  "file_size": 55000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "channel": {
+    "name": "engineering",
+    "description": "Engineering team discussions",
+    "created_at": "2023-01-01T00:00:00Z",
+    "member_count": 12
+  },
+  "messages": [
+    {
+      "id": "msg_001",
+      "author": "john@example.com",
+      "author_name": "John Doe",
+      "text": "Hey team, can we review the PR for the auth refactor?",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "reactions": {
+        "thumbsup": 3,
+        "eyes": 2
+      },
+      "thread_replies": 5,
+      "mentions": []
+    },
+    {
+      "id": "msg_002",
+      "author": "jane@example.com",
+      "author_name": "Jane Smith",
+      "text": "Just reviewed it! Found a couple of edge cases we should handle",
+      "timestamp": "2024-01-15T10:45:00Z",
+      "reactions": {
+        "eyes": 1
+      },
+      "thread_replies": 0,
+      "mentions": ["john@example.com"]
+    },
+    {
+      "id": "msg_003",
+      "author": "bob@example.com",
+      "author_name": "Bob Wilson",
+      "text": "@jane what edge cases? Can you elaborate?",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "reactions": {},
+      "thread_replies": 3,
+      "mentions": ["jane@example.com"]
+    },
+    {
+      "id": "msg_004",
+      "author": "jane@example.com",
+      "author_name": "Jane Smith",
+      "text": "When tokens expire during a request, we might lose the context",
+      "timestamp": "2024-01-15T11:05:00Z",
+      "reactions": {
+        "thinking": 2
+      },
+      "thread_replies": 0,
+      "mentions": []
+    }
+  ],
+  "total_messages": 4,
+  "date_range": {
+    "start": "2024-01-15T10:30:00Z",
+    "end": "2024-01-15T11:05:00Z"
+  },
+  "statistics": {
+    "active_users": 3,
+    "total_reactions": 8,
+    "threads": 2
+  }
+}

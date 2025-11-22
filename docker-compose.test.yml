@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Test PostgreSQL Database
+  test-db:
+    image: ankane/pgvector:v0.5.1
+    container_name: circles-test-db
+    environment:
+      POSTGRES_USER: circles_test
+      POSTGRES_PASSWORD: circles_test
+      POSTGRES_DB: circles_test
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.utf8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U circles_test -d circles_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+    profiles:
+      - test
+      - integration
+      - e2e
+
+  # Test Redis Instance
+  test-redis:
+    image: redis:7-alpine
+    container_name: circles-test-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+    profiles:
+      - test
+      - integration
+      - e2e
+
+  # Test Celery Worker (for integration/E2E tests)
+  test-celery-worker:
+    image: python:3.12-slim
+    container_name: circles-test-celery-worker
+    working_dir: /app/circles
+    command: >
+      bash -c "pip install -e . -q &&
+               celery -A src.etl.tasks.celery_app worker --loglevel=info"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://circles_test:circles_test@test-db:5432/circles_test
+      REDIS_URL: redis://test-redis:6379/0
+      ANTHROPIC_API_KEY: sk-ant-test-mock
+      OPENAI_API_KEY: sk-test-mock
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+    volumes:
+      - ./circles:/app/circles
+    networks:
+      - test-network
+    profiles:
+      - e2e
+
+  # Mock LLM API Server (optional, for advanced mocking)
+  # This container provides mock endpoints for Claude Vision and Whisper APIs
+  # Uncomment to use real mock server instead of pytest mocking
+
+volumes:
+  test_postgres_data:
+  test_redis_data:
+
+networks:
+  test-network:
+    driver: bridge
+
+# Usage:
+#
+# Start test services:
+#   docker-compose -f docker-compose.test.yml --profile test up -d
+#
+# Start integration test services (includes Celery):
+#   docker-compose -f docker-compose.test.yml --profile integration up -d
+#
+# Start E2E test services (full stack):
+#   docker-compose -f docker-compose.test.yml --profile e2e up -d
+#
+# Stop all services:
+#   docker-compose -f docker-compose.test.yml down -v
+#
+# View logs:
+#   docker-compose -f docker-compose.test.yml logs -f

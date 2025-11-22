@@ -1,0 +1,59 @@
+{
+  "id": "social_001",
+  "type": "social_post",
+  "file_name": "social_media_export.json",
+  "file_size": 35000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "posts": [
+    {
+      "id": "post_001",
+      "platform": "LinkedIn",
+      "author": "John Doe",
+      "content": "Excited to announce that our team just shipped a major feature that improves user experience by 40%! #engineering #innovation",
+      "timestamp": "2024-01-15T09:00:00Z",
+      "engagement": {
+        "likes": 127,
+        "comments": 18,
+        "shares": 5
+      },
+      "media": {
+        "image_count": 1,
+        "video_count": 0
+      }
+    },
+    {
+      "id": "post_002",
+      "platform": "Twitter",
+      "author": "John Doe",
+      "content": "Just wrapped up an amazing conference talk on microservices architecture. Great questions from the audience! #devconf2024",
+      "timestamp": "2024-01-14T15:30:00Z",
+      "engagement": {
+        "likes": 234,
+        "retweets": 42,
+        "replies": 12
+      },
+      "media": {
+        "image_count": 0,
+        "video_count": 0
+      }
+    },
+    {
+      "id": "post_003",
+      "platform": "GitHub",
+      "author": "John Doe",
+      "content": "Released v2.0 of our open-source library with significant performance improvements",
+      "timestamp": "2024-01-13T12:00:00Z",
+      "engagement": {
+        "stars": 89,
+        "forks": 23,
+        "issues": 5
+      }
+    }
+  ],
+  "total_posts": 3,
+  "platforms": ["LinkedIn", "Twitter", "GitHub"],
+  "total_engagement": {
+    "likes": 450,
+    "comments": 30
+  }
+}

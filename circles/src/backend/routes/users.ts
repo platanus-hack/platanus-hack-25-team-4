@@ -8,8 +8,15 @@ import { UserService } from '../services/user-service.js';
 import { UserProfile } from '../types/user.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
+const interestSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1)
+});
+
 const profileSchema = z.object({
-  interests: z.array(z.string().trim().min(1)).default([]),
+  bio: z.string().trim().min(1).optional(),
+  interests: z.array(interestSchema).optional(),
+  profileCompleted: z.boolean().optional(),
   socialStyle: z.string().trim().min(1).optional(),
   boundaries: z.array(z.string().trim().min(1)).optional(),
   availability: z.string().trim().min(1).optional()
@@ -189,7 +196,17 @@ usersRouter.put(
     }
 
     const parsed = profileSchema.parse(req.body);
-    const profileInput: UserProfile = { interests: parsed.interests };
+    const profileInput: UserProfile = {};
+
+    if (parsed.bio !== undefined) {
+      profileInput.bio = parsed.bio;
+    }
+    if (parsed.interests !== undefined) {
+      profileInput.interests = parsed.interests;
+    }
+    if (parsed.profileCompleted !== undefined) {
+      profileInput.profileCompleted = parsed.profileCompleted;
+    }
     if (parsed.socialStyle !== undefined) {
       profileInput.socialStyle = parsed.socialStyle;
     }

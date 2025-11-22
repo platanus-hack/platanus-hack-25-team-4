@@ -1,8 +1,18 @@
 /**
+ * Single user interest with title and description
+ */
+export type Interest = {
+  title: string;
+  description: string;
+};
+
+/**
  * User profile structured data
  */
 export type UserProfile = {
-  interests?: string[];
+  bio?: string;
+  interests?: Interest[];
+  profileCompleted?: boolean;
   socialStyle?: string;
   boundaries?: string[];
   availability?: string;

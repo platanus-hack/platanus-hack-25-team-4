@@ -1,0 +1,22 @@
+{
+  "id": "screenshot_001",
+  "type": "screenshot",
+  "file_name": "screenshot_001.png",
+  "file_size": 800000,
+  "mime_type": "image/png",
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "metadata": {
+    "width": 1920,
+    "height": 1080,
+    "capture_date": "2024-01-15T10:30:00Z",
+    "application": "Chrome",
+    "url": "https://example.com/dashboard"
+  },
+  "analysis": {
+    "ui_elements": ["button", "text_field", "dropdown", "menu"],
+    "text_detected": ["Dashboard", "Analytics", "Settings", "Profile"],
+    "layout_type": "web_app",
+    "quality_score": 0.88,
+    "element_count": 12
+  }
+}

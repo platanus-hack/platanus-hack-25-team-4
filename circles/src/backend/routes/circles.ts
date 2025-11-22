@@ -10,7 +10,7 @@ import { asyncHandler } from '../utils/async-handler.util.js';
 const circleBaseSchema = z.object({
   objectiveText: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  startAt: z.string().datetime(),
+  startAt: z.string().datetime().optional(),
   expiresAt: z.string().datetime()
 });
 
@@ -40,7 +40,7 @@ circlesRouter.post(
       userId: req.user.userId,
       objective: parsed.objectiveText,
       radiusMeters: parsed.radiusMeters,
-      startAt: new Date(parsed.startAt),
+      startAt: parsed.startAt ? new Date(parsed.startAt) : new Date(),
       expiresAt: new Date(parsed.expiresAt)
     });
     res.status(201).json({ circle });
@@ -106,7 +106,7 @@ circlesRouter.patch(
     if (parsed.radiusMeters !== undefined) {
       updateInput.radiusMeters = parsed.radiusMeters;
     }
-    if (parsed.startAt !== undefined) {
+    if (parsed.startAt !== undefined && parsed.startAt !== null) {
       updateInput.startAt = new Date(parsed.startAt);
     }
     if (parsed.expiresAt !== undefined) {
