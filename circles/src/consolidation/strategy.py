@@ -59,7 +59,7 @@ class ConsolidationStrategy(Protocol):
         ...
 
 
-class DefaultConsolidationStrategy(ConsolidationStrategy):
+class DefaultConsolidationStrategy(BaseConsolidationStrategy):
     """
     Default implementation of ConsolidationStrategy.
 
