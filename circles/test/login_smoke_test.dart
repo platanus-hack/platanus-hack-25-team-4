@@ -3,6 +3,8 @@ import 'package:circles/core/storage/credentials_storage.dart';
 import 'package:circles/core/background/location_reporting_worker.dart';
 import 'package:circles/features/auth/data/auth_api_client.dart';
 import 'package:circles/features/auth/data/auth_repository.dart';
+import 'package:circles/features/profile/data/profile_api_client.dart';
+import 'package:circles/features/profile/data/profile_repository.dart';
 import 'package:circles/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +21,9 @@ void main() {
       apiClient: AuthApiClient(baseUrl: '', mockAuth: true),
       storage: CredentialsStorage(),
     );
+    final profileRepository = ProfileRepository(
+      apiClient: ProfileApiClient(baseUrl: '', mockAuth: true),
+    );
     final locationScheduler = LocationReportingScheduler(
       baseUrl: '',
       mockAuth: true,
@@ -29,6 +34,7 @@ void main() {
         authRepository: authRepository,
         initialSession: null,
         locationScheduler: locationScheduler,
+        profileRepository: profileRepository,
       ),
     );
 

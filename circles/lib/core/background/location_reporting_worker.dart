@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,6 +72,10 @@ void locationCallbackDispatcher() {
 
 class LocationPermissionService {
   Future<bool> ensureBackgroundPermission() async {
+    if (kIsWeb) {
+      return _ensureForegroundPermission();
+    }
+
     if (!await Geolocator.isLocationServiceEnabled()) {
       return false;
     }
@@ -78,14 +83,33 @@ class LocationPermissionService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.deniedForever) {
+      return false;
+    }
+    if (permission == LocationPermission.denied) {
       return false;
     }
     if (permission == LocationPermission.whileInUse) {
-      permission = await Geolocator.requestPermission();
+      final upgraded = await Geolocator.requestPermission();
+      if (upgraded == LocationPermission.always ||
+          upgraded == LocationPermission.whileInUse) {
+        return true;
+      }
+      return false;
     }
     return permission == LocationPermission.always;
+  }
+
+  Future<bool> _ensureForegroundPermission() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return false;
+    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 }
 
@@ -97,7 +121,7 @@ class LocationReportingScheduler {
   static bool _initialized = false;
 
   Future<void> initialize() async {
-    if (mockAuth || baseUrl.isEmpty) return;
+    if (kIsWeb || mockAuth || baseUrl.isEmpty) return;
     if (!_initialized) {
       await Workmanager().initialize(locationCallbackDispatcher);
       _initialized = true;
@@ -112,11 +136,29 @@ class LocationReportingScheduler {
     AuthSession session, {
     int? intervalMinutes,
   }) async {
-    if (mockAuth || baseUrl.isEmpty) return false;
+    bool permissionGranted = false;
+    try {
+      permissionGranted =
+          await LocationPermissionService().ensureBackgroundPermission();
+    } catch (e) {
+      _log('No se pudo solicitar permisos de ubicación: $e');
+      return false;
+    }
 
-    final permissionGranted = await LocationPermissionService()
-        .ensureBackgroundPermission();
-    if (!permissionGranted) return false;
+    if (!permissionGranted) {
+      _log('Permiso de ubicación no concedido');
+      return false;
+    }
+
+    if (kIsWeb) {
+      _log('Permiso concedido en web; no se agenda background, solo foreground.');
+      return true;
+    }
+
+    if (mockAuth || baseUrl.isEmpty) {
+      _log('Permiso concedido en modo mock; no se agenda envío pero la solicitud funciona.');
+      return false;
+    }
 
     await initialize();
     final prefs = await SharedPreferences.getInstance();
@@ -140,6 +182,10 @@ class LocationReportingScheduler {
   }
 
   Future<void> cancel() async {
+    if (kIsWeb || mockAuth || baseUrl.isEmpty) {
+      _log('Cancelación omitida (web/mock/sin baseUrl)');
+      return;
+    }
     await Workmanager().cancelByUniqueName(locationTaskName);
   }
 }
@@ -153,4 +199,11 @@ int _sanitizeInterval(int value) {
 Future<int> _loadIntervalMinutes() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getInt(_intervalKey) ?? defaultLocationIntervalMinutes;
+}
+
+void _log(String message) {
+  // Lightweight logger for background location scheduling.
+  // In production you might route this to a proper logger.
+  // ignore: avoid_print
+  print('[LocationScheduler] $message');
 }

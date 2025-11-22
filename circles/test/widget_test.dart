@@ -1,30 +1,48 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
+import 'package:circles/core/background/location_reporting_worker.dart';
+import 'package:circles/core/config/app_config.dart';
+import 'package:circles/core/storage/credentials_storage.dart';
+import 'package:circles/features/auth/data/auth_api_client.dart';
+import 'package:circles/features/auth/data/auth_repository.dart';
+import 'package:circles/features/auth/domain/auth_session.dart';
+import 'package:circles/features/profile/data/profile_api_client.dart';
+import 'package:circles/features/profile/data/profile_repository.dart';
 import 'package:circles/main.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('Shows profile wizard when profile is incompleto', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    final authRepository = AuthRepository(
+      apiClient: AuthApiClient(baseUrl: '', mockAuth: true),
+      storage: CredentialsStorage(),
+    );
+    final profileRepository = ProfileRepository(
+      apiClient: ProfileApiClient(baseUrl: '', mockAuth: true),
+    );
+    final locationScheduler = LocationReportingScheduler(
+      baseUrl: '',
+      mockAuth: true,
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(
+      MyApp(
+        config: AppConfig(baseUrl: '', mockAuth: true),
+        authRepository: authRepository,
+        locationScheduler: locationScheduler,
+        profileRepository: profileRepository,
+        initialSession: AuthSession(email: 'test@circles.dev', token: 't123'),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Completa tu perfil'), findsOneWidget);
+    expect(find.text('Intereses'), findsOneWidget);
   });
 }

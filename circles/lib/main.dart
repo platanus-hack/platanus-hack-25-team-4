@@ -10,6 +10,10 @@ import 'features/auth/data/auth_api_client.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/domain/auth_session.dart';
 import 'features/auth/presentation/login_page.dart';
+import 'features/profile/data/profile_api_client.dart';
+import 'features/profile/data/profile_repository.dart';
+import 'features/profile/domain/user_profile.dart';
+import 'features/profile/presentation/profile_wizard_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +24,12 @@ Future<void> main() async {
       mockAuth: config.mockAuth,
     ),
     storage: CredentialsStorage(),
+  );
+  final profileRepository = ProfileRepository(
+    apiClient: ProfileApiClient(
+      baseUrl: config.baseUrl,
+      mockAuth: config.mockAuth,
+    ),
   );
   final initialSession = await authRepository.loadSavedSession();
   final locationScheduler = LocationReportingScheduler(
@@ -34,6 +44,7 @@ Future<void> main() async {
       authRepository: authRepository,
       initialSession: initialSession,
       locationScheduler: locationScheduler,
+      profileRepository: profileRepository,
     ),
   );
 }
@@ -44,11 +55,13 @@ class MyApp extends StatefulWidget {
     required this.config,
     required this.authRepository,
     required this.locationScheduler,
+    required this.profileRepository,
     this.initialSession,
   });
 
   final AppConfig config;
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
   final LocationReportingScheduler locationScheduler;
   final AuthSession? initialSession;
 
@@ -58,20 +71,34 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late AuthSession? _session = widget.initialSession;
+  UserProfile? _profile;
+  bool _loadingProfile = false;
+  String? _profileError;
 
   @override
   void initState() {
     super.initState();
     if (_session != null) {
       _startLocationReporting(_session!);
+      _loadProfile(_session!);
     }
   }
 
   void _handleLogin(AuthSession session) {
     setState(() {
       _session = session;
+      _profile = null;
+      _profileError = null;
     });
     _startLocationReporting(session);
+    _loadProfile(session);
+  }
+
+  void _handleProfileCompleted(UserProfile profile) {
+    setState(() {
+      _profile = profile.copyWith(profileCompleted: true);
+      _profileError = null;
+    });
   }
 
   Future<void> _handleLogout() async {
@@ -79,6 +106,9 @@ class _MyAppState extends State<MyApp> {
     await widget.locationScheduler.cancel();
     setState(() {
       _session = null;
+      _profile = null;
+      _profileError = null;
+      _loadingProfile = false;
     });
   }
 
@@ -86,8 +116,38 @@ class _MyAppState extends State<MyApp> {
     await widget.locationScheduler.scheduleReporting(session);
   }
 
+  Future<void> _loadProfile(AuthSession session) async {
+    setState(() {
+      _loadingProfile = true;
+      _profileError = null;
+      _profile = null;
+    });
+    try {
+      final profile = await widget.profileRepository.fetchCurrentUser(session);
+      if (!mounted) return;
+      setState(() {
+        _profile = profile.copyWith(email: session.email);
+        _loadingProfile = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _profileError = e.toString().replaceFirst('ProfileException: ', '');
+        _loadingProfile = false;
+        _profile = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final home = _session == null
+        ? LoginPage(
+            authRepository: widget.authRepository,
+            onLoggedIn: _handleLogin,
+          )
+        : _buildProfileAwareHome();
+
     return MaterialApp(
       title: 'Circles',
       locale: const Locale('es'),
@@ -98,15 +158,109 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: appTheme,
-      home: _session == null
-          ? LoginPage(
-              authRepository: widget.authRepository,
-              onLoggedIn: _handleLogin,
-            )
-          : AuthenticatedShell(
-              session: _session!,
-              onLogout: _handleLogout,
-            ),
+      home: home,
+    );
+  }
+
+  Widget _buildProfileAwareHome() {
+    final session = _session;
+    if (session == null) return const SizedBox.shrink();
+
+    if (_loadingProfile) {
+      return const _ProfileGateLoading();
+    }
+    if (_profileError != null) {
+      return _ProfileGateError(
+        message: _profileError!,
+        onRetry: () => _loadProfile(session),
+        onLogout: _handleLogout,
+      );
+    }
+    if (_profile == null) {
+      return const _ProfileGateLoading();
+    }
+    if (!_profile!.profileCompleted) {
+      return ProfileWizardPage(
+        session: session,
+        repository: widget.profileRepository,
+        initialBio: _profile!.bio,
+        initialInterests: _profile!.interests,
+        onCompleted: _handleProfileCompleted,
+        onLogout: _handleLogout,
+      );
+    }
+    return AuthenticatedShell(
+      session: session,
+      onLogout: _handleLogout,
+    );
+  }
+}
+
+class _ProfileGateLoading extends StatelessWidget {
+  const _ProfileGateLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
+class _ProfileGateError extends StatelessWidget {
+  const _ProfileGateError({
+    required this.message,
+    required this.onRetry,
+    required this.onLogout,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tu perfil'),
+        actions: [
+          IconButton(
+            onPressed: onLogout,
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'No pudimos cargar tu perfil',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

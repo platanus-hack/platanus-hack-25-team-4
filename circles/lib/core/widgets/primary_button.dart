@@ -21,10 +21,9 @@ class PrimaryButton extends StatelessWidget {
     final text = loading ? (loadingLabel ?? label) : label;
     return FilledButton(
       style: FilledButton.styleFrom(
-        textStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          inherit: true,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        minimumSize: const Size.fromHeight(52),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, inherit: true),
       ),
       onPressed: loading ? null : onPressed,
       child: Row(
