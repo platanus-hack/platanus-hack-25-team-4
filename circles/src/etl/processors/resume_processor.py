@@ -9,7 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import anthropic
 
@@ -29,16 +29,23 @@ class SimpleProcessorResult:
 
 
 class ResumeProcessor:
-    """Process resume files into structured data."""
+    """Process resume files into structured data with batch support."""
 
-    def __init__(self):
-        """Initialize ResumeProcessor with MarkItDown and Claude API."""
+    def __init__(self, max_concurrent: int = 10):
+        """
+        Initialize ResumeProcessor with MarkItDown and Claude API.
+
+        Args:
+            max_concurrent: Maximum concurrent Claude API calls (default 10)
+        """
         self.markdown_adapter = MarkItDownAdapter(
             config=MarkItDownConfig(enable_llm=False)
         )
         settings = get_settings()
         self.claude_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.model = "claude-3-5-sonnet-20241022"
+        self.max_concurrent = max_concurrent
+        self.semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process(self, file_path: Path) -> SimpleProcessorResult:
         """
@@ -322,3 +329,79 @@ class ResumeProcessor:
             "education": [],
             "skills": [],
         }
+
+    async def process_batch(
+        self, file_paths: List[Path]
+    ) -> List[SimpleProcessorResult]:
+        """
+        Process multiple resume files in parallel with concurrency control.
+
+        Uses semaphore to limit concurrent Claude API calls while maximizing throughput.
+
+        Args:
+            file_paths: List of resume file paths
+
+        Returns:
+            List of SimpleProcessorResult for each resume
+
+        Note:
+            Failures are captured in results with error metadata instead of raising.
+            This allows batch processing to continue even if some files fail.
+        """
+        logger.info(
+            f"Processing batch of {len(file_paths)} resumes "
+            f"(max {self.max_concurrent} concurrent)"
+        )
+
+        # Create tasks with semaphore control
+        tasks = [self._process_with_semaphore(file_path) for file_path in file_paths]
+
+        # Execute all tasks concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results - convert exceptions to error results
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Error processing resume {file_paths[i].name}: {result}")
+                # Create error result with fallback structure
+                error_result = SimpleProcessorResult(
+                    content={
+                        "full_text": "",
+                        "structured": self._get_fallback_structure(),
+                    },
+                    metadata={
+                        "file_type": file_paths[i].suffix.lower(),
+                        "file_size": 0,
+                        "processing_error": str(result),
+                    },
+                )
+                processed_results.append(error_result)
+            else:
+                processed_results.append(result)
+
+        successful = len(
+            [r for r in processed_results if "processing_error" not in r.metadata]
+        )
+        failed = len(processed_results) - successful
+
+        logger.info(
+            f"Batch processing complete: {successful} successful, {failed} failed"
+        )
+        return processed_results
+
+    async def _process_with_semaphore(self, file_path: Path) -> SimpleProcessorResult:
+        """
+        Process resume with semaphore to control concurrency.
+
+        Args:
+            file_path: Path to resume file
+
+        Returns:
+            SimpleProcessorResult
+
+        Raises:
+            Exception if processing fails (caught by gather in process_batch)
+        """
+        async with self.semaphore:
+            return await self.process(file_path)
