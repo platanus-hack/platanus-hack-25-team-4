@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from ..etl.core.result import Result
 from ..profile_schema import UserProfile
 from .llm_adapter import LLMProvider, parse_json_response
+from .sanitizer import sanitize_profile_data
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +235,7 @@ class BaseConsolidationStrategy:
         try:
             profile_data["user_id"] = self.user_id
             profile = UserProfile(**profile_data)
+            logger.debug(f"Profile validation successful for user {self.user_id}")
             return Result.ok(profile)
         except ValidationError as e:
             logger.error(f"Profile validation error for user {self.user_id}: {e}")

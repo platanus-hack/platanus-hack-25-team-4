@@ -3,9 +3,13 @@ Data Aggregator - Collects and structures all user data sources for consolidatio
 
 Queries the database for all available data types and returns them in a structured format
 suitable for LLM consolidation.
+
+Uses asyncio.gather for parallel query execution to maximize performance.
 """
 
+import asyncio
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
@@ -39,7 +43,11 @@ class DataAggregator:
         self, user_id: str
     ) -> Result[Dict[str, Any], Exception]:
         """
-        Aggregate all available user data from multiple sources.
+        Aggregate all available user data from multiple sources in parallel.
+
+        Executes all database queries concurrently using asyncio.gather for
+        optimal performance. Individual query failures are logged but don't
+        prevent aggregation of other data sources.
 
         Args:
             user_id: The user ID to aggregate data for
@@ -48,17 +56,47 @@ class DataAggregator:
             Result[Dict[str, Any], Exception]: Dictionary with all user data or error
         """
         try:
+            # Validate user_id format
+            self._validate_user_id(user_id)
+
+            # Execute all queries in parallel for performance
+            logger.debug(f"Starting parallel data aggregation for user {user_id}")
+
+            (
+                resume,
+                photos,
+                voice_notes,
+                chat_transcripts,
+                calendar_events,
+                emails,
+                social_posts,
+                blog_posts,
+                screenshots,
+                shared_images,
+            ) = await asyncio.gather(
+                self._get_resume_data(user_id),
+                self._get_photo_data(user_id),
+                self._get_voice_note_data(user_id),
+                self._get_chat_transcript_data(user_id),
+                self._get_calendar_event_data(user_id),
+                self._get_email_data(user_id),
+                self._get_social_post_data(user_id),
+                self._get_blog_post_data(user_id),
+                self._get_screenshot_data(user_id),
+                self._get_shared_image_data(user_id),
+            )
+
             aggregated_data = {
-                "resume": await self._get_resume_data(user_id),
-                "photos": await self._get_photo_data(user_id),
-                "voice_notes": await self._get_voice_note_data(user_id),
-                "chat_transcripts": await self._get_chat_transcript_data(user_id),
-                "calendar_events": await self._get_calendar_event_data(user_id),
-                "emails": await self._get_email_data(user_id),
-                "social_posts": await self._get_social_post_data(user_id),
-                "blog_posts": await self._get_blog_post_data(user_id),
-                "screenshots": await self._get_screenshot_data(user_id),
-                "shared_images": await self._get_shared_image_data(user_id),
+                "resume": resume,
+                "photos": photos,
+                "voice_notes": voice_notes,
+                "chat_transcripts": chat_transcripts,
+                "calendar_events": calendar_events,
+                "emails": emails,
+                "social_posts": social_posts,
+                "blog_posts": blog_posts,
+                "screenshots": screenshots,
+                "shared_images": shared_images,
             }
 
             logger.info(f"Successfully aggregated data for user {user_id}")
@@ -263,3 +301,28 @@ class DataAggregator:
         except Exception as e:
             logger.debug(f"Error fetching shared images for user {user_id}: {e}")
             return []
+
+    def _validate_user_id(self, user_id: str) -> None:
+        """
+        Validate user_id format to prevent injection attacks.
+
+        Args:
+            user_id: User ID to validate
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        if not user_id:
+            raise ValueError("user_id cannot be empty")
+
+        if not isinstance(user_id, str):
+            raise ValueError("user_id must be a string")
+
+        # Allow alphanumeric, underscore, and hyphen
+        # This prevents SQL injection and other attacks
+        if not re.match(r"^[a-zA-Z0-9_-]{1,255}$", user_id):
+            raise ValueError(
+                "user_id must contain only alphanumeric characters, underscores, and hyphens"
+            )
+
+        logger.debug(f"user_id validation passed: {user_id}")

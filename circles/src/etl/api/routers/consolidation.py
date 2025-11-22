@@ -10,12 +10,13 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from ...core import get_settings
 from ...tasks.celery_app import celery_app
 from ...tasks.consolidation_tasks import consolidate_user_profile_task
+from ..auth import get_current_user, validate_user_id_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,10 @@ class ConsolidationStatusResponse(BaseModel):
     summary="Trigger profile consolidation",
     description="Trigger consolidation of all available user data into a comprehensive profile.",
 )
-async def trigger_consolidation(request: ConsolidationRequest) -> ConsolidationResponse:
+async def trigger_consolidation(
+    request: ConsolidationRequest,
+    current_user: str = Depends(get_current_user),
+) -> ConsolidationResponse:
     """
     Trigger profile consolidation for a user.
 
@@ -99,6 +103,9 @@ async def trigger_consolidation(request: ConsolidationRequest) -> ConsolidationR
         HTTPException: If user_id is invalid or request fails
     """
     try:
+        # Validate user ownership
+        validate_user_id_ownership(request.user_id, current_user)
+
         if not request.user_id or not request.user_id.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -148,6 +155,7 @@ async def trigger_consolidation(request: ConsolidationRequest) -> ConsolidationR
 )
 async def get_consolidation_status(
     task_id: str,
+    current_user: str = Depends(get_current_user),
 ) -> ConsolidationStatusResponse:
     """
     Get the status of a consolidation task.
@@ -225,7 +233,10 @@ async def get_consolidation_status(
     summary="Consolidate profile synchronously",
     description="Consolidate profile synchronously (blocking). For small datasets or testing only.",
 )
-async def consolidate_sync(request: ConsolidationRequest) -> Dict[str, Any]:
+async def consolidate_sync(
+    request: ConsolidationRequest,
+    current_user: str = Depends(get_current_user),
+) -> Dict[str, Any]:
     """
     Synchronously consolidate a user profile.
 
@@ -244,6 +255,9 @@ async def consolidate_sync(request: ConsolidationRequest) -> Dict[str, Any]:
         HTTPException: If consolidation fails
     """
     try:
+        # Validate user ownership
+        validate_user_id_ownership(request.user_id, current_user)
+
         from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
         from sqlalchemy.orm import sessionmaker
 
