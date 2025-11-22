@@ -1,0 +1,51 @@
+{
+  "id": "blog_001",
+  "type": "blog_post",
+  "file_name": "blog_export.json",
+  "file_size": 85000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "posts": [
+    {
+      "id": "article_001",
+      "title": "Building Scalable Microservices: Best Practices and Patterns",
+      "author": "John Doe",
+      "published_at": "2024-01-10T08:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z",
+      "slug": "building-scalable-microservices",
+      "excerpt": "A comprehensive guide to designing and implementing scalable microservices architecture",
+      "content": "In this article, we explore the best practices for building microservices...",
+      "word_count": 2500,
+      "reading_time_minutes": 12,
+      "tags": ["microservices", "architecture", "backend", "scalability"],
+      "category": "Technology",
+      "engagement": {
+        "views": 5430,
+        "comments": 23,
+        "shares": 89
+      }
+    },
+    {
+      "id": "article_002",
+      "title": "React Performance Optimization: 5 Essential Techniques",
+      "author": "John Doe",
+      "published_at": "2024-01-08T08:00:00Z",
+      "updated_at": "2024-01-08T08:00:00Z",
+      "slug": "react-performance-optimization",
+      "excerpt": "Learn how to optimize React applications for better performance",
+      "content": "React applications can become slow if not properly optimized...",
+      "word_count": 1800,
+      "reading_time_minutes": 9,
+      "tags": ["react", "performance", "frontend", "optimization"],
+      "category": "Technology",
+      "engagement": {
+        "views": 3210,
+        "comments": 15,
+        "shares": 45
+      }
+    }
+  ],
+  "total_posts": 2,
+  "total_views": 8640,
+  "total_comments": 38,
+  "publication": "Tech Blog"
+}
