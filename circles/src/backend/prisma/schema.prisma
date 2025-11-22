@@ -95,6 +95,8 @@ model Circle {
   id           String       @id @default(uuid())
   userId       String
   objective    String
+  centerLat    Float
+  centerLon    Float
   radiusMeters Float
   startAt      DateTime
   expiresAt    DateTime
