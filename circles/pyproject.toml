@@ -10,6 +10,8 @@ dependencies = [
     "pillow>=10.0.0", # Image processing for VLM
     "markitdown[all]>=0.1.0", # Markdown conversion from various formats
     "aiofiles>=23.0.0", # Async file operations
+    "openai>=1.0.0", # OpenAI API client for GPT models
+    "anthropic>=0.18.0", # Anthropic API client for Claude models
     "pytest>=9.0.1",
     "reportlab>=4.4.5",
 ]

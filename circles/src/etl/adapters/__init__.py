@@ -5,6 +5,7 @@ various ETL operations including:
 
 - VLM (Vision-Language Model) inference
 - Markdown conversion from various file formats
+- LLM (Large Language Model) text generation
 
 Each adapter module provides both protocol definitions and concrete implementations,
 allowing for easy extension and testing.
@@ -21,6 +22,15 @@ from .base import (
     ModelLoadError,
     UnsupportedFormatError,
     ensure_path,
+)
+
+# LLM adapters
+from .llm import (
+    AnthropicAdapter,
+    AnthropicConfig,
+    LLMAdapter,
+    OpenAIAdapter,
+    OpenAIConfig,
 )
 
 # Markdown converters
@@ -40,6 +50,12 @@ __all__ = [
     "ModelLoadError",
     "UnsupportedFormatError",
     "ensure_path",
+    # LLM
+    "LLMAdapter",
+    "OpenAIAdapter",
+    "OpenAIConfig",
+    "AnthropicAdapter",
+    "AnthropicConfig",
     # VLM
     "VLMAdapter",
     "SmolVLMAdapter",
