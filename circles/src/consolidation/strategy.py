@@ -143,6 +143,12 @@ DETAILED USER DATA:
 
 Based on this data, generate a JSON response with the following structure:
 {{
+  "bio": "<A brief 1-2 sentence personal bio or description (optional)>",
+  "interests": [
+    {{"title": "Interest Title", "description": "Brief description of this interest"}},
+    {{"title": "Another Interest", "description": "What they do or why it matters to them"}}
+  ],
+  "profile_completed": <true/false - whether profile is comprehensive>,
   "personality_core": {{
     "openness": "<High/Medium/Low description>",
     "conscientiousness": "<High/Medium/Low description>",
@@ -220,9 +226,12 @@ Based on this data, generate a JSON response with the following structure:
 IMPORTANT REQUIREMENTS:
 1. Use only the data provided - infer conservatively
 2. If a section lacks sufficient data, provide reasonable defaults based on available information
-3. Ensure all values are strings or appropriate data types
-4. Be specific and actionable in descriptions
-5. Return ONLY the JSON object, no additional text"""
+3. Extract 3-7 key interests from calendar, emails, social posts, and other data
+4. Keep each interest title short (2-5 words) and description concise (1-2 sentences)
+5. All fields are optional - include only those with sufficient data support
+6. Ensure all values are strings or appropriate data types
+7. Be specific and actionable in descriptions
+8. Return ONLY the JSON object, no additional text"""
 
         return prompt
 

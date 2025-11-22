@@ -15,7 +15,7 @@ export class UserRepository {
       firstName: input.firstName ?? null,
       lastName: input.lastName ?? null,
       passwordHash: input.passwordHash,
-      profile: input.profile ?? { interests: [] },
+      profile: input.profile ?? { bio: '', interests: [], profileCompleted: false },
       createdAt: now,
       updatedAt: now
     };

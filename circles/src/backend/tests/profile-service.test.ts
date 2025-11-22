@@ -17,9 +17,16 @@ describe('profileService', () => {
     const initialProfile = profileService.getProfile(signup.user.id);
     expect(initialProfile).not.toBeNull();
     expect(initialProfile!.interests).toEqual([]);
+    expect(initialProfile!.bio).toBe('');
+    expect(initialProfile!.profileCompleted).toBe(false);
 
     const updatedProfile = {
-      interests: ['ai', 'tennis'],
+      bio: 'I love AI and playing tennis',
+      interests: [
+        { title: 'AI', description: 'Interested in machine learning' },
+        { title: 'Tennis', description: 'Play tennis on weekends' }
+      ],
+      profileCompleted: true,
       socialStyle: 'friendly',
       boundaries: ['no late nights'],
       availability: 'mornings'

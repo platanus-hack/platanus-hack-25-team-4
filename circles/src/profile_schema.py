@@ -136,6 +136,13 @@ class AgentPersonaHeuristic(BaseModel):
     serendipity_openness: str
 
 
+class Interest(BaseModel):
+    """User interest with title and description."""
+
+    title: str
+    description: str
+
+
 # ============================================================================
 # SQLModel database models
 # ============================================================================
@@ -155,28 +162,45 @@ class UserProfile(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Core personality traits
-    personality_core: PersonalityCore = Field(sa_type=JSON)
+    personality_core: Optional[PersonalityCore] = Field(default=None, sa_type=JSON)
 
     # Social interaction style
-    social_interaction_style: SocialInteractionStyle = Field(sa_type=JSON)
+    social_interaction_style: Optional[SocialInteractionStyle] = Field(
+        default=None, sa_type=JSON
+    )
 
     # Motivations and goals
-    motivations_and_goals: MotivationsAndGoals = Field(sa_type=JSON)
+    motivations_and_goals: Optional[MotivationsAndGoals] = Field(
+        default=None, sa_type=JSON
+    )
 
     # Skills and identity
-    skills_and_identity: SkillsAndIdentity = Field(sa_type=JSON)
+    skills_and_identity: Optional[SkillsAndIdentity] = Field(default=None, sa_type=JSON)
 
     # Lifestyle and rhythms
-    lifestyle_and_rhythms: LifestyleAndRhythms = Field(sa_type=JSON)
+    lifestyle_and_rhythms: Optional[LifestyleAndRhythms] = Field(
+        default=None, sa_type=JSON
+    )
 
     # Conversation preferences
-    conversation_micro_preferences: ConversationMicroPreferences = Field(sa_type=JSON)
+    conversation_micro_preferences: Optional[ConversationMicroPreferences] = Field(
+        default=None, sa_type=JSON
+    )
 
     # Behavioural history
-    behavioural_history_model: BehaviouralHistoryModel = Field(sa_type=JSON)
+    behavioural_history_model: Optional[BehaviouralHistoryModel] = Field(
+        default=None, sa_type=JSON
+    )
 
     # Agent heuristics
-    agent_persona_heuristic: AgentPersonaHeuristic = Field(sa_type=JSON)
+    agent_persona_heuristic: Optional[AgentPersonaHeuristic] = Field(
+        default=None, sa_type=JSON
+    )
+
+    # User interests and profile completion
+    bio: Optional[str] = Field(default=None)
+    interests: Optional[List[Interest]] = Field(default=None, sa_type=JSON)
+    profile_completed: Optional[bool] = Field(default=False)
 
     # Metadata
     is_active: bool = Field(default=True, index=True)
@@ -190,27 +214,33 @@ class UserProfileRead(SQLModel):
     user_id: str
     created_at: datetime
     updated_at: datetime
-    personality_core: PersonalityCore
-    social_interaction_style: SocialInteractionStyle
-    motivations_and_goals: MotivationsAndGoals
-    skills_and_identity: SkillsAndIdentity
-    lifestyle_and_rhythms: LifestyleAndRhythms
-    conversation_micro_preferences: ConversationMicroPreferences
-    behavioural_history_model: BehaviouralHistoryModel
-    agent_persona_heuristic: AgentPersonaHeuristic
+    personality_core: Optional[PersonalityCore] = None
+    social_interaction_style: Optional[SocialInteractionStyle] = None
+    motivations_and_goals: Optional[MotivationsAndGoals] = None
+    skills_and_identity: Optional[SkillsAndIdentity] = None
+    lifestyle_and_rhythms: Optional[LifestyleAndRhythms] = None
+    conversation_micro_preferences: Optional[ConversationMicroPreferences] = None
+    behavioural_history_model: Optional[BehaviouralHistoryModel] = None
+    agent_persona_heuristic: Optional[AgentPersonaHeuristic] = None
+    bio: Optional[str] = None
+    interests: Optional[List[Interest]] = None
+    profile_completed: Optional[bool] = None
     is_active: bool
-    last_matched: Optional[datetime]
+    last_matched: Optional[datetime] = None
 
 
 class UserProfileCreate(SQLModel):
     """Schema for creating user profiles (request model)."""
 
     user_id: str
-    personality_core: PersonalityCore
-    social_interaction_style: SocialInteractionStyle
-    motivations_and_goals: MotivationsAndGoals
-    skills_and_identity: SkillsAndIdentity
-    lifestyle_and_rhythms: LifestyleAndRhythms
-    conversation_micro_preferences: ConversationMicroPreferences
-    behavioural_history_model: BehaviouralHistoryModel
-    agent_persona_heuristic: AgentPersonaHeuristic
+    personality_core: Optional[PersonalityCore] = None
+    social_interaction_style: Optional[SocialInteractionStyle] = None
+    motivations_and_goals: Optional[MotivationsAndGoals] = None
+    skills_and_identity: Optional[SkillsAndIdentity] = None
+    lifestyle_and_rhythms: Optional[LifestyleAndRhythms] = None
+    conversation_micro_preferences: Optional[ConversationMicroPreferences] = None
+    behavioural_history_model: Optional[BehaviouralHistoryModel] = None
+    agent_persona_heuristic: Optional[AgentPersonaHeuristic] = None
+    bio: Optional[str] = None
+    interests: Optional[List[Interest]] = None
+    profile_completed: Optional[bool] = None
