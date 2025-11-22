@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/page_container.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_logo.dart';
 import '../../app/app_state.dart';
 import '../domain/circle.dart';
 
@@ -36,7 +38,7 @@ class _CirclesPageState extends State<CirclesPage> {
     final hasItems = filtered.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Círculos'),
+        title: const AppLogo(),
         actions: [
           IconButton(
             onPressed: () => _openForm(context),
@@ -86,12 +88,22 @@ class _CirclesPageState extends State<CirclesPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.hub_outlined, size: 64, color: theme.colorScheme.primary),
-          const SizedBox(height: 12),
-          Text(
-            'Aún no tienes círculos',
-            style: theme.textTheme.titleMedium,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer.withValues(
+                alpha: 0.6,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.hub_outlined,
+              size: 48,
+              color: theme.colorScheme.secondary,
+            ),
           ),
+          const SizedBox(height: 12),
+          Text('Aún no tienes círculos', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             'Crea un círculo con tu objetivo, fecha límite opcional y radio de búsqueda.',
@@ -102,6 +114,7 @@ class _CirclesPageState extends State<CirclesPage> {
           PrimaryButton(
             label: 'Crear círculo',
             icon: Icons.add,
+            backgroundColor: theme.colorScheme.secondary,
             onPressed: () => _openForm(context),
           ),
         ],
@@ -111,36 +124,52 @@ class _CirclesPageState extends State<CirclesPage> {
 
   Widget _buildList(BuildContext context, List<Circle> circles) {
     final theme = Theme.of(context);
+    final accentPalette = [
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      theme.colorScheme.tertiary,
+      AppColors.accent2,
+    ];
     return ListView.separated(
       itemCount: circles.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final circle = circles[index];
+        final accent = accentPalette[index % accentPalette.length];
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor:
-                  theme.colorScheme.primary.withValues(alpha: 0.1),
-              foregroundColor: theme.colorScheme.primary,
+              backgroundColor: accent.withValues(alpha: 0.18),
+              foregroundColor: accent,
               child: const Icon(Icons.hub),
             ),
             title: Text(
               circle.objetivo,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Radio: ${circle.radiusKm.toStringAsFixed(1)} km',
-                  style: theme.textTheme.bodySmall,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _InfoPill(
+                      icon: Icons.radar,
+                      label: 'Radio: ${circle.radiusKm.toStringAsFixed(0)} km',
+                      color: accent,
+                    ),
+                    if (circle.expiraEn != null)
+                      _InfoPill(
+                        icon: Icons.event_outlined,
+                        label: 'Expira: ${_formatDate(circle.expiraEn!)}',
+                        color: theme.colorScheme.secondary,
+                      ),
+                  ],
                 ),
-                if (circle.expiraEn != null)
-                  Text(
-                    'Expira: ${_formatDate(circle.expiraEn!)}',
-                    style: theme.textTheme.bodySmall,
-                  ),
               ],
             ),
             trailing: PopupMenuButton<String>(
@@ -149,14 +178,8 @@ class _CirclesPageState extends State<CirclesPage> {
                 if (value == 'delete') _deleteCircle(circle);
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Text('Editar'),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Eliminar'),
-                ),
+                PopupMenuItem(value: 'edit', child: Text('Editar')),
+                PopupMenuItem(value: 'delete', child: Text('Eliminar')),
               ],
             ),
           ),
@@ -170,9 +193,7 @@ class _CirclesPageState extends State<CirclesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar círculo'),
-        content: Text(
-          '¿Seguro que quieres eliminar "${circle.objetivo}"?',
-        ),
+        content: Text('¿Seguro que quieres eliminar "${circle.objetivo}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -190,27 +211,6 @@ class _CirclesPageState extends State<CirclesPage> {
   }
 
   void _openForm(BuildContext context, {Circle? existing}) async {
-    // Restrict creating more than 2 circles
-    if (existing == null && widget.state.circles.length >= 2) {
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Límite alcanzado'),
-          content: const Text(
-            'Solo puedes tener un máximo de 2 círculos activos. '
-            'Por favor, elimina un círculo existente antes de crear uno nuevo.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Entendido'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     final result = await showModalBottomSheet<Circle>(
       context: context,
       isScrollControlled: true,
@@ -246,7 +246,7 @@ class _CirclesPageState extends State<CirclesPage> {
           final bDate = b.expiraEn ?? DateTime(9999);
           return aDate.compareTo(bDate);
         case 'radio':
-          return a.radiusMeters.compareTo(b.radiusMeters);
+          return a.radiusKm.compareTo(b.radiusKm);
         case 'creado':
         default:
           return b.creadoEn.compareTo(a.creadoEn);
@@ -271,40 +271,60 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Buscar por objetivo o descripción',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(width: 12),
-        DropdownButton<String>(
-          value: sort,
-          items: const [
-            DropdownMenuItem(
-              value: 'creado',
-              child: Text('Reciente'),
-            ),
-            DropdownMenuItem(
-              value: 'expira',
-              child: Text('Expira antes'),
-            ),
-            DropdownMenuItem(
-              value: 'radio',
-              child: Text('Radio menor'),
-            ),
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+            theme.colorScheme.tertiaryContainer.withValues(alpha: 0.7),
           ],
-          onChanged: (value) {
-            if (value != null) onSortChanged(value);
-          },
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'Buscar por objetivo',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: onChanged,
+            ),
+          ),
+          const SizedBox(width: 12),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: DropdownButton<String>(
+                value: sort,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 'creado', child: Text('Reciente')),
+                  DropdownMenuItem(
+                    value: 'expira',
+                    child: Text('Expira antes'),
+                  ),
+                  DropdownMenuItem(value: 'radio', child: Text('Radio menor')),
+                ],
+                onChanged: (value) {
+                  if (value != null) onSortChanged(value);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -321,15 +341,15 @@ class _CircleForm extends StatefulWidget {
 class _CircleFormState extends State<_CircleForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _objetivoController;
-  double _radioKm = 10; // UI displays in km
+  double _radioKm = 10;
   DateTime? _expiraEn;
 
   @override
   void initState() {
     super.initState();
-    _objetivoController =
-        TextEditingController(text: widget.existing?.objetivo ?? '');
-    // Convert stored meters to km for UI display
+    _objetivoController = TextEditingController(
+      text: widget.existing?.objetivo ?? '',
+    );
     _radioKm = widget.existing?.radiusKm ?? 10;
     _expiraEn = widget.existing?.expiraEn;
   }
@@ -357,8 +377,9 @@ class _CircleFormState extends State<_CircleForm> {
               children: [
                 Text(
                   isEditing ? 'Editar círculo' : 'Nuevo círculo',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -388,6 +409,8 @@ class _CircleFormState extends State<_CircleForm> {
               max: 100,
               divisions: 99,
               label: '${_radioKm.toStringAsFixed(0)} km',
+              activeColor: theme.colorScheme.secondary,
+              thumbColor: theme.colorScheme.secondary,
               onChanged: (value) => setState(() => _radioKm = value),
             ),
             const SizedBox(height: 8),
@@ -417,6 +440,7 @@ class _CircleFormState extends State<_CircleForm> {
             PrimaryButton(
               label: isEditing ? 'Guardar cambios' : 'Crear círculo',
               icon: Icons.check,
+              backgroundColor: theme.colorScheme.secondary,
               onPressed: _submit,
             ),
             const SizedBox(height: 12),
@@ -446,18 +470,16 @@ class _CircleFormState extends State<_CircleForm> {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
     final now = DateTime.now();
-    // Convert km to meters for storage
-    final radiusMeters = _radioKm * 1000;
-    final circle = widget.existing?.copyWith(
+    final circle =
+        widget.existing?.copyWith(
           objetivo: _objetivoController.text.trim(),
-          radiusMeters: radiusMeters,
+          radiusMeters: _radioKm * 1000,
           expiraEn: _expiraEn,
         ) ??
         Circle(
           id: 'circle-${now.microsecondsSinceEpoch}',
           objetivo: _objetivoController.text.trim(),
-          radiusMeters: radiusMeters,
-          startAt: now,
+          radiusMeters: _radioKm * 1000,
           expiraEn: _expiraEn,
           creadoEn: now,
         );
@@ -469,5 +491,43 @@ class _CircleFormState extends State<_CircleForm> {
     final m = date.month.toString().padLeft(2, '0');
     final y = date.year.toString();
     return '$d/$m/$y';
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

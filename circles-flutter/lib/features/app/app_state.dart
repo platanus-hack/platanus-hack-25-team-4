@@ -30,6 +30,19 @@ class AppState extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
+  // Session-scoped UI flags (not persisted)
+  bool _hasShownZeroCirclesModal = false;
+  bool get hasShownZeroCirclesModal => _hasShownZeroCirclesModal;
+  void markZeroCirclesModalShown() {
+    _hasShownZeroCirclesModal = true;
+  }
+
+  // Active circles are those without expiration or with a future expiration
+  bool get hasActiveCircles {
+    final now = DateTime.now();
+    return _circles.any((c) => c.expiraEn == null || (c.expiraEn?.isAfter(now) ?? false));
+  }
+
   Future<void> initialize() async {
     _loading = true;
     _error = null;
@@ -134,16 +147,14 @@ class AppState extends ChangeNotifier {
         Circle(
           id: 'c1',
           objetivo: 'Formar equipo para hackathon',
-          descripcion: 'Busco 1 dev mobile y 1 UX.',
-          radioKm: 10,
+          radiusMeters: 10000,
           expiraEn: now.add(const Duration(days: 10)),
           creadoEn: now.subtract(const Duration(days: 1)),
         ),
         Circle(
           id: 'c2',
           objetivo: 'Salir a correr 10k',
-          descripcion: 'Ritmo 5:00-5:30 min/km',
-          radioKm: 5,
+          radiusMeters: 5000,
           expiraEn: null,
           creadoEn: now.subtract(const Duration(days: 2)),
         ),
