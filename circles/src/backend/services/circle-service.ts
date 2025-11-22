@@ -2,9 +2,9 @@ import {
   circleRepository,
   CreateCircleInput,
   UpdateCircleInput
-} from '../repositories/circleRepository.js';
-import { AppError } from '../types/app-error.js';
-import { Circle } from '../types/circle.js';
+} from '../repositories/circle-repository.js';
+import { AppError } from '../types/app-error.type.js';
+import { Circle } from '../types/circle.type.js';
 
 const ensureOwnership = (circle: Circle, userId: string): void => {
   if (circle.userId !== userId) {

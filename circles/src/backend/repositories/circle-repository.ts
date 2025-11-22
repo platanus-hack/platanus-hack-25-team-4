@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Circle, CircleStatus } from '../types/circle.js';
+import { Circle, CircleStatus } from '../types/circle.type.js';
 
 export type CreateCircleInput = {
   userId: string;

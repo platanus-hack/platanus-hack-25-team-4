@@ -23,6 +23,6 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["src", "config", "middleware", "repositories", "routes", "services", "types", "utils", "app.ts", "server.ts"],
+  "include": ["src", "config", "middlewares", "repositories", "routes", "services", "types", "utils", "app.ts", "server.ts"],
   "exclude": ["node_modules", "dist"]
 }

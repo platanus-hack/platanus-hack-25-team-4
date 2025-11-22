@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { requireAuth } from '../middleware/auth.js';
-import { validateBody } from '../middleware/validateBody.js';
-import type { UpdateCircleInput } from '../repositories/circleRepository.js';
-import { circleService } from '../services/circleService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireAuth } from '../middlewares/auth.middleware.js';
+import { validateBody } from '../middlewares/validate-body.middleware.js';
+import type { UpdateCircleInput } from '../repositories/circle-repository.js';
+import { circleService } from '../services/circle-service.js';
+import { asyncHandler } from '../utils/async-handler.util.js';
 
 const circleBaseSchema = z.object({
   objectiveText: z.string().trim().min(1),

@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { resetRepositories } from './helpers/resetRepositories.js';
-import { authService } from '../services/authService.js';
-import { profileService } from '../services/profileService.js';
+import { resetRepositories } from './helpers/reset-repositories.js';
+import { authService } from '../services/auth-service.js';
+import { profileService } from '../services/profile-service.js';
 
 describe('profileService', () => {
   beforeEach(() => {

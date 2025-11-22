@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { ZodSchema } from 'zod';
 
-import { AppError } from '../types/app-error.js';
+import { AppError } from '../types/app-error.type.js';
 
 export const validateBody =
   <T>(schema: ZodSchema<T>) =>

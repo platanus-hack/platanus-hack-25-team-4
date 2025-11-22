@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { validateBody } from '../middleware/validateBody.js';
-import { authService, SignupInput } from '../services/authService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { validateBody } from '../middlewares/validate-body.middleware.js';
+import { authService, SignupInput } from '../services/auth-service.js';
+import { asyncHandler } from '../utils/async-handler.util.js';
 
 const signupSchema = z.object({
   email: z.string().email(),

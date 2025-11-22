@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { env } from '../config/env.js';
-import { AppError } from '../types/app-error.js';
+import { AppError } from '../types/app-error.type.js';
 
 const BEARER_PREFIX = 'Bearer ';
 

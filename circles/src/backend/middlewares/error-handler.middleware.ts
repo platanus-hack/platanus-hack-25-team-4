@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
-import { AppError } from '../types/app-error.js';
-import { logger } from '../utils/logger.js';
+import { AppError } from '../types/app-error.type.js';
+import { logger } from '../utils/logger.util.js';
 
 type ErrorResponse = {
   error: string;

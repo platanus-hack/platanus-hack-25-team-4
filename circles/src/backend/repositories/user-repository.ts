@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { User, UserProfile } from '../types/user.js';
+import { User, UserProfile } from '../types/user.type.js';
 
 export type CreateUserInput = {
   email: string;

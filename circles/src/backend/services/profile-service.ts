@@ -1,6 +1,6 @@
-import { userRepository } from '../repositories/userRepository.js';
-import { AppError } from '../types/app-error.js';
-import { PublicUser, UserProfile } from '../types/user.js';
+import { userRepository } from '../repositories/user-repository.js';
+import { AppError } from '../types/app-error.type.js';
+import { PublicUser, UserProfile } from '../types/user.type.js';
 
 const ensureUser = (userId: string): PublicUser => {
   const user = userRepository.findById(userId);
