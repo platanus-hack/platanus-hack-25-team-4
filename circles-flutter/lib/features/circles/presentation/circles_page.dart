@@ -197,6 +197,27 @@ class _CirclesPageState extends State<CirclesPage> {
   }
 
   void _openForm(BuildContext context, {Circle? existing}) async {
+    // Restrict creating more than 2 circles
+    if (existing == null && widget.state.circles.length >= 2) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Límite alcanzado'),
+          content: const Text(
+            'Solo puedes tener un máximo de 2 círculos activos. '
+            'Por favor, elimina un círculo existente antes de crear uno nuevo.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final result = await showModalBottomSheet<Circle>(
       context: context,
       isScrollControlled: true,
