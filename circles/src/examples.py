@@ -17,6 +17,7 @@ from circles.src.profile_schema import (
     ComfortZonesAndBoundaries,
     ConversationMicroPreferences,
     EnvironmentalContext,
+    Interest,
     LifestyleAndRhythms,
     Mobility,
     MotivationsAndGoals,
@@ -148,9 +149,32 @@ def create_example_profile() -> UserProfile:
         serendipity_openness='High for hobby/hardware topics; moderate for purely social "hang out" invites.',
     )
 
+    # Create interests
+    interests = [
+        Interest(
+            title="Trabajo",
+            description="Busco / Ofrezco trabajo, soy dev y busco startups",
+        ),
+        Interest(
+            title="Side Projects",
+            description="Building prototypes and apps with React and Node.js",
+        ),
+        Interest(
+            title="Hardware",
+            description="Hobbyist projects with Raspberry Pi and electronics",
+        ),
+        Interest(
+            title="Spanish Learning",
+            description="Practicing conversational Spanish on weekend mornings",
+        ),
+    ]
+
     # Create the profile
     profile = UserProfile(
         user_id="user_santiago_001",
+        bio="Full-stack developer in Santiago interested in startups, side projects, and hardware tinkering.",
+        interests=interests,
+        profile_completed=True,
         personality_core=personality_core,
         social_interaction_style=social_interaction_style,
         motivations_and_goals=motivations_and_goals,

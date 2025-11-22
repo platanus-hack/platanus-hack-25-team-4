@@ -15,6 +15,7 @@ from circles.src.profile_schema import (
     ComfortZonesAndBoundaries,
     ConversationMicroPreferences,
     EnvironmentalContext,
+    Interest,
     LifestyleAndRhythms,
     Mobility,
     MotivationsAndGoals,
@@ -710,3 +711,154 @@ class TestPerformance:
         elapsed = time.time() - start
 
         assert elapsed < 1.0  # 1000 serializations in under 1 second
+
+
+# ============================================================================
+# Interest and InterestsList Tests
+# ============================================================================
+
+
+class TestInterest:
+    """Test suite for Interest Pydantic model."""
+
+    def test_valid_interest(self):
+        """Test creating Interest with valid fields."""
+        interest = Interest(
+            title="Trabajo",
+            description="Busco / Ofrezco trabajo, soy dev y busco startups",
+        )
+
+        assert interest.title == "Trabajo"
+        assert interest.description.startswith("Busco")
+
+    def test_interest_short_title(self):
+        """Test Interest with very short title."""
+        interest = Interest(title="AI", description="Artificial Intelligence")
+
+        assert interest.title == "AI"
+        assert len(interest.title) == 2
+
+    def test_interest_long_description(self):
+        """Test Interest with long description."""
+        long_desc = "x" * 1000
+
+        interest = Interest(title="Topic", description=long_desc)
+
+        assert len(interest.description) == 1000
+
+    def test_interest_unicode_support(self):
+        """Test Interest with Unicode characters."""
+        interest = Interest(
+            title="Tecnología 技術", description="互联网开发和AI研究 🚀"
+        )
+
+        assert "技術" in interest.title
+        assert "互联网" in interest.description
+        assert "🚀" in interest.description
+
+    def test_interest_missing_required_field(self):
+        """Test that missing required fields raise ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Interest(title="Only title")
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"][0] == "description" for error in errors)
+
+    def test_interest_empty_strings(self):
+        """Test Interest with empty strings."""
+        interest = Interest(title="", description="")
+
+        assert interest.title == ""
+        assert interest.description == ""
+
+    def test_interest_special_characters(self):
+        """Test Interest with special characters."""
+        interest = Interest(
+            title='Web <Dev> & "Code"',
+            description="Uses symbols: @#$%^&*() and émojis: 🎯🔥",
+        )
+
+        assert "<" in interest.title
+        assert "@" in interest.description
+
+
+class TestInterestsList:
+    """Test suite for list of Interest objects."""
+
+    def test_valid_interests_list(self):
+        """Test creating a list with multiple interests."""
+        interests = [
+            Interest(title="Trabajo", description="Job opportunities"),
+            Interest(title="Deporte", description="Sports and fitness"),
+            Interest(title="Tech", description="Technology projects"),
+        ]
+
+        assert len(interests) == 3
+        assert interests[0].title == "Trabajo"
+        assert isinstance(interests[1], Interest)
+
+    def test_interests_empty_list(self):
+        """Test with empty interests list."""
+        interests = []
+
+        assert interests == []
+        assert len(interests) == 0
+
+    def test_interests_single_interest(self):
+        """Test with single interest in list."""
+        interests = [Interest(title="Only One", description="Single interest")]
+
+        assert len(interests) == 1
+
+    def test_interests_many_interests(self):
+        """Test with many interests in list."""
+        interests = [
+            Interest(title=f"Interest {i}", description=f"Description {i}")
+            for i in range(50)
+        ]
+
+        assert len(interests) == 50
+
+    def test_interests_json_serialization(self):
+        """Test JSON serialization of interests list."""
+        interests = [
+            Interest(title="Trabajo", description="Job search"),
+            Interest(title="Viajes", description="Travel and exploration"),
+        ]
+
+        json_str = interests[0].model_dump_json()
+        assert isinstance(json_str, str)
+        assert "Trabajo" in json_str
+
+    def test_interests_model_dump(self):
+        """Test model_dump for individual interests."""
+        interest = Interest(title="Test", description="Testing")
+        data = interest.model_dump()
+
+        assert isinstance(data, dict)
+        assert "title" in data
+        assert "description" in data
+        assert data["title"] == "Test"
+
+    def test_interests_duplicate_entries(self):
+        """Test list with duplicate interests."""
+        interests = [
+            Interest(title="AI", description="Artificial Intelligence"),
+            Interest(title="AI", description="Artificial Intelligence"),
+            Interest(title="ML", description="Machine Learning"),
+        ]
+
+        # Lists naturally can have duplicates
+        assert len(interests) == 3
+        assert interests[0].title == interests[1].title
+
+    def test_interests_unicode_support(self):
+        """Test interests list with Unicode content."""
+        interests = [
+            Interest(title="日本語", description="Japanese language learning"),
+            Interest(title="中文", description="Chinese language learning"),
+            Interest(title="العربية", description="Arabic language learning"),
+        ]
+
+        assert len(interests) == 3
+        assert interests[0].title == "日本語"

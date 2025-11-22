@@ -64,6 +64,22 @@ def sample_raw_data():
 def sample_consolidated_profile():
     """Sample consolidated profile output from LLM."""
     return {
+        "bio": "Senior software engineer passionate about building meaningful connections and mentoring others",
+        "interests": [
+            {
+                "title": "Software Development",
+                "description": "Python and JavaScript development, always learning new technologies",
+            },
+            {
+                "title": "Mentoring",
+                "description": "Enjoy sharing knowledge and helping junior developers grow",
+            },
+            {
+                "title": "Tech Meetups",
+                "description": "Regular attendee of local tech meetups and conferences",
+            },
+        ],
+        "profile_completed": True,
         "personality_core": {
             "openness": "High - enjoys new experiences",
             "conscientiousness": "High - detail-oriented",

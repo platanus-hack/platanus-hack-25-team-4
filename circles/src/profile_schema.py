@@ -143,12 +143,6 @@ class Interest(BaseModel):
     description: str
 
 
-class InterestsList(BaseModel):
-    """List of user interests."""
-
-    interests: List[Interest]
-
-
 # ============================================================================
 # SQLModel database models
 # ============================================================================
@@ -205,7 +199,7 @@ class UserProfile(SQLModel, table=True):
 
     # User interests and profile completion
     bio: Optional[str] = Field(default=None)
-    interests: Optional[InterestsList] = Field(default=None, sa_type=JSON)
+    interests: Optional[List[Interest]] = Field(default=None, sa_type=JSON)
     profile_completed: Optional[bool] = Field(default=False)
 
     # Metadata
@@ -229,7 +223,7 @@ class UserProfileRead(SQLModel):
     behavioural_history_model: Optional[BehaviouralHistoryModel] = None
     agent_persona_heuristic: Optional[AgentPersonaHeuristic] = None
     bio: Optional[str] = None
-    interests: Optional[InterestsList] = None
+    interests: Optional[List[Interest]] = None
     profile_completed: Optional[bool] = None
     is_active: bool
     last_matched: Optional[datetime] = None
@@ -248,5 +242,5 @@ class UserProfileCreate(SQLModel):
     behavioural_history_model: Optional[BehaviouralHistoryModel] = None
     agent_persona_heuristic: Optional[AgentPersonaHeuristic] = None
     bio: Optional[str] = None
-    interests: Optional[InterestsList] = None
+    interests: Optional[List[Interest]] = None
     profile_completed: Optional[bool] = None
