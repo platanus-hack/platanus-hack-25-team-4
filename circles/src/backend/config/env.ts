@@ -8,7 +8,12 @@ const envSchema = z.object({
   PORT: z.string().transform((value) => Number.parseInt(value, 10)).default('3000'),
   JWT_SECRET: z.string().min(1).default('change-me'),
   DATABASE_URL: z.string().optional(),
-  API_URL: z.string().optional().default('http://localhost:3000')
+  API_URL: z.string().optional().default('http://localhost:3000'),
+  AWS_REGION: z.string().optional().default('us-east-1'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  SES_FROM_EMAIL: z.string().optional().default('noreply@circles.app'),
+  SES_REPLY_TO_EMAIL: z.string().optional()
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -24,5 +29,10 @@ export const env = {
   port: parsedEnv.data.PORT,
   jwtSecret: parsedEnv.data.JWT_SECRET,
   databaseUrl: parsedEnv.data.DATABASE_URL,
-  apiUrl: parsedEnv.data.API_URL
+  apiUrl: parsedEnv.data.API_URL,
+  awsRegion: parsedEnv.data.AWS_REGION,
+  awsAccessKeyId: parsedEnv.data.AWS_ACCESS_KEY_ID,
+  awsSecretAccessKey: parsedEnv.data.AWS_SECRET_ACCESS_KEY,
+  sesFromEmail: parsedEnv.data.SES_FROM_EMAIL,
+  sesReplyToEmail: parsedEnv.data.SES_REPLY_TO_EMAIL
 };

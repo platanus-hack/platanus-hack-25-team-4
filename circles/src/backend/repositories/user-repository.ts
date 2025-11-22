@@ -1,5 +1,4 @@
-import { PrismaClient as client } from '@prisma/client';
-
+import { prisma } from '../lib/prisma.js';
 import { User, UserProfile, CreateUserInput } from '../types/user.type.js';
 
 export class UserRepository {
@@ -7,7 +6,7 @@ export class UserRepository {
    * Create a new user
    */
   async create(input: CreateUserInput): Promise<User> {
-    const user = await client.user.create({
+    const user = await prisma.user.create({
       data: {
         email: input.email.toLowerCase(),
         firstName: input.firstName ?? null,
@@ -24,7 +23,7 @@ export class UserRepository {
    * Find user by email
    */
   async findByEmail(email: string): Promise<User | undefined> {
-    const user = await client.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
 
@@ -35,7 +34,7 @@ export class UserRepository {
    * Find user by ID
    */
   async findById(id: string): Promise<User | undefined> {
-    const user = await client.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id }
     });
 
@@ -46,7 +45,7 @@ export class UserRepository {
    * Update user profile
    */
   async updateProfile(id: string, profile: UserProfile): Promise<User | undefined> {
-    const user = await client.user.update({
+    const user = await prisma.user.update({
       where: { id },
       data: { profile }
     });
@@ -58,7 +57,7 @@ export class UserRepository {
    * Update user
    */
   async update(id: string, data: Partial<CreateUserInput>): Promise<User | undefined> {
-    const user = await client.user.update({
+    const user = await prisma.user.update({
       where: { id },
       data: {
         firstName: data.firstName ?? undefined,
@@ -75,7 +74,7 @@ export class UserRepository {
    * Delete user
    */
   async delete(id: string): Promise<void> {
-    await client.user.delete({
+    await prisma.user.delete({
       where: { id }
     });
   }
