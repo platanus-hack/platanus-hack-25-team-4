@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import { profileService } from '../services/profile-service.js';
-import { UserProfile, Interest } from '../types/user.type.js';
+import { UserProfile } from '../types/user.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
 const interestSchema = z.object({
