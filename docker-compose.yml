@@ -26,6 +26,15 @@ services:
     networks:
       - circles-network
 
+  redis:
+    image: redis:7
+    container_name: circles-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - circles-network
+
   backend:
     build:
       context: ./circles/src/backend
@@ -39,9 +48,12 @@ services:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-circles_db}?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - circles-network
     healthcheck:
