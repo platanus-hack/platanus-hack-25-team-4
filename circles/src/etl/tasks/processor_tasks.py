@@ -8,7 +8,7 @@ Integrates with database persistence and error tracking.
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -203,6 +203,163 @@ def process_photo_task(self, job_id: str, file_path: str, user_id: int, source_i
             "status": "failed",
             "data_type": "photo",
             "error": str(e),
+        }
+
+
+async def execute_batch_adapter_pipeline(
+    adapter_class,
+    input_data: Any,
+    user_id: int,
+    source_id: int,
+    job_id: str,
+    data_type: str,
+) -> Dict[str, Any]:
+    """
+    Execute batch adapter pipeline (e.g., for multiple photos).
+
+    Args:
+        adapter_class: The adapter class supporting batch operations
+        input_data: Input data (list of file paths or dicts)
+        user_id: User ID
+        source_id: Source ID
+        job_id: Job ID for tracking
+        data_type: Data type string
+
+    Returns:
+        Result dictionary with success/error info
+    """
+    session = None
+    try:
+        # Initialize database
+        factory = await init_db_engine()
+
+        # Create adapter instance
+        adapter = adapter_class()
+
+        # Create adapter context
+        context = AdapterContext(
+            user_id=user_id,
+            source_id=source_id,
+            data_type=DataType[data_type.upper().replace("-", "_")],
+            trace_id=job_id,
+        )
+
+        # Execute batch pipeline with database session
+        async with factory() as session:
+            result = await adapter.execute_batch(input_data, context, session)
+
+            if result.is_error:
+                error = result.error_value
+                logger.error(
+                    f"Batch pipeline failed for {data_type} job {job_id}: {error.message}"
+                )
+                return {
+                    "job_id": job_id,
+                    "status": "failed",
+                    "data_type": data_type,
+                    "error": error.message,
+                    "error_type": error.error_type,
+                    "processed_count": 0,
+                }
+
+            # Success - result.value contains the list of persisted model instances
+            data_list = result.value
+            logger.info(
+                f"Batch pipeline completed successfully for {data_type} job {job_id}: "
+                f"processed {len(data_list)} items"
+            )
+
+            return {
+                "job_id": job_id,
+                "status": "completed",
+                "data_type": data_type,
+                "processed_count": len(data_list),
+                "model_ids": [getattr(data, "id", None) for data in data_list],
+                "message": f"Successfully processed batch of {len(data_list)} {data_type}s",
+            }
+
+    except ProcessingError as e:
+        logger.error(f"Processing error for job {job_id}: {e.message}")
+        return {
+            "job_id": job_id,
+            "status": "failed",
+            "data_type": data_type,
+            "error": e.message,
+            "error_type": e.error_type,
+            "processed_count": 0,
+        }
+
+    except Exception as e:
+        logger.exception(f"Unexpected error processing batch job {job_id}: {e}")
+        return {
+            "job_id": job_id,
+            "status": "failed",
+            "data_type": data_type,
+            "error": str(e),
+            "error_type": "system_error",
+            "processed_count": 0,
+        }
+
+    finally:
+        if session:
+            await session.close()
+
+
+def _run_async_batch_pipeline(
+    adapter_class, input_data, user_id, source_id, job_id, data_type
+):
+    """
+    Synchronous wrapper to run async batch pipeline in Celery.
+
+    Celery is synchronous, so we use this to bridge to async code.
+    """
+    return asyncio.run(
+        execute_batch_adapter_pipeline(
+            adapter_class, input_data, user_id, source_id, job_id, data_type
+        )
+    )
+
+
+@celery_app.task(name="process_photo_batch", bind=True)
+def process_photo_batch_task(
+    self, job_id: str, file_paths: List[str], user_id: int, source_id: int
+):
+    """
+    Process batch of photo files with Claude Vision asynchronously.
+
+    Uses parallel processing with configurable concurrency.
+
+    Args:
+        job_id: Batch job ID
+        file_paths: List of photo file paths
+        user_id: User ID
+        source_id: Source ID
+
+    Returns:
+        Result dictionary with batch processing status
+    """
+    from ..adapters import PhotoAdapter
+
+    try:
+        # Convert string paths to Path objects
+        paths = [Path(p) for p in file_paths]
+
+        return _run_async_batch_pipeline(
+            PhotoAdapter,
+            paths,
+            user_id,
+            source_id,
+            job_id,
+            "photo",
+        )
+    except Exception as e:
+        logger.error(f"Photo batch processing task failed: {e}")
+        return {
+            "job_id": job_id,
+            "status": "failed",
+            "data_type": "photo",
+            "error": str(e),
+            "processed_count": 0,
         }
 
 

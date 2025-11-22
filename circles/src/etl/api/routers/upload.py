@@ -6,10 +6,10 @@ Provides endpoints for uploading all 10 data types with async processing.
 
 import logging
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
@@ -37,6 +37,17 @@ class UploadResponse(BaseModel):
     job_id: str
     status: UploadStatus
     data_type: str
+    message: str
+    timestamp: datetime
+
+
+class BatchUploadResponse(BaseModel):
+    """Response for batch upload request."""
+
+    job_id: str
+    status: UploadStatus
+    data_type: str
+    file_count: int
     message: str
     timestamp: datetime
 
@@ -180,7 +191,7 @@ async def upload_resume(
             status=UploadStatus.PROCESSING,
             data_type="resume",
             message=f"Resume '{file.filename}' queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -213,7 +224,7 @@ async def upload_photo(
         _queue_celery_task(
             "process_photo",
             job_id,
-            user_id=user_id,
+            user_id=int(user_id),  # Convert to int for task
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -223,7 +234,7 @@ async def upload_photo(
             status=UploadStatus.PROCESSING,
             data_type="photo",
             message=f"Photo '{file.filename}' queued for vision analysis",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -233,6 +244,87 @@ async def upload_photo(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Upload failed",
+        )
+
+
+@router.post(
+    "/photos-batch",
+    response_model=BatchUploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def upload_photos_batch(
+    files: Annotated[
+        List[UploadFile],
+        File(
+            description="Multiple photo files (JPG, PNG, GIF, WebP, HEIC) - max 50 files"
+        ),
+    ],
+    user_id: str,
+) -> BatchUploadResponse:
+    """
+    Upload multiple photos for batch VLM analysis.
+
+    Processes up to 50 photos in parallel with concurrency control.
+    Optimizes images before processing for faster VLM throughput.
+    """
+    job_id = secrets.token_urlsafe(16)
+    _create_job(job_id, "photo_batch", UploadStatus.PENDING)
+
+    try:
+        # Validate file count
+        settings = get_settings()
+        if len(files) > settings.photo_batch_max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum {settings.photo_batch_max_size} photos per batch allowed",
+            )
+
+        if len(files) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one photo is required",
+            )
+
+        # Validate and save all files
+        file_paths = []
+        for file in files:
+            try:
+                file_path = await _validate_and_save_file(
+                    file, "image", job_id, "photos"
+                )
+                file_paths.append(str(file_path))
+            except HTTPException as e:
+                logger.error(f"Failed to validate photo {file.filename}: {e.detail}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Photo validation failed: {e.detail}",
+                )
+
+        # Queue Celery batch task for parallel processing
+        _queue_celery_task(
+            "process_photo_batch",
+            job_id,
+            user_id=int(user_id),  # Convert to int for task
+            file_paths=file_paths,
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
+
+        return BatchUploadResponse(
+            job_id=job_id,
+            status=UploadStatus.PROCESSING,
+            data_type="photo",
+            file_count=len(files),
+            message=f"Batch of {len(files)} photos queued for parallel vision analysis (max {settings.photo_batch_max_concurrent} concurrent)",
+            timestamp=datetime.now(timezone.utc),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Photo batch upload failed: {e}")
+        _update_job(job_id, UploadStatus.FAILED, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Batch upload failed",
         )
 
 
@@ -266,7 +358,7 @@ async def upload_voice_note(
             status=UploadStatus.PROCESSING,
             data_type="voice_note",
             message=f"Voice note '{file.filename}' queued for transcription",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -307,7 +399,7 @@ async def upload_calendar(
             status=UploadStatus.PROCESSING,
             data_type="calendar",
             message=f"Calendar file '{file.filename}' queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -348,7 +440,7 @@ async def upload_screenshot(
             status=UploadStatus.PROCESSING,
             data_type="screenshot",
             message=f"Screenshot '{file.filename}' queued for analysis",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -391,7 +483,7 @@ async def upload_shared_image(
             status=UploadStatus.PROCESSING,
             data_type="shared_image",
             message=f"Image '{file.filename}' queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -439,7 +531,7 @@ async def upload_chat_transcript(
             status=UploadStatus.PROCESSING,
             data_type="chat_transcript",
             message="Chat transcript queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -485,7 +577,7 @@ async def upload_email(
             status=UploadStatus.PROCESSING,
             data_type="email",
             message="Email data queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -528,7 +620,7 @@ async def upload_social_post(
             status=UploadStatus.PROCESSING,
             data_type="social_post",
             message="Social post queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
@@ -570,7 +662,7 @@ async def upload_blog_post(
             status=UploadStatus.PROCESSING,
             data_type="blog_post",
             message="Blog post queued for processing",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     except HTTPException:
         raise
