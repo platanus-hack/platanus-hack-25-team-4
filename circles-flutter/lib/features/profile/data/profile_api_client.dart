@@ -31,7 +31,7 @@ class ProfileApiClient {
         'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
       );
     }
-    final response = await _get(path: '/api/users/me/profile', token: token);
+    final response = await _get(path: '/users/me/profile', token: token);
     return _mapProfile(responseBody: response, email: email);
   }
 
@@ -57,7 +57,7 @@ class ProfileApiClient {
       );
     }
     final response = await _put(
-      path: '/api/users/me/profile',
+      path: '/users/me/profile',
       token: token,
       body: {
         'bio': bio,

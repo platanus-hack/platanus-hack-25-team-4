@@ -142,7 +142,10 @@ Response:
   "firstName": "John",
   "lastName": "Doe",
   "profile": {
-    "interests": ["tennis", "music"]
+    "interests": [
+      { "title": "tennis", "description": "Beginner looking for practice" },
+      { "title": "music", "description": "Enjoy live concerts" }
+    ]
   },
   "centerLat": 40.7128,
   "centerLon": -74.0060,
@@ -168,7 +171,10 @@ Response:
   "firstName": "John",
   "lastName": "Doe",
   "profile": {
-    "interests": ["tennis", "music"]
+    "interests": [
+      { "title": "tennis", "description": "Beginner looking for practice" },
+      { "title": "music", "description": "Enjoy live concerts" }
+    ]
   },
   "centerLat": 40.7128,
   "centerLon": -74.0060,
@@ -283,7 +289,12 @@ Request:
 
 ```json
 {
-  "interests": ["tennis", "hiking"],
+  "bio": "New to the city, looking to meet people",
+  "interests": [
+    { "title": "tennis", "description": "Beginner" },
+    { "title": "hiking", "description": "Trails on weekends" }
+  ],
+  "profileCompleted": false,
   "socialStyle": "outgoing",
   "boundaries": ["no spam"],
   "availability": "weekends"
@@ -316,19 +327,21 @@ Request:
 }
 ```
 
-Response:
+Response (201 Created):
 
 ```json
 {
-  "id": "uuid",
-  "userId": "uuid",
-  "objective": "Play tennis",
-  "radiusMeters": 500,
-  "startAt": "2025-11-23T10:00:00Z",
-  "expiresAt": "2025-11-24T10:00:00Z",
-  "status": "active",
-  "createdAt": "2025-11-22T...",
-  "updatedAt": "2025-11-22T..."
+  "circle": {
+    "id": "uuid",
+    "userId": "uuid",
+    "objective": "Play tennis",
+    "radiusMeters": 500,
+    "startAt": "2025-11-23T10:00:00Z",
+    "expiresAt": "2025-11-24T10:00:00Z",
+    "status": "active",
+    "createdAt": "2025-11-22T...",
+    "updatedAt": "2025-11-22T..."
+  }
 }
 ```
 
@@ -368,7 +381,23 @@ Response:
 
 Requires: `Authorization: Bearer <JWT_TOKEN>`
 
-Response: Circle object
+Response:
+
+```json
+{
+  "circle": {
+    "id": "uuid",
+    "userId": "uuid",
+    "objective": "Play tennis",
+    "radiusMeters": 500,
+    "startAt": "2025-11-23T10:00:00Z",
+    "expiresAt": "2025-11-24T10:00:00Z",
+    "status": "active",
+    "createdAt": "2025-11-22T...",
+    "updatedAt": "2025-11-22T..."
+  }
+}
+```
 
 ---
 
@@ -420,24 +449,65 @@ Response:
 
 ---
 
-## Circles Endpoints
+## Chat Endpoints
 
-All circles endpoints require authentication (`Authorization: Bearer <token>`).
+All chat endpoints require authentication (`Authorization: Bearer <JWT_TOKEN>`).
 
-### POST /api/circles
+### GET /api/chats
 
-**Create a new circle**
+List all chats for the authenticated user with participant details and latest message preview.
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "primaryUserId": "uuid",
+      "secondaryUserId": "uuid",
+      "matchId": null,
+      "createdAt": "2025-11-22T10:00:00Z",
+      "primaryUser": {
+        "id": "uuid",
+        "email": "a@example.com",
+        "firstName": "Alice",
+        "lastName": "A"
+      },
+      "secondaryUser": {
+        "id": "uuid",
+        "email": "b@example.com",
+        "firstName": "Bob",
+        "lastName": "B"
+      },
+      "latestMessage": {
+        "id": "uuid",
+        "chatId": "uuid",
+        "senderUserId": "uuid",
+        "receiverId": "uuid",
+        "content": "Hey!",
+        "moderationFlags": null,
+        "createdAt": "2025-11-22T10:05:00Z"
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### POST /api/chats
+
+Create a new chat between two users. The authenticated user must be one of the participants.
 
 Request:
 
 ```json
 {
-  "objectiveText": "Looking for tennis partners",
-  "centerLat": 40.7128,
-  "centerLon": -74.0060,
-  "radiusMeters": 5000,
-  "startAt": "2025-11-22T10:00:00Z",
-  "expiresAt": "2025-11-22T18:00:00Z"
+  "primaryUserId": "uuid",
+  "secondaryUserId": "uuid",
+  "matchId": "uuid"
 }
 ```
 
@@ -445,189 +515,145 @@ Response (201 Created):
 
 ```json
 {
-  "circle": {
+  "id": "uuid",
+  "primaryUserId": "uuid",
+  "secondaryUserId": "uuid",
+  "matchId": "uuid",
+  "createdAt": "2025-11-22T10:00:00Z"
+}
+```
+
+---
+
+### GET /api/chats/:chatId
+
+Get a specific chat with participant details.
+
+Response:
+
+```json
+{
+  "id": "uuid",
+  "primaryUserId": "uuid",
+  "secondaryUserId": "uuid",
+  "matchId": null,
+  "createdAt": "2025-11-22T10:00:00Z",
+  "primaryUser": {
     "id": "uuid",
-    "userId": "uuid",
-    "objective": "Looking for tennis partners",
-    "centerLat": 40.7128,
-    "centerLon": -74.0060,
-    "radiusMeters": 5000,
-    "startAt": "2025-11-22T10:00:00Z",
-    "expiresAt": "2025-11-22T18:00:00Z",
-    "status": "active",
-    "createdAt": "2025-11-22T09:00:00Z",
-    "updatedAt": "2025-11-22T09:00:00Z"
+    "email": "a@example.com",
+    "firstName": "Alice",
+    "lastName": "A"
+  },
+  "secondaryUser": {
+    "id": "uuid",
+    "email": "b@example.com",
+    "firstName": "Bob",
+    "lastName": "B"
   }
 }
 ```
 
 ---
 
-### GET /api/circles/me
+### DELETE /api/chats/:chatId
 
-**List all circles for the authenticated user**
+Delete a chat. Only participants can delete.
+
+Response: `204 No Content`
+
+---
+
+### GET /api/chats/:chatId/messages
+
+List messages in a chat (paginated).
+
+Query parameters:
+- `limit` (optional, default 50, max 100)
+- `offset` (optional, default 0)
 
 Response:
 
 ```json
 {
-  "circles": [
+  "data": [
     {
       "id": "uuid",
-      "userId": "uuid",
-      "objective": "Looking for tennis partners",
-      "centerLat": 40.7128,
-      "centerLon": -74.0060,
-      "radiusMeters": 5000,
-      "startAt": "2025-11-22T10:00:00Z",
-      "expiresAt": "2025-11-22T18:00:00Z",
-      "status": "active",
-      "createdAt": "2025-11-22T09:00:00Z",
-      "updatedAt": "2025-11-22T09:00:00Z"
+      "chatId": "uuid",
+      "senderUserId": "uuid",
+      "receiverId": "uuid",
+      "content": "Hello!",
+      "moderationFlags": null,
+      "createdAt": "2025-11-22T10:01:00Z",
+      "chat": { "id": "uuid" },
+      "sender": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A" },
+      "receiver": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B" }
     }
-  ]
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0
 }
 ```
 
 ---
 
-### GET /api/circles/:id
+### POST /api/chats/:chatId/messages
 
-**Get a specific circle by ID**
-
-URL Parameters:
-- `id` - Circle UUID
-
-Response:
-
-```json
-{
-  "circle": {
-    "id": "uuid",
-    "userId": "uuid",
-    "objective": "Looking for tennis partners",
-    "centerLat": 40.7128,
-    "centerLon": -74.0060,
-    "radiusMeters": 5000,
-    "startAt": "2025-11-22T10:00:00Z",
-    "expiresAt": "2025-11-22T18:00:00Z",
-    "status": "active",
-    "createdAt": "2025-11-22T09:00:00Z",
-    "updatedAt": "2025-11-22T09:00:00Z"
-  }
-}
-```
-
----
-
-### PATCH /api/circles/:id
-
-**Update a circle (partial update)**
-
-URL Parameters:
-- `id` - Circle UUID
-
-Request (all fields optional):
-
-```json
-{
-  "objectiveText": "Updated: Looking for basketball players",
-  "centerLat": 40.7580,
-  "centerLon": -73.9855,
-  "radiusMeters": 3000,
-  "startAt": "2025-11-23T10:00:00Z",
-  "expiresAt": "2025-11-23T18:00:00Z",
-  "status": "paused"
-}
-```
-
-Response:
-
-```json
-{
-  "circle": {
-    "id": "uuid",
-    "userId": "uuid",
-    "objective": "Updated: Looking for basketball players",
-    "centerLat": 40.7580,
-    "centerLon": -73.9855,
-    "radiusMeters": 3000,
-    "startAt": "2025-11-23T10:00:00Z",
-    "expiresAt": "2025-11-23T18:00:00Z",
-    "status": "paused",
-    "createdAt": "2025-11-22T09:00:00Z",
-    "updatedAt": "2025-11-22T12:00:00Z"
-  }
-}
-```
-
-Valid status values: `"active"`, `"paused"`, `"expired"`
-
----
-
-### DELETE /api/circles/:id
-
-**Delete a circle**
-
-URL Parameters:
-- `id` - Circle UUID
-
-Response: 204 No Content
-
----
-
-## Users & Profile Endpoints
-
-All user/profile endpoints require authentication (`Authorization: Bearer <token>`).
-
-### GET /api/users/me/profile
-
-**Get the authenticated user's profile**
-
-Response:
-
-```json
-{
-  "profile": {
-    "interests": ["tennis", "hiking", "photography"],
-    "socialStyle": "extroverted and friendly",
-    "boundaries": ["no late night meetups", "public places only"],
-    "availability": "weekends and evenings"
-  }
-}
-```
-
----
-
-### PUT /api/users/me/profile
-
-**Update the authenticated user's profile**
+Create a new message in a chat. The authenticated user becomes the sender.
 
 Request:
 
 ```json
 {
-  "interests": ["tennis", "hiking", "photography"],
-  "socialStyle": "extroverted and friendly",
-  "boundaries": ["no late night meetups", "public places only"],
-  "availability": "weekends and evenings"
+  "content": "Hello!",
+  "receiverId": "uuid"
 }
 ```
 
-All fields are optional except `interests` (defaults to empty array).
+Response (201 Created):
+
+```json
+{
+  "id": "uuid",
+  "chatId": "uuid",
+  "senderUserId": "uuid",
+  "receiverId": "uuid",
+  "content": "Hello!",
+  "moderationFlags": null,
+  "createdAt": "2025-11-22T10:01:00Z"
+}
+```
+
+---
+
+### GET /api/chats/:chatId/messages/:messageId
+
+Get a specific message with sender/receiver details.
 
 Response:
 
 ```json
 {
-  "profile": {
-    "interests": ["tennis", "hiking", "photography"],
-    "socialStyle": "extroverted and friendly",
-    "boundaries": ["no late night meetups", "public places only"],
-    "availability": "weekends and evenings"
-  }
+  "id": "uuid",
+  "chatId": "uuid",
+  "senderUserId": "uuid",
+  "receiverId": "uuid",
+  "content": "Hello!",
+  "moderationFlags": null,
+  "createdAt": "2025-11-22T10:01:00Z",
+  "chat": { "id": "uuid" },
+  "sender": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A" },
+  "receiver": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B" }
 }
 ```
+
+---
+
+### DELETE /api/chats/:chatId/messages/:messageId
+
+Delete a message. Only the sender can delete.
+
+Response: `204 No Content`
 
 ---
 
@@ -718,12 +744,17 @@ This section compares the implemented API with the original plan from `docs/feat
 - `POST /matches/{id}/aceptar` - Accept a match to enable chat
 - **Status**: Not implemented in backend yet
 
-#### Chats Endpoints
-- `GET /chats` - List all chat conversations
-- `GET /chats/{id}/mensajes` - Get messages for a specific chat
-- `POST /chats/{id}/mensajes` - Send a message in a chat
-- WebSocket/polling for real-time updates
-- **Status**: Not implemented in backend yet
+#### Chats
+- **Implemented**:
+  - `GET /api/chats` – list user chats
+  - `POST /api/chats` – create chat
+  - `GET /api/chats/:chatId` – get chat details
+  - `DELETE /api/chats/:chatId` – delete chat
+- **Messages (implemented)**:
+  - `GET /api/chats/:chatId/messages`
+  - `POST /api/chats/:chatId/messages`
+  - `GET /api/chats/:chatId/messages/:messageId`
+  - `DELETE /api/chats/:chatId/messages/:messageId`
 
 ### ✨ Implemented but Not in Original Plan
 
@@ -749,6 +780,6 @@ This section compares the implemented API with the original plan from `docs/feat
 - ✅ Profile: 100% complete (but with different data model)
 - ⏳ Matches: 0% (not started)
 - ⏳ Interactions: 0% (not started)
-- ⏳ Chats: 0% (not started)
+- ✅ Chats: 100% complete (chat and messaging endpoints)
 
-**Overall Progress**: ~40% of planned features implemented
+**Overall Progress**: ~60% of planned features implemented
