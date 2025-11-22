@@ -54,7 +54,7 @@ class ProfileConsolidationOrchestrator:
 
     async def consolidate_user_profile(
         self,
-        user_id: str,
+        user_id: int,
     ) -> Result[UserProfile, Exception]:
         """
         Consolidate a user profile from all available data sources.
@@ -126,7 +126,7 @@ class ProfileConsolidationOrchestrator:
         # Create provider based on name
         return LLMProviderFactory.create(self.llm_provider_name)
 
-    def _get_strategy(self, user_id: str) -> ConsolidationStrategy:
+    def _get_strategy(self, user_id: int) -> ConsolidationStrategy:
         """
         Get consolidation strategy - either injected or default.
 
@@ -210,4 +210,38 @@ class ProfileConsolidationOrchestrator:
         return ProfileConsolidationOrchestrator(
             session=session,
             llm_provider_name=llm_provider_name,
+        )
+
+    @staticmethod
+    def create_with_strategy(
+        session: AsyncSession,
+        strategy: ConsolidationStrategy,
+        llm_provider: Optional[LLMProvider] = None,
+    ) -> "ProfileConsolidationOrchestrator":
+        """
+        Create orchestrator with explicitly injected strategy.
+
+        This factory method enables custom consolidation strategies to be injected,
+        supporting advanced use cases where default LLM-based consolidation is
+        replaced with domain-specific logic.
+
+        Args:
+            session: AsyncSession for database operations
+            strategy: Injected ConsolidationStrategy instance
+            llm_provider: Optional injected LLMProvider (defaults to Anthropic if None)
+
+        Returns:
+            ProfileConsolidationOrchestrator configured with injected strategy
+
+        Example:
+            >>> custom_strategy = MyCustomStrategy()
+            >>> orchestrator = ProfileConsolidationOrchestrator.create_with_strategy(
+            ...     session=db_session,
+            ...     strategy=custom_strategy
+            ... )
+        """
+        return ProfileConsolidationOrchestrator(
+            session=session,
+            strategy=strategy,
+            llm_provider=llm_provider,
         )

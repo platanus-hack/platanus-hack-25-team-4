@@ -31,7 +31,7 @@ class ConsolidationStrategy(Protocol):
 
     async def consolidate(
         self,
-        user_id: str,
+        user_id: int,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result["UserProfile", Exception]:
@@ -64,11 +64,21 @@ class DefaultConsolidationStrategy(ConsolidationStrategy):
     Default implementation of ConsolidationStrategy.
 
     Uses an injected LLM provider for profile synthesis.
+    Inherits validation and utility methods from BaseConsolidationStrategy.
     """
+
+    def __init__(self, user_id: int):
+        """
+        Initialize strategy with user context.
+
+        Args:
+            user_id: The user ID being consolidated
+        """
+        super().__init__(user_id)
 
     async def consolidate(
         self,
-        user_id: str,
+        user_id: int,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result[UserProfile, Exception]:
@@ -84,6 +94,10 @@ class DefaultConsolidationStrategy(ConsolidationStrategy):
             Result[UserProfile, Exception]: Consolidated profile or error
         """
         try:
+            # Ensure user_id is set (for validation methods)
+            self.user_id = user_id
+
+            # Check if we have meaningful data to consolidate
             if not self._has_data(raw_data):
                 logger.warning(f"No user data available for consolidation: {user_id}")
                 return Result.error(
@@ -216,7 +230,7 @@ IMPORTANT REQUIREMENTS:
 class BaseConsolidationStrategy:
     """Base implementation for consolidation strategies with common functionality."""
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: int):
         """Initialize with user ID."""
         self.user_id = user_id
 

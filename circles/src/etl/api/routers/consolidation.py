@@ -5,6 +5,7 @@ Provides endpoints for triggering and monitoring user profile consolidation
 from all available data sources.
 """
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from enum import Enum
@@ -12,8 +13,10 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core import get_settings
+from ...database import get_async_session
 from ...tasks.celery_app import celery_app
 from ...tasks.consolidation_tasks import consolidate_user_profile_task
 from ..auth import get_current_user, validate_user_id_ownership
@@ -35,7 +38,7 @@ class ConsolidationStatus(str, Enum):
 class ConsolidationRequest(BaseModel):
     """Request to consolidate a user profile."""
 
-    user_id: str
+    user_id: int
     llm_provider: Optional[str] = "anthropic"  # 'anthropic' or 'openai'
 
     class Config:
@@ -43,7 +46,7 @@ class ConsolidationRequest(BaseModel):
 
         schema_extra = {
             "example": {
-                "user_id": "user_123",
+                "user_id": 123,
                 "llm_provider": "anthropic",
             }
         }
@@ -53,7 +56,7 @@ class ConsolidationResponse(BaseModel):
     """Response for consolidation request."""
 
     task_id: str
-    user_id: str
+    user_id: int
     status: ConsolidationStatus
     llm_provider: str
     message: str
@@ -64,7 +67,7 @@ class ConsolidationStatusResponse(BaseModel):
     """Response for consolidation status query."""
 
     task_id: str
-    user_id: str
+    user_id: int
     status: ConsolidationStatus
     llm_provider: str
     progress: Optional[str] = None
@@ -104,12 +107,12 @@ async def trigger_consolidation(
     """
     try:
         # Validate user ownership
-        validate_user_id_ownership(request.user_id, current_user)
+        validate_user_id_ownership(str(request.user_id), current_user)
 
-        if not request.user_id or not request.user_id.strip():
+        if request.user_id <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="user_id is required",
+                detail="user_id must be a positive integer",
             )
 
         if request.llm_provider not in ["anthropic", "openai"]:
@@ -121,7 +124,7 @@ async def trigger_consolidation(
         # Queue Celery task for consolidation
         task = consolidate_user_profile_task.apply_async(
             args=[request.user_id, request.llm_provider],
-            task_id=f"consolidate_{request.user_id}_{int(datetime(UTC).timestamp())}",
+            task_id=f"consolidate_{request.user_id}_{int(datetime.now(UTC).timestamp())}",
         )
 
         logger.info(
@@ -134,7 +137,7 @@ async def trigger_consolidation(
             status=ConsolidationStatus.PENDING,
             llm_provider=request.llm_provider,
             message=f"Consolidation started for user {request.user_id}",
-            timestamp=datetime(UTC),
+            timestamp=datetime.now(UTC),
         )
 
     except HTTPException:
@@ -216,7 +219,7 @@ async def get_consolidation_status(
             progress=progress,
             error=error_msg,
             result=result_data,
-            timestamp=datetime(UTC),
+            timestamp=datetime.now(UTC),
         )
 
     except Exception as e:
@@ -236,6 +239,7 @@ async def get_consolidation_status(
 async def consolidate_sync(
     request: ConsolidationRequest,
     current_user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ) -> Dict[str, Any]:
     """
     Synchronously consolidate a user profile.
@@ -247,6 +251,8 @@ async def consolidate_sync(
 
     Args:
         request: Consolidation request with user_id and llm_provider
+        current_user: Authenticated user from JWT token
+        session: Database session (injected by FastAPI)
 
     Returns:
         Consolidated profile or error details
@@ -256,17 +262,14 @@ async def consolidate_sync(
     """
     try:
         # Validate user ownership
-        validate_user_id_ownership(request.user_id, current_user)
-
-        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-        from sqlalchemy.orm import sessionmaker
+        validate_user_id_ownership(str(request.user_id), current_user)
 
         from ...consolidation.orchestrator import ProfileConsolidationOrchestrator
 
-        if not request.user_id or not request.user_id.strip():
+        if request.user_id <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="user_id is required",
+                detail="user_id must be a positive integer",
             )
 
         if request.llm_provider not in ["anthropic", "openai"]:
@@ -275,53 +278,42 @@ async def consolidate_sync(
                 detail="llm_provider must be 'anthropic' or 'openai'",
             )
 
-        async def _consolidate_async():
-            settings = get_settings()
-            engine = create_async_engine(
-                settings.database_url,
-                pool_size=settings.database_pool_size,
-                max_overflow=settings.database_max_overflow,
-            )
-            async_session = sessionmaker(
-                engine, class_=AsyncSession, expire_on_delete=False
-            )
+        # Create orchestrator with database session
+        orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
+            session, llm_provider_name=request.llm_provider
+        )
 
-            async with async_session() as session:
-                orchestrator = (
-                    ProfileConsolidationOrchestrator.create_with_llm_provider(
-                        session, llm_provider_name=request.llm_provider
-                    )
-                )
-                result = await orchestrator.consolidate_user_profile(request.user_id)
+        # Consolidate with timeout
+        async def consolidate_task():
+            return await orchestrator.consolidate_user_profile(request.user_id)
 
-                if result.is_ok:
-                    profile = result.value
-                    return {
-                        "status": "success",
-                        "user_id": request.user_id,
-                        "profile_id": profile.id,
-                        "message": f"Profile consolidated successfully for user {request.user_id}",
-                    }
-                else:
-                    error = result.error_value
-                    return {
-                        "status": "failed",
-                        "user_id": request.user_id,
-                        "error": str(error),
-                        "message": f"Profile consolidation failed for user {request.user_id}",
-                    }
+        result = await asyncio.wait_for(consolidate_task(), timeout=300)
 
-        # Run consolidation
-        result = await _consolidate_async()
+        if result.is_ok:
+            profile = result.ok_value
+            return {
+                "status": "success",
+                "user_id": request.user_id,
+                "profile_id": profile.id,
+                "message": f"Profile consolidated successfully for user {request.user_id}",
+                "timestamp": datetime.now(UTC),
+            }
+        else:
+            error = result.error_value
+            return {
+                "status": "failed",
+                "user_id": request.user_id,
+                "error": str(error),
+                "message": f"Profile consolidation failed for user {request.user_id}",
+                "timestamp": datetime.now(UTC),
+            }
 
-        if result["status"] != "success":
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result.get("error", "Consolidation failed"),
-            )
-
-        return result
-
+    except asyncio.TimeoutError:
+        logger.error(f"Consolidation timeout for user {request.user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="Consolidation took too long (300s timeout)",
+        )
     except HTTPException:
         raise
     except Exception as e:
