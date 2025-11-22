@@ -248,10 +248,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               title: const Text('Ubicación requerida'),
               content: Text(message),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('Ahora no'),
-                ),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(ctx).pop(true),
                   icon: const Icon(Icons.settings),
@@ -261,7 +257,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             );
           },
         ) ??
-        false;
+        true;
 
     if (shouldOpenSettings) {
       await widget.locationScheduler.openSystemSettings();

@@ -37,6 +37,12 @@ class AppState extends ChangeNotifier {
     _hasShownZeroCirclesModal = true;
   }
 
+  // Active circles are those without expiration or with a future expiration
+  bool get hasActiveCircles {
+    final now = DateTime.now();
+    return _circles.any((c) => c.expiraEn == null || (c.expiraEn?.isAfter(now) ?? false));
+  }
+
   Future<void> initialize() async {
     _loading = true;
     _error = null;

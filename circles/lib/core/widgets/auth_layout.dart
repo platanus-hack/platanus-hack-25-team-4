@@ -27,9 +27,9 @@ class AuthLayout extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary.withOpacity(0.06),
-                AppColors.accent1.withOpacity(0.12),
-                AppColors.secondary.withOpacity(0.08),
+                AppColors.primary.withValues(alpha: 0.06),
+                AppColors.accent1.withValues(alpha: 0.12),
+                AppColors.secondary.withValues(alpha: 0.08),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,

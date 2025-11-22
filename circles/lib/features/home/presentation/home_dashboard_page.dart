@@ -28,7 +28,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
 
   void _maybeShowCreateCircleModal() {
     if (_isModalOpen ||
-        widget.state.circles.isNotEmpty ||
+        widget.state.hasActiveCircles ||
         widget.state.hasShownZeroCirclesModal) {
       return;
     }
