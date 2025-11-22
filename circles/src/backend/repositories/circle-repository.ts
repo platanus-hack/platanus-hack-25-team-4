@@ -1,5 +1,4 @@
-import { PrismaClient as client } from '@prisma/client';
-
+import { prisma } from '../lib/prisma.js';
 import { Circle, CreateCircleInput } from '../types/circle.type.js';
 import { CircleStatus } from '../types/enums.type.js';
 
@@ -12,7 +11,7 @@ export class CircleRepository {
    * Create a new circle
    */
   async create(input: CreateCircleInput): Promise<Circle> {
-    const circle = await client.circle.create({
+    const circle = await prisma.circle.create({
       data: {
         userId: input.userId,
         objective: input.objective,
@@ -32,7 +31,7 @@ export class CircleRepository {
    * Find circle by ID
    */
   async findById(id: string): Promise<Circle | undefined> {
-    const circle = await client.circle.findUnique({
+    const circle = await prisma.circle.findUnique({
       where: { id }
     });
 
@@ -43,7 +42,7 @@ export class CircleRepository {
    * Find all circles for a user
    */
   async findByUser(userId: string): Promise<Circle[]> {
-    const circles = await client.circle.findMany({
+    const circles = await prisma.circle.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' }
     });
@@ -67,7 +66,7 @@ export class CircleRepository {
    * Update circle
    */
   async update(id: string, input: UpdateCircleInput): Promise<Circle | undefined> {
-    const circle = await client.circle.update({
+    const circle = await prisma.circle.update({
       where: { id },
       data: {
         objective: input.objective ?? undefined,
@@ -87,7 +86,7 @@ export class CircleRepository {
    * Delete circle
    */
   async delete(id: string): Promise<void> {
-    await client.circle.delete({
+    await prisma.circle.delete({
       where: { id }
     });
   }
