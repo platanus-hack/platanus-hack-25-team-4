@@ -1,5 +1,5 @@
 import type { UserProfile } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.util.js';
 
 const REDACTED_NAME_TOKEN = '[REDACTED-NAME]';
 const REDACTED_CONTACT_TOKEN = '[REDACTED-CONTACT]';

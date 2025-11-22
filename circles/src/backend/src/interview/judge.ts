@@ -1,7 +1,7 @@
 import { generateClaudeText } from './anthropicClient.js';
 import { generateLlama4ScoutText } from './bedrockLlamaClient.js';
 import type { JudgeDecision, JudgeInput } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.util.js';
 
 export interface InterviewJudge {
   evaluate(input: JudgeInput): Promise<JudgeDecision>;
