@@ -9,16 +9,25 @@ const ensureOwnership = (circle: Circle, userId: string): void => {
 };
 
 class CircleService {
-  create(input: CreateCircleInput): Circle {
+  /**
+   * Create a new circle
+   */
+  async create(input: CreateCircleInput): Promise<Circle> {
     return circleRepository.create(input);
   }
 
-  listByUser(userId: string): Circle[] {
+  /**
+   * List all circles for a user
+   */
+  async listByUser(userId: string): Promise<Circle[]> {
     return circleRepository.findByUser(userId);
   }
 
-  getById(id: string, userId: string): Circle {
-    const circle = circleRepository.findById(id);
+  /**
+   * Get circle by ID (with ownership check)
+   */
+  async getById(id: string, userId: string): Promise<Circle> {
+    const circle = await circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
@@ -26,27 +35,33 @@ class CircleService {
     return circle;
   }
 
-  update(id: string, userId: string, input: UpdateCircleInput): Circle {
-    const circle = circleRepository.findById(id);
+  /**
+   * Update circle (with ownership check)
+   */
+  async update(id: string, userId: string, input: UpdateCircleInput): Promise<Circle> {
+    const circle = await circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
     ensureOwnership(circle, userId);
 
-    const updated = circleRepository.update(id, input);
+    const updated = await circleRepository.update(id, input);
     if (!updated) {
       throw new AppError('Circle not found', 404);
     }
     return updated;
   }
 
-  remove(id: string, userId: string): void {
-    const circle = circleRepository.findById(id);
+  /**
+   * Delete circle (with ownership check)
+   */
+  async remove(id: string, userId: string): Promise<void> {
+    const circle = await circleRepository.findById(id);
     if (!circle) {
       throw new AppError('Circle not found', 404);
     }
     ensureOwnership(circle, userId);
-    circleRepository.delete(id);
+    await circleRepository.delete(id);
   }
 }
 
