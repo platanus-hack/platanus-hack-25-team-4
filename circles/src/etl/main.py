@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api.routers import upload
+from .api.routers import consolidation, upload
 from .core import get_settings
 
 # Create FastAPI app
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(upload.router)
+app.include_router(consolidation.router)
 
 
 @app.get("/")

@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""  # sk-...
 
     # ========================================================================
+    # JWT AUTHENTICATION CONFIGURATION
+    # ========================================================================
+    jwt_secret_key: str = "your-secret-key-change-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 24
+
+    # ========================================================================
     # FILE UPLOAD CONFIGURATION
     # ========================================================================
     upload_dir: str = "/tmp/etl_uploads"
