@@ -141,6 +141,217 @@ Response:
 
 ---
 
+## Circles Endpoints
+
+All circles endpoints require authentication (`Authorization: Bearer <token>`).
+
+### POST /api/circles
+
+**Create a new circle**
+
+Request:
+
+```json
+{
+  "objectiveText": "Looking for tennis partners",
+  "centerLat": 40.7128,
+  "centerLon": -74.0060,
+  "radiusMeters": 5000,
+  "startAt": "2025-11-22T10:00:00Z",
+  "expiresAt": "2025-11-22T18:00:00Z"
+}
+```
+
+Response (201 Created):
+
+```json
+{
+  "circle": {
+    "id": "uuid",
+    "userId": "uuid",
+    "objective": "Looking for tennis partners",
+    "centerLat": 40.7128,
+    "centerLon": -74.0060,
+    "radiusMeters": 5000,
+    "startAt": "2025-11-22T10:00:00Z",
+    "expiresAt": "2025-11-22T18:00:00Z",
+    "status": "active",
+    "createdAt": "2025-11-22T09:00:00Z",
+    "updatedAt": "2025-11-22T09:00:00Z"
+  }
+}
+```
+
+---
+
+### GET /api/circles/me
+
+**List all circles for the authenticated user**
+
+Response:
+
+```json
+{
+  "circles": [
+    {
+      "id": "uuid",
+      "userId": "uuid",
+      "objective": "Looking for tennis partners",
+      "centerLat": 40.7128,
+      "centerLon": -74.0060,
+      "radiusMeters": 5000,
+      "startAt": "2025-11-22T10:00:00Z",
+      "expiresAt": "2025-11-22T18:00:00Z",
+      "status": "active",
+      "createdAt": "2025-11-22T09:00:00Z",
+      "updatedAt": "2025-11-22T09:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/circles/:id
+
+**Get a specific circle by ID**
+
+URL Parameters:
+- `id` - Circle UUID
+
+Response:
+
+```json
+{
+  "circle": {
+    "id": "uuid",
+    "userId": "uuid",
+    "objective": "Looking for tennis partners",
+    "centerLat": 40.7128,
+    "centerLon": -74.0060,
+    "radiusMeters": 5000,
+    "startAt": "2025-11-22T10:00:00Z",
+    "expiresAt": "2025-11-22T18:00:00Z",
+    "status": "active",
+    "createdAt": "2025-11-22T09:00:00Z",
+    "updatedAt": "2025-11-22T09:00:00Z"
+  }
+}
+```
+
+---
+
+### PATCH /api/circles/:id
+
+**Update a circle (partial update)**
+
+URL Parameters:
+- `id` - Circle UUID
+
+Request (all fields optional):
+
+```json
+{
+  "objectiveText": "Updated: Looking for basketball players",
+  "centerLat": 40.7580,
+  "centerLon": -73.9855,
+  "radiusMeters": 3000,
+  "startAt": "2025-11-23T10:00:00Z",
+  "expiresAt": "2025-11-23T18:00:00Z",
+  "status": "paused"
+}
+```
+
+Response:
+
+```json
+{
+  "circle": {
+    "id": "uuid",
+    "userId": "uuid",
+    "objective": "Updated: Looking for basketball players",
+    "centerLat": 40.7580,
+    "centerLon": -73.9855,
+    "radiusMeters": 3000,
+    "startAt": "2025-11-23T10:00:00Z",
+    "expiresAt": "2025-11-23T18:00:00Z",
+    "status": "paused",
+    "createdAt": "2025-11-22T09:00:00Z",
+    "updatedAt": "2025-11-22T12:00:00Z"
+  }
+}
+```
+
+Valid status values: `"active"`, `"paused"`, `"expired"`
+
+---
+
+### DELETE /api/circles/:id
+
+**Delete a circle**
+
+URL Parameters:
+- `id` - Circle UUID
+
+Response: 204 No Content
+
+---
+
+## Users & Profile Endpoints
+
+All user/profile endpoints require authentication (`Authorization: Bearer <token>`).
+
+### GET /api/users/me/profile
+
+**Get the authenticated user's profile**
+
+Response:
+
+```json
+{
+  "profile": {
+    "interests": ["tennis", "hiking", "photography"],
+    "socialStyle": "extroverted and friendly",
+    "boundaries": ["no late night meetups", "public places only"],
+    "availability": "weekends and evenings"
+  }
+}
+```
+
+---
+
+### PUT /api/users/me/profile
+
+**Update the authenticated user's profile**
+
+Request:
+
+```json
+{
+  "interests": ["tennis", "hiking", "photography"],
+  "socialStyle": "extroverted and friendly",
+  "boundaries": ["no late night meetups", "public places only"],
+  "availability": "weekends and evenings"
+}
+```
+
+All fields are optional except `interests` (defaults to empty array).
+
+Response:
+
+```json
+{
+  "profile": {
+    "interests": ["tennis", "hiking", "photography"],
+    "socialStyle": "extroverted and friendly",
+    "boundaries": ["no late night meetups", "public places only"],
+    "availability": "weekends and evenings"
+  }
+}
+```
+
+---
+
 ## Error Responses
 
 All endpoints return errors as:
