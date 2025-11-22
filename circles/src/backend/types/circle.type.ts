@@ -7,11 +7,11 @@ export type Circle = {
   id: string;
   userId: string;
   objective: string;
-  centerLat: number;
-  centerLon: number;
-  radiusMeters: number;
-  startAt: Date;
-  expiresAt: Date;
+  centerLat: number | null;
+  centerLon: number | null;
+  radiusMeters: number | null;
+  startAt: Date | null;
+  expiresAt: Date | null;
   status: CircleStatus;
   createdAt: Date;
   updatedAt: Date;

@@ -2,8 +2,8 @@ import { userRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { PublicUser, UserProfile } from '../types/user.type.js';
 
-const ensureUser = (userId: string): PublicUser => {
-  const user = userRepository.findById(userId);
+const ensureUser = async (userId: string): Promise<PublicUser> => {
+  const user = await userRepository.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
@@ -13,12 +13,18 @@ const ensureUser = (userId: string): PublicUser => {
 };
 
 class ProfileService {
-  getProfile(userId: string): UserProfile | null {
-    return ensureUser(userId).profile;
+  /**
+   * Get user profile
+   */
+  async getProfile(userId: string): Promise<UserProfile | null> {
+    return (await ensureUser(userId)).profile;
   }
 
-  updateProfile(userId: string, profile: UserProfile): UserProfile | null {
-    const updated = userRepository.updateProfile(userId, profile);
+  /**
+   * Update user profile
+   */
+  async updateProfile(userId: string, profile: UserProfile): Promise<UserProfile | null> {
+    const updated = await userRepository.updateProfile(userId, profile);
     if (!updated) {
       throw new AppError('User not found', 404);
     }

@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { Anthropic } from '@anthropic-ai/sdk';
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.util.js';
 
 const defaultModelId = process.env.ANTHROPIC_MODEL_ID ?? 'claude-haiku-4-5';
 

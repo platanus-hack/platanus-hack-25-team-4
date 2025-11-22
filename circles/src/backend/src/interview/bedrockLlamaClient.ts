@@ -1,6 +1,6 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.util.js';
 
 const defaultRegion = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1';
 const defaultModelId =
