@@ -4,6 +4,7 @@ Upload API Routes - FastAPI endpoints for file and data uploads.
 Provides endpoints for uploading all 10 data types with async processing.
 """
 
+import logging
 import secrets
 from datetime import datetime
 from enum import Enum
@@ -14,6 +15,9 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from ...core import SecureFileValidator, get_settings
+from ...tasks.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/upload", tags=["uploads"])
 
@@ -119,6 +123,35 @@ async def _validate_and_save_file(
     return file_path
 
 
+def _queue_celery_task(
+    task_name: str, job_id: str, user_id: int = 1, source_id: int = 1, **kwargs
+) -> None:
+    """
+    Queue a Celery task for processing.
+
+    Args:
+        task_name: Name of the Celery task
+        job_id: Job ID for tracking
+        user_id: User ID (default: 1 for MVP)
+        source_id: Source ID (default: 1 for MVP)
+        **kwargs: Additional arguments to pass to the task
+    """
+    try:
+        celery_app.send_task(
+            task_name,
+            kwargs={
+                "job_id": job_id,
+                "user_id": user_id,
+                "source_id": source_id,
+                **kwargs,
+            },
+        )
+        logger.info(f"Queued task {task_name} with job_id {job_id}")
+    except Exception as e:
+        logger.error(f"Failed to queue task {task_name}: {e}")
+        raise
+
+
 @router.post(
     "/resume", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED
 )
@@ -130,12 +163,19 @@ async def upload_resume(
     _create_job(job_id, "resume", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "resume", job_id, "resumes")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(file, "resume", job_id, "resumes")
+
+        # Queue Celery task for background processing
+        _queue_celery_task(
+            "process_resume",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="resume",
             message=f"Resume '{file.filename}' queued for processing",
             timestamp=datetime.utcnow(),
@@ -143,10 +183,11 @@ async def upload_resume(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Resume upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -163,12 +204,19 @@ async def upload_photo(
     _create_job(job_id, "photo", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "image", job_id, "photos")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(file, "image", job_id, "photos")
+
+        # Queue Celery task for Claude Vision analysis
+        _queue_celery_task(
+            "process_photo",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="photo",
             message=f"Photo '{file.filename}' queued for vision analysis",
             timestamp=datetime.utcnow(),
@@ -176,10 +224,11 @@ async def upload_photo(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Photo upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -196,12 +245,19 @@ async def upload_voice_note(
     _create_job(job_id, "voice_note", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "audio", job_id, "voice_notes")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(file, "audio", job_id, "voice_notes")
+
+        # Queue Celery task for Whisper transcription
+        _queue_celery_task(
+            "process_voice_note",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="voice_note",
             message=f"Voice note '{file.filename}' queued for transcription",
             timestamp=datetime.utcnow(),
@@ -209,10 +265,11 @@ async def upload_voice_note(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Voice note upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -227,12 +284,19 @@ async def upload_calendar(
     _create_job(job_id, "calendar", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "calendar", job_id, "calendars")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(file, "calendar", job_id, "calendars")
+
+        # Queue Celery task for calendar parsing
+        _queue_celery_task(
+            "process_calendar",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="calendar",
             message=f"Calendar file '{file.filename}' queued for processing",
             timestamp=datetime.utcnow(),
@@ -240,10 +304,11 @@ async def upload_calendar(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Calendar upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -258,12 +323,19 @@ async def upload_screenshot(
     _create_job(job_id, "screenshot", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "image", job_id, "screenshots")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(file, "image", job_id, "screenshots")
+
+        # Queue Celery task for vision analysis
+        _queue_celery_task(
+            "process_screenshot",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="screenshot",
             message=f"Screenshot '{file.filename}' queued for analysis",
             timestamp=datetime.utcnow(),
@@ -271,10 +343,11 @@ async def upload_screenshot(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Screenshot upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -289,12 +362,21 @@ async def upload_shared_image(
     _create_job(job_id, "shared_image", UploadStatus.PENDING)
 
     try:
-        await _validate_and_save_file(file, "image", job_id, "shared_images")
-        # TODO: Queue Celery task for processing
+        file_path = await _validate_and_save_file(
+            file, "image", job_id, "shared_images"
+        )
+
+        # Queue Celery task for processing
+        _queue_celery_task(
+            "process_shared_image",
+            job_id,
+            file_path=str(file_path),
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="shared_image",
             message=f"Image '{file.filename}' queued for processing",
             timestamp=datetime.utcnow(),
@@ -302,10 +384,11 @@ async def upload_shared_image(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Shared image upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -329,11 +412,17 @@ async def upload_chat_transcript(
                 detail="Chat transcript must include 'messages' field",
             )
 
-        # TODO: Queue Celery task for processing
+        # Queue Celery task for processing
+        _queue_celery_task(
+            "process_chat_transcript",
+            job_id,
+            transcript_data=data,
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="chat_transcript",
             message="Chat transcript queued for processing",
             timestamp=datetime.utcnow(),
@@ -341,10 +430,11 @@ async def upload_chat_transcript(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Chat transcript upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -364,11 +454,17 @@ async def upload_email(data: Dict[str, Any]) -> UploadResponse:
                 detail="Email data must include 'threads' field",
             )
 
-        # TODO: Queue Celery task for processing
+        # Queue Celery task for processing
+        _queue_celery_task(
+            "process_email",
+            job_id,
+            email_data=data,
+        )
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="email",
             message="Email data queued for processing",
             timestamp=datetime.utcnow(),
@@ -376,10 +472,11 @@ async def upload_email(data: Dict[str, Any]) -> UploadResponse:
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Email upload failed: {e}")
         _update_job(job_id, UploadStatus.FAILED, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {e}",
+            detail="Upload failed",
         )
 
 
@@ -399,11 +496,13 @@ async def upload_social_post(data: Dict[str, Any]) -> UploadResponse:
                 detail="Social post must include 'platform' field",
             )
 
-        # TODO: Queue Celery task for processing
+        # Queue Celery task for processing
+        _queue_celery_task("process_social_post", job_id, post_data=data)
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="social_post",
             message="Social post queued for processing",
             timestamp=datetime.utcnow(),
@@ -434,11 +533,13 @@ async def upload_blog_post(data: Dict[str, Any]) -> UploadResponse:
                 detail="Blog post must include 'markdown' field",
             )
 
-        # TODO: Queue Celery task for processing
+        # Queue Celery task for processing
+        _queue_celery_task("process_blog_post", job_id, blog_data=data)
+        _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
             job_id=job_id,
-            status=UploadStatus.PENDING,
+            status=UploadStatus.PROCESSING,
             data_type="blog_post",
             message="Blog post queued for processing",
             timestamp=datetime.utcnow(),

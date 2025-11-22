@@ -8,12 +8,17 @@ Extracts:
 - Topic extraction (basic via keyword analysis)
 """
 
+import asyncio
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import aiofiles
 from openai import OpenAI
 
 from ..core import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleProcessorResult:
@@ -48,47 +53,69 @@ class VoiceNoteProcessor:
         Returns:
             SimpleProcessorResult with transcription and metadata
         """
-        # Transcribe audio
-        transcription_result = await self._transcribe_audio(file_path)
+        try:
+            # Transcribe audio
+            transcription_result = await self._transcribe_audio(file_path)
 
-        # Extract topics from transcription
-        topics = self._extract_topics(transcription_result.get("text", ""))
+            # Extract topics from transcription
+            topics = self._extract_topics(transcription_result.get("text", ""))
 
-        # Extract sentiment (basic)
-        sentiment = self._analyze_sentiment(transcription_result.get("text", ""))
+            # Extract sentiment (basic)
+            sentiment = self._analyze_sentiment(transcription_result.get("text", ""))
 
-        # Build result
-        content = {
-            "transcription": transcription_result.get("text", ""),
-            "language": transcription_result.get("language", "unknown"),
-            "topics": topics,
-            "sentiment": sentiment,
-        }
+            # Get file stats asynchronously
+            file_size = (await asyncio.to_thread(file_path.stat)).st_size
 
-        metadata = {
-            "file_type": file_path.suffix.lower(),
-            "file_size": file_path.stat().st_size,
-            "confidence": transcription_result.get("confidence", 0.0),
-            "duration_seconds": await self._get_audio_duration(file_path),
-        }
+            # Build result
+            content = {
+                "transcription": transcription_result.get("text", ""),
+                "language": transcription_result.get("language", "unknown"),
+                "topics": topics,
+                "sentiment": sentiment,
+            }
 
-        return SimpleProcessorResult(content=content, metadata=metadata)
+            metadata = {
+                "file_type": file_path.suffix.lower(),
+                "file_size": file_size,
+                "confidence": transcription_result.get("confidence", 0.0),
+                "duration_seconds": await self._get_audio_duration(file_path),
+            }
+
+            return SimpleProcessorResult(content=content, metadata=metadata)
+
+        except Exception as e:
+            logger.error(f"Error processing audio file {file_path.name}: {e}")
+            raise
 
     async def _transcribe_audio(self, file_path: Path) -> Dict[str, Any]:
         """
-        Transcribe audio file using Whisper API.
+        Transcribe audio file using Whisper API (non-blocking).
 
         Returns:
             Dict with transcription, language, and confidence
         """
         try:
-            with open(file_path, "rb") as audio_file:
-                transcript = self.client.audio.transcriptions.create(
+            # Read audio file asynchronously
+            async with aiofiles.open(file_path, "rb") as audio_file:
+                audio_data = await audio_file.read()
+
+            # Define sync function to run in thread pool
+            def _whisper_transcribe():
+                # Create a file-like object from bytes
+                from io import BytesIO
+
+                audio_bytes_file = BytesIO(audio_data)
+                audio_bytes_file.name = file_path.name
+
+                return self.client.audio.transcriptions.create(
                     model="whisper-1",
-                    file=audio_file,
+                    file=audio_bytes_file,
                     language=None,  # Auto-detect language
                     temperature=0,  # More deterministic
                 )
+
+            # Run Whisper API in thread pool to avoid blocking
+            transcript = await asyncio.to_thread(_whisper_transcribe)
 
             return {
                 "text": transcript.text,
@@ -96,6 +123,7 @@ class VoiceNoteProcessor:
                 "confidence": 0.95,  # Whisper doesn't return explicit confidence
             }
         except Exception as e:
+            logger.error(f"Whisper transcription error for {file_path.name}: {e}")
             return {
                 "text": "",
                 "language": "unknown",
@@ -218,15 +246,21 @@ class VoiceNoteProcessor:
     @staticmethod
     async def _get_audio_duration(file_path: Path) -> float:
         """
-        Get audio file duration in seconds.
+        Get audio file duration in seconds (non-blocking).
 
         Returns duration or 0 if unable to determine.
         """
-        try:
-            from pydub import AudioSegment
 
-            audio = AudioSegment.from_file(file_path)
-            return len(audio) / 1000.0  # Convert milliseconds to seconds
-        except Exception:
-            # Unable to determine duration
-            return 0.0
+        def _get_duration():
+            try:
+                from pydub import AudioSegment
+
+                audio = AudioSegment.from_file(file_path)
+                return len(audio) / 1000.0  # Convert milliseconds to seconds
+            except Exception as e:
+                logger.debug(f"Could not determine audio duration: {e}")
+                # Unable to determine duration
+                return 0.0
+
+        # Run audio duration detection in thread pool
+        return await asyncio.to_thread(_get_duration)
