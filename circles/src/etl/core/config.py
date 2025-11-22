@@ -105,6 +105,16 @@ class Settings(BaseSettings):
     batch_size: int = 10
     max_concurrent_tasks: int = 5
 
+    # Photo batch processing
+    photo_batch_max_size: int = 50  # Max photos per batch
+    photo_batch_max_concurrent: int = 30  # Max concurrent VLM API calls
+    photo_batch_timeout_seconds: int = 600  # 10 minutes for batch completion
+
+    # Image optimization
+    image_optimize_enabled: bool = True  # Enable image optimization before VLM
+    image_max_dimension: int = 1568  # Claude Vision optimal size
+    image_compression_quality: int = 85  # JPEG quality (0-100)
+
     # ========================================================================
     # CLEANUP CONFIGURATION
     # ========================================================================

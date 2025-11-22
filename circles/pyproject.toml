@@ -41,4 +41,53 @@ dev = [
     "hypothesis>=6.92.0",         # Property-based testing
     "faker>=22.0.0",              # Test data generation
     "reportlab>=4.0.0",           # PDF generation for test fixtures
+    "ruff>=0.1.0",                # Fast Python linter and formatter
+    "aiosqlite>=0.20.0",          # Async SQLite support for testing
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "dist",
+    "build",
+    ".eggs",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "RUF",    # ruff-specific rules
+    "C90",    # mccabe complexity
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "SIM",    # flake8-simplify
+    "LOG",    # flake8-logging
+    "ASYNC",  # flake8-async
+]
+ignore = [
+    "E501",   # line-too-long (handled by formatter)
+    "W503",   # line-break-before-binary-operator
+    "E203",   # whitespace-before-punctuation
+    "C901",   # complex-statement (too strict)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__
+"tests/**" = ["F841"]     # Allow unused variables in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
