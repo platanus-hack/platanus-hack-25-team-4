@@ -132,15 +132,8 @@ class _CirclesPageState extends State<CirclesPage> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (circle.descripcion != null &&
-                    circle.descripcion!.trim().isNotEmpty)
-                  Text(
-                    circle.descripcion!,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                const SizedBox(height: 4),
                 Text(
-                  'Radio: ${circle.radioKm.toStringAsFixed(0)} km',
+                  'Radio: ${circle.radiusKm.toStringAsFixed(1)} km',
                   style: theme.textTheme.bodySmall,
                 ),
                 if (circle.expiraEn != null)
@@ -243,8 +236,7 @@ class _CirclesPageState extends State<CirclesPage> {
     final query = _searchController.text.trim().toLowerCase();
     List<Circle> list = widget.state.circles.where((c) {
       if (query.isEmpty) return true;
-      return c.objetivo.toLowerCase().contains(query) ||
-          (c.descripcion?.toLowerCase().contains(query) ?? false);
+      return c.objetivo.toLowerCase().contains(query);
     }).toList();
 
     list.sort((a, b) {
@@ -254,7 +246,7 @@ class _CirclesPageState extends State<CirclesPage> {
           final bDate = b.expiraEn ?? DateTime(9999);
           return aDate.compareTo(bDate);
         case 'radio':
-          return a.radioKm.compareTo(b.radioKm);
+          return a.radiusMeters.compareTo(b.radiusMeters);
         case 'creado':
         default:
           return b.creadoEn.compareTo(a.creadoEn);
@@ -329,8 +321,7 @@ class _CircleForm extends StatefulWidget {
 class _CircleFormState extends State<_CircleForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _objetivoController;
-  late TextEditingController _descripcionController;
-  double _radioKm = 10;
+  double _radioKm = 10; // UI displays in km
   DateTime? _expiraEn;
 
   @override
@@ -338,16 +329,14 @@ class _CircleFormState extends State<_CircleForm> {
     super.initState();
     _objetivoController =
         TextEditingController(text: widget.existing?.objetivo ?? '');
-    _descripcionController =
-        TextEditingController(text: widget.existing?.descripcion ?? '');
-    _radioKm = widget.existing?.radioKm ?? 10;
+    // Convert stored meters to km for UI display
+    _radioKm = widget.existing?.radiusKm ?? 10;
     _expiraEn = widget.existing?.expiraEn;
   }
 
   @override
   void dispose() {
     _objetivoController.dispose();
-    _descripcionController.dispose();
     super.dispose();
   }
 
@@ -390,15 +379,6 @@ class _CircleFormState extends State<_CircleForm> {
                 }
                 return null;
               },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descripcionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (opcional)',
-              ),
-              minLines: 2,
-              maxLines: 3,
             ),
             const SizedBox(height: 12),
             Text('Radio de búsqueda: ${_radioKm.toStringAsFixed(0)} km'),
@@ -466,21 +446,18 @@ class _CircleFormState extends State<_CircleForm> {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
     final now = DateTime.now();
+    // Convert km to meters for storage
+    final radiusMeters = _radioKm * 1000;
     final circle = widget.existing?.copyWith(
           objetivo: _objetivoController.text.trim(),
-          descripcion: _descripcionController.text.trim().isEmpty
-              ? null
-              : _descripcionController.text.trim(),
-          radioKm: _radioKm,
+          radiusMeters: radiusMeters,
           expiraEn: _expiraEn,
         ) ??
         Circle(
           id: 'circle-${now.microsecondsSinceEpoch}',
           objetivo: _objetivoController.text.trim(),
-          descripcion: _descripcionController.text.trim().isEmpty
-              ? null
-              : _descripcionController.text.trim(),
-          radioKm: _radioKm,
+          radiusMeters: radiusMeters,
+          startAt: now,
           expiraEn: _expiraEn,
           creadoEn: now,
         );
