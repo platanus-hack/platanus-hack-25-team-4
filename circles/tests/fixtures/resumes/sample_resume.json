@@ -1,0 +1,52 @@
+{
+  "id": "resume_001",
+  "type": "resume",
+  "file_name": "john_doe_resume.pdf",
+  "file_size": 125000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "content": {
+    "full_name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "+1 (555) 123-4567",
+    "location": "San Francisco, CA",
+    "summary": "Experienced software engineer with 5+ years in full-stack development",
+    "experience": [
+      {
+        "company": "Tech Corp",
+        "position": "Senior Software Engineer",
+        "duration": "2020-2024",
+        "responsibilities": [
+          "Led development of microservices architecture",
+          "Managed team of 4 engineers",
+          "Improved system performance by 40%"
+        ]
+      },
+      {
+        "company": "StartUp Inc",
+        "position": "Software Engineer",
+        "duration": "2018-2020",
+        "responsibilities": [
+          "Built core platform features",
+          "Implemented CI/CD pipelines",
+          "Reduced deployment time by 60%"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "institution": "University of California",
+        "degree": "B.S. Computer Science",
+        "year": 2018
+      }
+    ],
+    "skills": [
+      "Python",
+      "JavaScript",
+      "React",
+      "PostgreSQL",
+      "Docker",
+      "AWS",
+      "Kubernetes"
+    ]
+  }
+}
