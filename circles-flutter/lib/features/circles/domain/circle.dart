@@ -2,30 +2,29 @@ class Circle {
   Circle({
     required this.id,
     required this.objetivo,
-    required this.radioKm,
-    this.descripcion,
+    required this.radiusMeters,
     this.expiraEn,
     required this.creadoEn,
   });
 
   final String id;
   final String objetivo;
-  final double radioKm;
-  final String? descripcion;
+  final double radiusMeters; // Stored in meters
   final DateTime? expiraEn;
   final DateTime creadoEn;
 
+  /// Convenience getter to convert meters to kilometers
+  double get radiusKm => radiusMeters / 1000;
+
   Circle copyWith({
     String? objetivo,
-    double? radioKm,
-    String? descripcion,
+    double? radiusMeters,
     DateTime? expiraEn,
   }) {
     return Circle(
       id: id,
       objetivo: objetivo ?? this.objetivo,
-      radioKm: radioKm ?? this.radioKm,
-      descripcion: descripcion ?? this.descripcion,
+      radiusMeters: radiusMeters ?? this.radiusMeters,
       expiraEn: expiraEn ?? this.expiraEn,
       creadoEn: creadoEn,
     );
@@ -34,8 +33,7 @@ class Circle {
   Map<String, dynamic> toJson() => {
         'id': id,
         'objetivo': objetivo,
-        'radioKm': radioKm,
-        'descripcion': descripcion,
+        'radiusMeters': radiusMeters,
         'expiraEn': expiraEn?.toIso8601String(),
         'creadoEn': creadoEn.toIso8601String(),
       };
@@ -44,8 +42,7 @@ class Circle {
     return Circle(
       id: json['id'] as String,
       objetivo: json['objetivo'] as String,
-      radioKm: (json['radioKm'] as num).toDouble(),
-      descripcion: json['descripcion'] as String?,
+      radiusMeters: (json['radiusMeters'] as num).toDouble(),
       expiraEn: json['expiraEn'] != null
           ? DateTime.parse(json['expiraEn'] as String)
           : null,

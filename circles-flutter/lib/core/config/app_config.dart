@@ -19,11 +19,11 @@ class AppConfig {
       final data = jsonDecode(raw) as Map<String, dynamic>;
       return AppConfig(
         baseUrl: (data['baseUrl'] ?? '').toString(),
-        mockAuth: (data['mockAuth'] as bool?) ?? true,
+        mockAuth: (data['mockAuth'] as bool?) ?? false,
       );
     } catch (_) {
       // Fall back to safe defaults if config is missing.
-      return AppConfig(baseUrl: '', mockAuth: true);
+      return AppConfig(baseUrl: '', mockAuth: false);
     }
   }
 }

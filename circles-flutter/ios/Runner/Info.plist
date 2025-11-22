@@ -49,6 +49,8 @@
 	<string>Necesitamos tu ubicación para mostrarte personas cercanas.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Seguimos enviando tu ubicación cada cierto tiempo incluso en segundo plano.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Seguimos enviando tu ubicación cada cierto tiempo incluso en segundo plano.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

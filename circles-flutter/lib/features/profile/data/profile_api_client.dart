@@ -31,7 +31,7 @@ class ProfileApiClient {
         'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
       );
     }
-    final response = await _get(path: '/me', token: token);
+    final response = await _get(path: '/users/me/profile', token: token);
     return _mapProfile(responseBody: response, email: email);
   }
 
@@ -56,8 +56,8 @@ class ProfileApiClient {
         'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
       );
     }
-    final response = await _post(
-      path: '/profile',
+    final response = await _put(
+      path: '/users/me/profile',
       token: token,
       body: {
         'bio': bio,
@@ -100,6 +100,28 @@ class ProfileApiClient {
     http.Response response;
     try {
       response = await _client.post(
+        uri,
+        headers: {
+          ..._headers,
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+    } catch (e) {
+      throw ProfileException('Error de red: $e');
+    }
+    return _parseResponse(response);
+  }
+
+  Future<Map<String, dynamic>> _put({
+    required String path,
+    required String token,
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse(baseUrl).resolve(path);
+    http.Response response;
+    try {
+      response = await _client.put(
         uri,
         headers: {
           ..._headers,

@@ -1,14 +1,22 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-
-import { authService } from '../services/auth-service.js';
-import { AppError } from '../types/app-error.type.js';
 import { PrismaClient } from '@prisma/client';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+
+import { AuthService } from '../services/auth-service.js';
+import { AppError } from '../types/app-error.type.js';
 
 const prisma = new PrismaClient();
 
 describe('authService', () => {
+  let authService: AuthService;
+
   beforeEach(async () => {
+    authService = new AuthService();
     // Clean up database before each test
+    await prisma.magicLinkToken.deleteMany({});
+    await prisma.user.deleteMany({});
+  });
+
+  afterEach(async () => {
     await prisma.magicLinkToken.deleteMany({});
     await prisma.user.deleteMany({});
   });

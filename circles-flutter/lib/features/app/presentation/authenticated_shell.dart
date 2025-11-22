@@ -17,7 +17,7 @@ class AuthenticatedShell extends StatefulWidget {
   });
 
   final AuthSession session;
-  final VoidCallback onLogout;
+  final Future<void> Function() onLogout;
 
   @override
   State<AuthenticatedShell> createState() => _AuthenticatedShellState();
@@ -52,28 +52,16 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
         state: _state,
         onOpenProfile: _openProfile,
       ),
-      CirclesPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
-      MatchesPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
-      ChatsPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
+      CirclesPage(state: _state, onOpenProfile: _openProfile),
+      MatchesPage(state: _state, onOpenProfile: _openProfile),
+      ChatsPage(state: _state, onOpenProfile: _openProfile),
     ];
     return Scaffold(
       body: Row(
         children: [
           if (isWide) _NavRail(index: _index, onSelect: _onSelect),
           Expanded(
-            child: IndexedStack(
-              index: _index,
-              children: pages,
-            ),
+            child: IndexedStack(index: _index, children: pages),
           ),
         ],
       ),
@@ -120,10 +108,8 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
   void _openProfile() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProfilePage(
-          session: widget.session,
-          onLogout: widget.onLogout,
-        ),
+        builder: (_) =>
+            ProfilePage(session: widget.session, onLogout: widget.onLogout),
       ),
     );
   }

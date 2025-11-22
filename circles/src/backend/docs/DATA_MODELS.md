@@ -12,6 +12,8 @@ Represents a user account in the system.
   lastName: string | null
   passwordHash: string | null   // Optional (null for magic link only)
   profile: UserProfile | null   // JSON
+  centerLat: number | null      // User's current latitude (center of circles)
+  centerLon: number | null      // User's current longitude (center of circles)
   createdAt: Date
   updatedAt: Date
 }
@@ -55,22 +57,24 @@ Temporary tokens for passwordless authentication.
 
 ## Circle
 
-Represents a group or community.
+Represents a geographic circle centered at the user's current position with a given radius.
+The center location is always the user's current position (centerLat/centerLon from User model).
 
 ```typescript
 {
   id: string                    // UUID, primary key
   userId: string                // Creator user ID
-  name: string
-  description: string
-  objective: string
-  status: CircleStatus          // "active" | "inactive" | "archived"
-  latitude: number              // Optional geolocation
-  longitude: number             // Optional geolocation
+  objective: string             // Goal or purpose of the circle
+  radiusMeters: number          // Radius in meters from user's center position
+  status: CircleStatus          // "active" | "paused" | "expired"
+  startAt: Date                 // When the circle becomes active
+  expiresAt: Date               // When the circle expires
   createdAt: Date
   updatedAt: Date
 }
 ```
+
+**Note:** Position is not stored in Circle. Instead, it uses the User's `centerLat` and `centerLon` fields.
 
 ---
 
@@ -150,17 +154,17 @@ Represents an AI agent personality/rules.
 **CircleStatus:**
 
 - `active`
-- `inactive`
-- `archived`
+- `paused`
+- `expired`
 
 **MatchType:**
 
-- `direct`
-- `indirect`
-- `recommendation`
+- `match`
+- `soft_match`
 
 **MatchStatus:**
 
-- `pending`
-- `accepted`
-- `rejected`
+- `pending_accept`
+- `active`
+- `declined`
+- `expired`
