@@ -4,11 +4,7 @@ import '../../app/app_state.dart';
 import '../domain/chat_message.dart';
 
 class ChatThreadPage extends StatefulWidget {
-  const ChatThreadPage({
-    super.key,
-    required this.chatId,
-    required this.state,
-  });
+  const ChatThreadPage({super.key, required this.chatId, required this.state});
 
   final String chatId;
   final AppState state;
@@ -88,11 +84,16 @@ class _MessageList extends StatelessWidget {
       itemBuilder: (context, index) {
         final message = messages[messages.length - 1 - index];
         final isMine = message.senderId.contains('@');
-        final align =
-            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+        final colorScheme = Theme.of(context).colorScheme;
+        final align = isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start;
         final bg = isMine
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-            : Colors.white;
+            ? colorScheme.secondary.withValues(alpha: 0.18)
+            : colorScheme.tertiaryContainer.withValues(alpha: 0.7);
+        final textColor = isMine
+            ? colorScheme.onSecondaryContainer
+            : colorScheme.onTertiaryContainer;
         return Column(
           crossAxisAlignment: align,
           children: [
@@ -102,7 +103,7 @@ class _MessageList extends StatelessWidget {
                 color: bg,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(message.text),
+              child: Text(message.text, style: TextStyle(color: textColor)),
             ),
             const SizedBox(height: 4),
             Text(
@@ -147,6 +148,7 @@ class _Composer extends StatelessWidget {
             const SizedBox(width: 8),
             IconButton(
               onPressed: () => _submit(controller.text),
+              color: Theme.of(context).colorScheme.secondary,
               icon: const Icon(Icons.send),
             ),
           ],

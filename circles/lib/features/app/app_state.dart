@@ -30,6 +30,13 @@ class AppState extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
+  // Session-scoped UI flags (not persisted)
+  bool _hasShownZeroCirclesModal = false;
+  bool get hasShownZeroCirclesModal => _hasShownZeroCirclesModal;
+  void markZeroCirclesModalShown() {
+    _hasShownZeroCirclesModal = true;
+  }
+
   Future<void> initialize() async {
     _loading = true;
     _error = null;

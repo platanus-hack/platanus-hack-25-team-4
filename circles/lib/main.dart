@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'core/config/app_config.dart';
 import 'core/storage/credentials_storage.dart';
@@ -69,7 +71,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late AuthSession? _session = widget.initialSession;
   UserProfile? _profile;
   bool _loadingProfile = false;
@@ -78,6 +80,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_session != null) {
       _startLocationReporting(_session!);
       _loadProfile(_session!);
@@ -112,8 +115,157 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && _session != null) {
+      _recheckBackgroundPermission();
+    }
+  }
+
   Future<void> _startLocationReporting(AuthSession session) async {
-    await widget.locationScheduler.scheduleReporting(session);
+    if (kIsWeb) {
+      _maybeShowWebLimitation();
+    } else {
+      final currentPermission = await Geolocator.checkPermission();
+      if (currentPermission != LocationPermission.always) {
+        final proceed = await _showBackgroundDisclosure();
+        if (!proceed) {
+          await _handleLocationPermissionStatus(LocationPermissionState.denied);
+          return;
+        }
+      }
+    }
+
+    final permissionStatus = await widget.locationScheduler.scheduleReporting(
+      session,
+    );
+    if (!mounted) return;
+    await _handleLocationPermissionStatus(permissionStatus);
+  }
+
+  void _maybeShowWebLimitation() {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'En la web no podemos rastrear en segundo plano. Usa la app móvil '
+          'para enviar ubicación continua.',
+        ),
+        duration: Duration(seconds: 6),
+      ),
+    );
+  }
+
+  Future<void> _recheckBackgroundPermission() async {
+    final status = await _currentPermissionStatus();
+    if (!mounted) return;
+    if (status == LocationPermissionState.granted) {
+      final session = _session;
+      if (session != null) {
+        await widget.locationScheduler.scheduleReporting(session);
+      }
+      return;
+    }
+    await _handleLocationPermissionStatus(status);
+  }
+
+  Future<LocationPermissionState> _currentPermissionStatus() async {
+    if (kIsWeb) return LocationPermissionState.granted;
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled) return LocationPermissionState.serviceDisabled;
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.always) {
+      return LocationPermissionState.granted;
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return LocationPermissionState.deniedForever;
+    }
+    return LocationPermissionState.denied;
+  }
+
+  Future<bool> _showBackgroundDisclosure() async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              title: const Text('Activa ubicación siempre'),
+              content: const Text(
+                'Para mantenerte protegido y enviar tu ubicación aunque la app '
+                'esté cerrada, necesitamos permiso de ubicación en segundo '
+                'plano. Sin esto, la app no puede funcionar correctamente.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Continuar'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _handleLocationPermissionStatus(
+    LocationPermissionState status,
+  ) async {
+    if (!mounted || status == LocationPermissionState.granted) return;
+
+    String message;
+    switch (status) {
+      case LocationPermissionState.denied:
+        message =
+            'Activa la ubicación siempre para seguir enviando ubicaciones incluso en segundo plano.';
+        break;
+      case LocationPermissionState.deniedForever:
+        message =
+            'Debes habilitar la ubicación siempre desde ajustes para que la app funcione.';
+        break;
+      case LocationPermissionState.serviceDisabled:
+        message = 'Activa los servicios de ubicación para continuar.';
+        break;
+      case LocationPermissionState.granted:
+        return;
+    }
+
+    final shouldOpenSettings = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              title: const Text('Ubicación requerida'),
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Ahora no'),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Abrir ajustes'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (shouldOpenSettings) {
+      await widget.locationScheduler.openSystemSettings();
+    }
   }
 
   Future<void> _loadProfile(AuthSession session) async {
@@ -189,10 +341,7 @@ class _MyAppState extends State<MyApp> {
         onLogout: _handleLogout,
       );
     }
-    return AuthenticatedShell(
-      session: session,
-      onLogout: _handleLogout,
-    );
+    return AuthenticatedShell(session: session, onLogout: _handleLogout);
   }
 }
 
@@ -201,11 +350,7 @@ class _ProfileGateLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -218,7 +363,7 @@ class _ProfileGateError extends StatelessWidget {
 
   final String message;
   final VoidCallback onRetry;
-  final VoidCallback onLogout;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +372,9 @@ class _ProfileGateError extends StatelessWidget {
         title: const Text('Tu perfil'),
         actions: [
           IconButton(
-            onPressed: onLogout,
+            onPressed: () {
+              onLogout();
+            },
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
           ),
@@ -246,10 +393,9 @@ class _ProfileGateError extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 message,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.error),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
