@@ -14,9 +14,9 @@ TypeScript requirements:
 Current local scripts (from `circles/src/backend`, after `npm install`):
 
 - `npm run dev` – start the API in watch mode.
-- `npm run typecheck` – run `tsc --noEmit` to ensure zero TS errors.
+- `npm run typecheck` – run `tsc --noEmit` (via `tsconfig.test.json`) to ensure zero TS errors.
 - `npm run build` – emit compiled output to `dist`.
-- `npm test` – placeholder until tests are added.
+- `npm test` – Vitest suite for services.
 
 ---
 
@@ -35,16 +35,8 @@ Current local scripts (from `circles/src/backend`, after `npm install`):
 ## 1. Database & Persistence Layer
 
 - [ ] Provision PostgreSQL instance and enable PostGIS extension
-- [ ] Decide embedding storage strategy (`vector` extension in Postgres vs. external vector store)
-- [ ] Initialize Prisma and connect to Postgres
-- [ ] Model entities in Prisma schema:
-  - [ ] `User`
-  - [ ] `AgentPersona`
-  - [ ] `Circle`
-  - [ ] `Match`
-  - [ ] `Chat`
-  - [ ] `Message`
-  - [ ] (Optional MVP) `Notification`, `LocationUpdate`, `Profile`/`Preferences`
+- [ ] Initialize Prisma and connect to Postgres  
+  - Current schema at `circles/src/backend/prisma/schema.prisma` defines `User`, `AgentPersona`, `Circle` (no embeddings stored), `Match`, `Chat`, `Message`, enums for statuses/types.
 - [ ] Add indexes & constraints:
   - [ ] FKs between all related tables
   - [ ] Unique constraints (e.g., user email, one `AgentPersona` per user)
@@ -118,9 +110,7 @@ Current local scripts (from `circles/src/backend`, after `npm install`):
 - [ ] Implement `POST /circles` with Zod validation:
   - [ ] `objective_text`, `radius_m`, `start_at`, `expires_at`, optional “move with user” flag
 - [ ] On create:
-  - [ ] Compute `objective_embedding`
-  - [ ] Store circle record in `circle_db`
-  - [ ] Register/update geo index entry
+  - [ ] Store circle record in `circle_db` and geo index (no embeddings stored currently)
 - [ ] Implement:
   - [ ] `GET /circles/me` – list user’s circles
   - [ ] `GET /circles/:id` – fetch one circle
@@ -164,14 +154,8 @@ Current local scripts (from `circles/src/backend`, after `npm install`):
 
 ### 6.2 Semantic Matching
 
-- [ ] Implement embedding retrieval:
-  - [ ] `objective_text` → embedding (on circle create/update)
-  - [ ] `interests` → aggregated embedding (from persona)
-- [ ] Implement similarity calculations:
-  - [ ] `objective_similarity = cos_sim(emb(A.obj), emb(B.obj))`
-  - [ ] `interest_similarity_A = cos_sim(emb(A.obj), emb(B.interests))`
-  - [ ] `interest_similarity_B = cos_sim(emb(B.obj), emb(A.interests))`
-- [ ] Implement classification logic:
+- [ ] (Future) implement embedding retrieval when semantic matching is introduced
+- [ ] Implement classification logic once similarity signals are available:
   - [ ] **Match candidate**: `objective_similarity ≥ HARD_MATCH_THRESHOLD`
   - [ ] **Soft match candidate**: `objective_similarity < HARD_MATCH_THRESHOLD` and `max(interest_similarity_A, interest_similarity_B) ≥ SOFT_MATCH_THRESHOLD`
   - [ ] Configurable thresholds via env/Config
