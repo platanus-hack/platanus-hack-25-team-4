@@ -1,16 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { Circle, CircleStatus } from '../types/circle.type.js';
-
-export type CreateCircleInput = {
-  userId: string;
-  objectiveText: string;
-  centerLat: number;
-  centerLon: number;
-  radiusMeters: number;
-  startAt: Date;
-  expiresAt: Date;
-};
+import { Circle, CreateCircleInput } from '../types/circle.type.js';
+import { CircleStatus } from '../types/enums.type.js';
 
 export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>> & {
   status?: CircleStatus;
@@ -24,13 +15,13 @@ export class CircleRepository {
     const circle: Circle = {
       id: randomUUID(),
       userId: input.userId,
-      objectiveText: input.objectiveText,
+      objective: input.objective,
       centerLat: input.centerLat,
       centerLon: input.centerLon,
       radiusMeters: input.radiusMeters,
       startAt: input.startAt,
       expiresAt: input.expiresAt,
-      status: 'active',
+      status: CircleStatus.ACTIVE,
       createdAt: now,
       updatedAt: now
     };

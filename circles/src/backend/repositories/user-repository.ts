@@ -1,13 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { User, UserProfile } from '../types/user.type.js';
-
-export type CreateUserInput = {
-  email: string;
-  passwordHash: string;
-  firstName?: string;
-  lastName?: string;
-};
+import { User, UserProfile, CreateUserInput } from '../types/user.type.js';
 
 const usersById = new Map<string, User>();
 const usersByEmail = new Map<string, User>();
@@ -15,13 +8,16 @@ const usersByEmail = new Map<string, User>();
 export class UserRepository {
   create(input: CreateUserInput): User {
     const id = randomUUID();
+    const now = new Date();
     const newUser: User = {
       id,
       email: input.email.toLowerCase(),
-      ...(input.firstName ? { firstName: input.firstName } : {}),
-      ...(input.lastName ? { lastName: input.lastName } : {}),
+      firstName: input.firstName ?? null,
+      lastName: input.lastName ?? null,
       passwordHash: input.passwordHash,
-      profile: { interests: [] }
+      profile: input.profile ?? { interests: [] },
+      createdAt: now,
+      updatedAt: now
     };
 
     usersById.set(id, newUser);
@@ -43,7 +39,7 @@ export class UserRepository {
       return undefined;
     }
 
-    const updated: User = { ...existing, profile };
+    const updated: User = { ...existing, profile, updatedAt: new Date() };
     usersById.set(id, updated);
     usersByEmail.set(updated.email, updated);
     return updated;

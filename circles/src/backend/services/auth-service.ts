@@ -3,10 +3,9 @@ import * as bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import { env } from '../config/env.js';
-import type { CreateUserInput } from '../repositories/user-repository.js';
 import { userRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
-import { AuthPayload, PublicUser, User } from '../types/user.type.js';
+import { AuthPayload, PublicUser, User, CreateUserInput } from '../types/user.type.js';
 
 export type SignupInput = {
   email: string;

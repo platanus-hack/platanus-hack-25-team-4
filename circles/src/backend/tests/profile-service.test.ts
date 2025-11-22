@@ -15,7 +15,8 @@ describe('profileService', () => {
     const signup = authService.signup({ email, password });
 
     const initialProfile = profileService.getProfile(signup.user.id);
-    expect(initialProfile.interests).toEqual([]);
+    expect(initialProfile).not.toBeNull();
+    expect(initialProfile!.interests).toEqual([]);
 
     const updatedProfile = {
       interests: ['ai', 'tennis'],
@@ -28,6 +29,7 @@ describe('profileService', () => {
     expect(saved).toEqual(updatedProfile);
 
     const fetched = profileService.getProfile(signup.user.id);
+    expect(fetched).not.toBeNull();
     expect(fetched).toEqual(updatedProfile);
   });
 });

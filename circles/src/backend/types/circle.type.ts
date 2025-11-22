@@ -1,9 +1,12 @@
-export type CircleStatus = 'active' | 'paused' | 'expired';
+import { CircleStatus } from './enums.type.js';
 
+/**
+ * Circle model matching Prisma schema
+ */
 export type Circle = {
   id: string;
   userId: string;
-  objectiveText: string;
+  objective: string;
   centerLat: number;
   centerLon: number;
   radiusMeters: number;
@@ -12,4 +15,35 @@ export type Circle = {
   status: CircleStatus;
   createdAt: Date;
   updatedAt: Date;
+};
+
+/**
+ * Circle creation input
+ */
+export type CreateCircleInput = {
+  userId: string;
+  objective: string;
+  centerLat: number;
+  centerLon: number;
+  radiusMeters: number;
+  startAt: Date;
+  expiresAt: Date;
+  status?: CircleStatus;
+};
+
+/**
+ * Circle update input
+ */
+export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>>;
+
+/**
+ * Circle with user details (for responses)
+ */
+export type CircleWithUser = Circle & {
+  user?: {
+    id: string;
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  };
 };

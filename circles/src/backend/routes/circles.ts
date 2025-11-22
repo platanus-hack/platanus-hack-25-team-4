@@ -37,7 +37,7 @@ circlesRouter.post(
     const parsed = createCircleSchema.parse(req.body);
     const circle = circleService.create({
       userId: req.user.userId,
-      objectiveText: parsed.objectiveText,
+      objective: parsed.objectiveText,
       centerLat: parsed.centerLat,
       centerLon: parsed.centerLon,
       radiusMeters: parsed.radiusMeters,
@@ -98,11 +98,11 @@ circlesRouter.patch(
       return;
     }
 
-    const parsed = updateCircleSchema.parse(req.body);
+    const parsed = circleBaseSchema.parse(req.body);
     const updateInput: UpdateCircleInput = {};
 
     if (parsed.objectiveText !== undefined) {
-      updateInput.objectiveText = parsed.objectiveText;
+      updateInput.objective = parsed.objectiveText;
     }
     if (parsed.centerLat !== undefined) {
       updateInput.centerLat = parsed.centerLat;
@@ -118,9 +118,6 @@ circlesRouter.patch(
     }
     if (parsed.expiresAt !== undefined) {
       updateInput.expiresAt = new Date(parsed.expiresAt);
-    }
-    if (parsed.status !== undefined) {
-      updateInput.status = parsed.status;
     }
 
     const circle = circleService.update(circleId, req.user.userId, updateInput);

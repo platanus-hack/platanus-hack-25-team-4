@@ -13,11 +13,11 @@ const ensureUser = (userId: string): PublicUser => {
 };
 
 class ProfileService {
-  getProfile(userId: string): UserProfile {
+  getProfile(userId: string): UserProfile | null {
     return ensureUser(userId).profile;
   }
 
-  updateProfile(userId: string, profile: UserProfile): UserProfile {
+  updateProfile(userId: string, profile: UserProfile): UserProfile | null {
     const updated = userRepository.updateProfile(userId, profile);
     if (!updated) {
       throw new AppError('User not found', 404);
