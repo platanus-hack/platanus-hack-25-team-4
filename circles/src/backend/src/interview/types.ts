@@ -4,7 +4,8 @@ export type OwnerTurnGoal =
   | 'open_and_ask_one_focused_question'
   | 'clarify_objective'
   | 'clarify_availability'
-  | 'decide_and_close';
+  | 'decide_and_close'
+  | 'notify_user';
 
 export interface MotivationsAndGoals {
   primary_goal: string;
@@ -105,4 +106,3 @@ export interface NotificationPayload {
   visitor_user_id: string;
   notification_text: string;
 }
-

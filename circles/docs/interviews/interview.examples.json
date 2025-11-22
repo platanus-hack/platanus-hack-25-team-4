@@ -1,0 +1,603 @@
+[
+  {
+    "scenario_id": "job_frontend_hiring",
+    "description": "Desarrolladora front-end buscando trabajo se cruza con tech lead que está contratando para startup B2B.",
+    "mission_id": "showcase-job_frontend_hiring-0-mialyymi",
+    "owner_profile": {
+      "id": "user-camila-dev-jobseeker",
+      "display_name": "Camila, dev front-end",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar pega como desarrolladora front-end en Santiago en un equipo chico donde pueda aprender rápido y tener impacto real."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Hola, soy Camila, dev front-end buscando equipo piola en Santiago donde pueda meter mano en producto y aprender harto."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-francisco-tech-lead-hiring",
+      "display_name": "Francisco, tech lead",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer desarrolladores front-end y full-stack en Santiago para posibles contrataciones y proyectos freelance en una startup SaaS B2B."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Hola, soy Fran, tech lead en una startup B2B en Santiago; ando buscando devs motivados para sumarse a proyectos interesantes."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-job-1",
+      "objective_text": "Encontrar pega como dev front-end en una startup B2B en Santiago donde pueda aprender y aportar rápido.",
+      "radius_m": 800,
+      "time_window": "tardes de esta semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 600
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola, soy [REDACTED-NAME], dev front-end buscando equipo piola en Santiago donde pueda meter mano en producto y aprender harto. ¿Estás trabajando en algún proyecto SaaS B2B en Santiago donde necesiten ayuda con front-end?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola, Camila! Me parece interesante tu búsqueda. Estoy involucrado en una startup SaaS B2B en Santiago y estamos buscando desarrolladores front-end y full-stack. ¿Te gustaría saber un poco más sobre lo que estamos haciendo?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me encantaría saber más sobre tu proyecto SaaS B2B. ¿En qué tecnologías front-end están trabajando y qué tipo de desafíos están enfrentando en ese sentido?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Estamos trabajando con React y Redux, y también explorando otras opciones como Vue.js. Nuestros mayores desafíos están relacionados con la escalabilidad y la optimización del rendimiento de nuestra aplicación, sobre todo en la parte de front-end. ¿Te has enfrentado a desafíos similares en tus proyectos anteriores?"
+      },
+      {
+        "speaker": "owner",
+        "message": "¿Estás buscando alguien para integrarlo full-time o freelance? ¿Y en términos de tiempo, estás pensando en alguien que pueda arrancar pronto o hay cierta flexibilidad en ese sentido?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Estamos buscando alguien para integrarlo full-time, con posibilidad de freelance también dependiendo del proyecto. En términos de tiempo, estamos bastante urgidos, pero también queremos asegurarnos de encontrar a la persona adecuada, así que no estamos apurados. ¿Te gustaría saber más sobre el equipo y la cultura de la startup?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": true,
+      "notification_text": "¿Te parece buena opción reunirse con este tech lead de startup SaaS B2B que busca dev front-end y está a solo 600 metros de ti?"
+    }
+  },
+  {
+    "scenario_id": "job_pm_recruiter",
+    "description": "Product manager en transición que quiere entender oportunidades se cruza con recruiter tech que busca perfiles.",
+    "mission_id": "showcase-job_pm_recruiter-1-mialyymj",
+    "owner_profile": {
+      "id": "user-valentina-product-manager-jobseeker",
+      "display_name": "Valentina, PM en transición",
+      "motivations_and_goals": {
+        "primary_goal": "Conectar con founders y leads de producto en Santiago para explorar oportunidades como product manager en etapa early."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-jorge-hr-recruiter",
+      "display_name": "Jorge, recruiter tech",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer perfiles tech en Chile (devs, PMs, data) interesados en cambiarse de pega o en proyectos part-time."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-job-2",
+      "objective_text": "Conectar con gente que conozca oportunidades de PM early stage en Santiago para entender fit y procesos.",
+      "radius_m": 1000,
+      "time_window": "tardes y noches de esta semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 750
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Jorge, veo que eres un reclutador tech y estoy conectando con gente que está buscando oportunidades como PM en etapa early en Santiago. ¿Te has encontrado con perfiles de PMs que estén buscando nuevos desafíos en startups en crecimiento?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Valentina, gracias por conectar! Me parece interesante tu búsqueda, aunque mi foco es más bien encontrar perfiles tech que estén buscando cambiarse de pega o proyectos part-time. ¿Has conectado con alguien que esté en una posición similar a la tuya y busque oportunidades en startups en crecimiento?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que tu enfoque es más amplio, pero estoy buscando conectar con founders o leads de producto que puedan estar buscando un PM para sus startups en crecimiento. ¿Te has topado con alguien en tu búsqueda que esté en una posición similar a la mía y pueda estar interesado en explorar oportunidades como PM en etapa early?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Entiendo que estás buscando conectar con founders o leads de producto, pero no tengo contactos directos en este momento que se ajusten a lo que buscas. Sin embargo, puedo ofrecerte una sugerencia, ¿has considerado publicar tu búsqueda en grupos de LinkedIn o redes sociales especializadas en tech en Santiago? De esa manera, podrías ampliar tu alcance y conectar con personas que estén en una posición similar a la tuya."
+      },
+      {
+        "speaker": "owner",
+        "message": "Me parece una buena idea publicar mi búsqueda en grupos de LinkedIn o redes sociales, pero me gustaría explorar si hay alguien en tu red que pueda estar interesado en conectar. ¿Estás disponible para hablar más adelante esta semana, o hay algún momento en particular que te sea más conveniente para conversar?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Estoy disponible para conversar durante la semana, aunque hoy y mañana tengo reuniones todo el día. ¿Te parece si seguimos conversando por aquí y vemos si podemos ayudarnos mutuamente?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "gaming_fps_partners",
+    "description": "Jugador de FPS buscando partners para rankear se cruza con fan de juegos de pelea que también juega online.",
+    "mission_id": "showcase-gaming_fps_partners-2-mialyymj",
+    "owner_profile": {
+      "id": "user-nico-gamer-fps",
+      "display_name": "Nico, gamer FPS",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar gente buena onda para rankear en Valorant y CS los fines de semana, idealmente de Santiago para eventualmente armar team LAN."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Wena, ¿también jugai Valorant/CS? Ando buscando dúo/trío para rankear sin tanto tilt."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-rodrigo-gamer-fighting",
+      "display_name": "Rodrigo, juegos de pelea",
+      "motivations_and_goals": {
+        "primary_goal": "Armar grupo de gente en Santiago que juegue Street Fighter y Smash para entrenar y hacer torneos chicos los fines de semana."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-games-1",
+      "objective_text": "Encontrar dúo/trío buena onda para rankear Valorant/CS en las noches sin tanto tilt.",
+      "radius_m": 5000,
+      "time_window": "noches de esta semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 1200
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Wena, ¿también jugai Valorant/CS? Ando buscando dúo/trío para rankear sin tanto tilt en las noches de esta semana. ¿Te interesa subir ranks en alguno de esos?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "No soy fan de Valorant ni CS, la verdad. Me gusta más el Street Fighter y el Smash, ¿no hay alguien más aficionado a esos juegos por acá? Estoy buscando armar un grupo para entrenar y hacer pequeños torneos los fines de semana."
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que estás más en juegos de pelea, pero igual busco gente buena onda para jugar en las noches. ¿Te parece si hablamos por Discord o algo para ver si podemos coincidir en algún juego? ¿Conoces a alguien que esté en Santiago y juegue Valorant o CS?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "No tengo idea, la verdad, no conozco a mucha gente que juegue Valorant o CS por acá. Mi enfoque es más en juegos de pelea, así que no creo que sea la mejor opción para lo que buscas. ¿Hay algún grupo o meetup de gamers en Santiago que sepas?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que no estás en juegos de disparos, pero me interesa saber si estás disponible para jugar online en las noches de esta semana. ¿Hay algún día o horario en que suelas estar libre para jugar? ¿Conoces a alguien en Santiago que esté interesado en Valorant o CS y pueda ser buena onda para jugar?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "No creo que sea buena idea jugar online conmigo, ya que mi nivel en juegos de disparos es muy bajo. Mi idea es armar un grupo de gente que juegue Street Fighter y Smash aquí en Santiago, ¿tienes amigos o conocidos que les gusten esos juegos?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "books_reading_match",
+    "description": "Organizador de club de lectura en Ñuñoa se cruza con persona interesada en intercambio de libros físicos.",
+    "mission_id": "showcase-books_reading_match-3-mialyymj",
+    "owner_profile": {
+      "id": "user-alejandro-bookclub",
+      "display_name": "Alejandro, club de lectura",
+      "motivations_and_goals": {
+        "primary_goal": "Armar un club de lectura en Ñuñoa para leer novelas contemporáneas y no-ficción sobre psicología y cultura, con reuniones semanales."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Hola, tengo ganas de armar un club de lectura piola en Ñuñoa, ¿te tinca compartir qué andas leyendo últimamente?"
+      }
+    },
+    "visitor_profile": {
+      "id": "user-constanza-book-exchange",
+      "display_name": "Constanza, intercambio de libros",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer personas que quieran intercambiar libros físicos en Santiago, especialmente novelas, ciencia ficción y filosofía."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-books-1",
+      "objective_text": "Armar club de lectura piola en Ñuñoa para leer novelas contemporáneas y no-ficción una vez por semana.",
+      "radius_m": 1000,
+      "time_window": "fines de semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 400
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola, tengo ganas de armar un club de lectura en Ñuñoa, ¿te tinca compartir qué andas leyendo últimamente?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me encanta la idea de un club de lectura, aunque yo más bien busco gente con quien intercambiar libros que he leído y no necesito tener en mi estantería. Me gustan las novelas, la ciencia ficción y la filosofía, ¿te parece que podría haber algún punto en común con tu club?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me parece interesante lo de intercambiar libros, pero mi idea es más enfocada en leer y discutir juntos en un club de lectura, no tanto en el intercambio en sí. ¿Te gustaría participar en algo así, o prefieres más bien el intercambio directo de libros? ¿Qué tipo de novelas te gustan?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me gustan las novelas contemporáneas y la ciencia ficción más especulativa, como las de Ursula K. Le Guin. Entiendo que tu enfoque es distinto, pero creo que podría ser interesante conocer más sobre tu club y ver si hay algún libro que se lea en común. ¿Cómo crees que podríamos hacer para que los miembros compartan sus libros?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me parece genial que te gusten las novelas contemporáneas y la ciencia ficción, podría ser un buen punto de partida para encontrar libros que nos gusten a ambos. ¿Qué días de la semana te resultan más cómodos para leer o discutir sobre libros? ¿Te parece que podríamos encontrar algún libro que nos interese a ambos para empezar?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me parece genial que te gusten las novelas contemporáneas y la ciencia ficción, podría ser un buen punto de partida para encontrar libros que nos gusten a ambos. ¿Qué días de la semana te resultan más cómodos para leer o discutir sobre libros? ¿Te parece que podríamos encontrar algún libro que nos interese a ambos para empezar?\n\nLa verdad es que estoy bastante ocupada, pero suelo tener algunas ventanas de tiempo libres durante la semana. Me encantaría saber más sobre los libros que estáis leyendo en el club, a ver si hay algo que me interese y podamos hacer un intercambio."
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "sports_padel_match",
+    "description": "Jugador de pádel buscando partner intermedio/avanzado se cruza con persona que juega tenis y le interesan deportes de raqueta.",
+    "mission_id": "showcase-sports_padel_match-4-mialyymj",
+    "owner_profile": {
+      "id": "user-diego-padel-player",
+      "display_name": "Diego, fan del pádel",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar partner fijo de pádel nivel intermedio/avanzado en Las Condes o Vitacura para jugar 2–3 veces por semana en las tardes."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-sofia-tennis-player",
+      "display_name": "Sofía, tenis amateur",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer gente que juegue tenis nivel intermedio en Ñuñoa/Providencia para partidos amistosos después de la pega."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-sports-1",
+      "objective_text": "Encontrar partner fijo de pádel nivel intermedio/avanzado para jugar 2–3 veces por semana en Las Condes/Vitacura.",
+      "radius_m": 3000,
+      "time_window": "tardes después de la pega"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 1500
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Sofía! Me alegra que hayas pasado por aquí. ¿Te gusta jugar al pádel o practicas algún otro deporte en tu tiempo libre?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Diego! Me alegra que hayas respondido. La verdad es que juego tenis, no sé si conoces el deporte, y estoy buscando gente con mi nivel para jugar partidos amistosos después del trabajo. ¿Y tú, sigues jugando al pádel últimamente?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me gusta mucho el tenis, pero mi pasión es el pádel. Estoy buscando alguien con nivel intermedio o avanzado para jugar 2 o 3 veces por semana en Las Condes o Vitacura, en las tardes. ¿Te parece que podrías estar interesada en probar el pádel, o prefieres seguir con el tenis?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "La verdad es que no estoy muy convencida de cambiar de deporte, me gusta mucho el tenis y tengo un nivel intermedio. Me parece genial que estés buscando alguien para jugar pádel, pero no creo que sea mi caso. ¿Hay alguien más cerca de Ñuñoa o Providencia con quien puedas jugar?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que el tenis es tu pasión, Sofía. Me parece genial que estés buscando gente para jugar partidos amistosos. ¿Estás disponible para jugar en las tardes después del trabajo, en general? ¿Te parece que podrías considerar jugar pádel en algún momento, aunque sea solo para probar?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "La verdad es que no tengo mucho tiempo para probar otro deporte, pero me parece genial que estés buscando gente para jugar pádel. En mi caso, sigo enfocada en encontrar alguien para jugar tenis en Ñuñoa o Providencia. ¿Has jugado alguna vez en esos barrios?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "sports_chess_vs_football_no_match",
+    "description": "Ajedrecista tranquilo se cruza con persona que quiere equipo de fútbol mixto con energía alta — posible no match.",
+    "mission_id": "showcase-sports_chess_vs_football_no_match-5-mialyymj",
+    "owner_profile": {
+      "id": "user-pedro-chess-player",
+      "display_name": "Pedro, ajedrecista",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar personas que jueguen ajedrez en vivo o en línea, idealmente cerca de Santiago centro, para partidas lentas y análisis post-mortem."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-loreto-football",
+      "display_name": "Loreto, fútbol mixto",
+      "motivations_and_goals": {
+        "primary_goal": "Armar equipo mixto de fútbol 7 en Santiago para jugar una vez a la semana en la noche, ambiente buena onda y no tóxico."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-sports-2",
+      "objective_text": "Encontrar personas que disfruten partidas largas de ajedrez en vivo o en línea, con análisis calmado después.",
+      "radius_m": 800,
+      "time_window": "fines de semana en la tarde"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 700
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Loreto, me llamo [REDACTED-NAME] y soy un apasionado del ajedrez. ¿Te gusta el ajedrez o has jugado alguna vez?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Pedro, gracias por la pregunta, pero la verdad es que no tengo mucha experiencia con el ajedrez. Me apasiona más bien el fútbol, de hecho estoy buscando armar un equipo mixto para jugar 7 vs 7 en Santiago. ¿Conoces algún lugar cerca de acá donde se pueda jugar?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que estás buscando un equipo de fútbol, pero mi pasión es el ajedrez. Me encantaría encontrar a alguien para jugar partidas lentas y analizarlas después, ¿te parece algo que podría interesarte o conoces a alguien que sí?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "No me parece que el ajedrez sea lo mío, pero agradezco la invitación. Mi búsqueda sigue siendo un equipo de fútbol 7, quizás podrías recomendarme algún lugar cerca de acá donde se pueda juntar y jugar."
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que el fútbol es tu pasión, pero quiero asegurarme de que no te cierres a la idea de jugar ajedrez. ¿Estás disponible para juntarnos los fines de semana en la tarde? ¿Te parece interesante jugar partidas de ajedrez en vivo o en línea, aunque sea solo por diversión?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Gracias por insistir, Pedro, pero creo que mi corazón está puesto en el fútbol. Me encantaría encontrar un lugar cerca de acá para juntar al equipo y empezar a jugar, ¿has oído algo al respecto?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "afteroffice_match",
+    "description": "Persona de tech que busca after office tranqui con gente de startups se cruza con fan de bares y cocteles tranquilos.",
+    "mission_id": "showcase-afteroffice_match-6-mialyymj",
+    "owner_profile": {
+      "id": "user-catalina-afteroffice",
+      "display_name": "Catalina, after office",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer gente de tech/startups para after office relajados en Lastarria y Providencia, conversar de proyectos y vida en Santiago."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Hola, ando buscando gente de tech/startups para un after tranqui después de la pega, ¿te tinca conversar de proyectos y vida en Santiago?"
+      }
+    },
+    "visitor_profile": {
+      "id": "user-tomas-cocktail-bars",
+      "display_name": "Tomás, bares y cocteles",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar partners para probar nuevos bares y coctelerías en Providencia y Barrio Italia, sin carrete extremo, más conversación que ruido."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-night-1",
+      "objective_text": "Armar grupo pequeño para after office en Lastarria/Providencia, conversar de proyectos y vida en Santiago.",
+      "radius_m": 2000,
+      "time_window": "tardes y noches de la semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 900
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola, ando buscando gente de tech/startups para un after tranqui después de la pega, ¿te tinca conversar de proyectos y vida en Santiago?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me parece interesante tu propuesta, aunque mi enfoque es más bien encontrar lugares nuevos para tomar algo y conocer gente con intereses similares. ¿Tienes idea de algún bar o coctelería en Providencia o Barrio Italia que valga la pena visitar?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que buscas probar nuevos bares, pero mi idea es más relajada, juntarnos después de trabajar para conversar de proyectos y vida en general. ¿Te interesa también hablar de emprendimientos y tecnología o es más bien un tema de hobbies para ti?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me gusta la idea de hablar de emprendimientos y tecnología, aunque mi interés es más desde la perspectiva de un aficionado. Me parece que podríamos tener una conversación interesante, sobre todo si encontramos un lugar tranquilo para tomar algo y charlar. ¿Te parece si exploramos opciones en Providencia o Barrio Italia para ver qué nos parece?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Genial que te interese la idea de hablar de emprendimientos y tecnología, ¿qué días de la semana sueles tener disponibles para juntarnos después de la pega? ¿Te parece que podrías estar en Lastarria o Providencia para un after office?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me parece bien la idea de juntarnos en Providencia, ya que es un barrio que conozco bastante y hay varios bares y coctelerías que podrían ser interesantes. ¿Qué tipo de ambiente estás buscando para tu after office, algo más íntimo o un lugar con un poco más de ambiente? Estoy abierto a sugerencias."
+      }
+    ],
+    "judge_decision": {
+      "should_notify": true,
+      "notification_text": "¿Te parece interesante conectar con alguien que busca probar nuevos bares y coctelerías en Providencia, pero también está abierto a hablar de emprendimientos y tecnología en un ambiente relajado?"
+    }
+  },
+  {
+    "scenario_id": "nightlife_vs_quiet_reader_no_match",
+    "description": "Lectora tranquila que prefiere actividades calmadas se cruza con fan de bares/karaoke/after — probable que no valga la pena notificar.",
+    "mission_id": "showcase-nightlife_vs_quiet_reader_no_match-7-mialyymj",
+    "owner_profile": {
+      "id": "user-fernanda-quiet-reader",
+      "display_name": "Fernanda, lectora tranquila",
+      "motivations_and_goals": {
+        "primary_goal": "Encontrar gente piola con quien intercambiar recomendaciones de libros de ficción latinoamericana y ensayos, sin tanta vida nocturna."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-matias-nightlife",
+      "display_name": "Matías, fan de la noche",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer gente para salir a bares, karaokes y after en Providencia y Bellavista, más que juntarse a leer o hacer cosas tranquilas."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-books-2",
+      "objective_text": "Conocer gente piola para compartir recomendaciones de libros y quizá juntarse a leer/tomar café, sin carrete intenso.",
+      "radius_m": 1500,
+      "time_window": "fines de semana en la tarde"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 600
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Matías, me alegra que hayas entrado a mi círculo. Me llamo [REDACTED-NAME], soy una apasionada de la lectura y estoy buscando gente con gustos similares para intercambiar recomendaciones de libros. ¿Te gusta la ficción latinoamericana o tienes algún autor favorito en ese género?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Fernanda, gracias por la invitación. La verdad, no soy muy lector, pero sí disfruto de la vida nocturna en Santiago. Me encanta ir a bares, karaokes y after en Providencia y Bellavista, ¿te gusta la zona?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que te gusta la vida nocturna, pero mi idea es más bien relajada, juntarme con alguien que disfrute conversando sobre libros y quizá tomar un café. ¿Te parece interesante? ¿Has leído algo de ficción latinoamericana últimamente que te haya gustado?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "La verdad, Fernanda, no soy muy dado a leer, pero sí conozco a algunos amigos que les gusta la ficción latinoamericana. Estoy más por la diversión y la buena onda, ¿no te gusta salir un poco de la rutina y disfrutar de un karaoke o algo por el estilo en Providencia?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Entiendo que te gusta la diversión, pero para mí es importante encontrar a alguien con quien pueda hablar sobre libros de manera relajada. ¿Estás disponible para juntarnos algún fin de semana en la tarde, o prefieres otro momento? ¿Te interesa saber un poco más sobre los libros que suelo leer?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Creo que no somos muy compatibles, Fernanda, pero me alegra haber chateado contigo. Me parece que tus intereses son más tranquilos de lo que busco."
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  },
+  {
+    "scenario_id": "career_switch_advice",
+    "description": "Persona cambiando de rubro hacia tech quiere consejos y se cruza con alguien fuerte en after office de tech/startups.",
+    "mission_id": "showcase-career_switch_advice-8-mialyymj",
+    "owner_profile": {
+      "id": "user-ricardo-career-switch",
+      "display_name": "Ricardo, cambiando de rubro",
+      "motivations_and_goals": {
+        "primary_goal": "Hablar con gente que ya hizo cambio de carrera hacia tech o producto en Chile para entender caminos reales y errores comunes."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-catalina-afteroffice",
+      "display_name": "Catalina, after office",
+      "motivations_and_goals": {
+        "primary_goal": "Conocer gente de tech/startups para after office relajados en Lastarria y Providencia, conversar de proyectos y vida en Santiago."
+      },
+      "conversation_micro_preferences": {
+        "preferred_opener_style": "Hola, ando buscando gente de tech/startups para un after tranqui después de la pega, ¿te tinca conversar de proyectos y vida en Santiago?"
+      }
+    },
+    "owner_circle": {
+      "id": "circle-career-1",
+      "objective_text": "Hablar con gente que ya hizo cambio de carrera hacia tech o producto en Chile para entender caminos reales y errores comunes.",
+      "radius_m": 2000,
+      "time_window": "tardes de esta semana"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 800
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Catalina, me llamó [REDACTED-NAME]. Tu perfil parece interesante, estoy en un proceso de cambio de carrera hacia el mundo tech y producto, y me encantaría hablar con gente que ya lo hizo. ¿Hiciste algún cambio de carrera hacia tech o producto en Chile?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Ricardo, gracias por contactarme. Sí, hice un cambio de carrera hacia el mundo tech hace unos años y estoy en Santiago. Me parece muy interesante tu proceso de cambio de rubro, ¿qué te motivó a dar este paso?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me parece genial que hayas hecho un cambio de carrera hacia tech, ¿podrías compartir un poco sobre tu experiencia? ¿Qué tipo de cambio de carrera fue el tuyo y qué te resultó más desafiante al principio?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Mi cambio de carrera fue desde marketing a producto, y al principio fue un desafío entender el lenguaje y la mentalidad de los equipos de desarrollo, pero con el tiempo fui aprendiendo y adaptándome. Ahora trabajo en una startup en Santiago y estoy disfrutando mucho de este nuevo rubro. ¿Y tú, qué te está motivando a cambiar hacia tech y producto?"
+      },
+      {
+        "speaker": "owner",
+        "message": "Me encantaría saber más sobre tus primeros pasos en el mundo tech, ¿qué días de la semana sueles tener disponibles para charlar esta semana? ¿Tienes algún momento del día en que te sea más fácil conversar, como por la tarde?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me encantaría saber más sobre tus primeros pasos en el mundo tech, ¿qué días de la semana sueles tener disponibles para charlar esta semana? ¿Tienes algún momento del día en que te sea más fácil conversar, como por la tarde? \n\nTengo la tarde libre casi todos los días, especialmente los martes y jueves, y por la mañana temprano también estoy disponible. Me parece que podríamos charlar un rato y compartir experiencias, ¿te parece si empezamos con eso?"
+      }
+    ],
+    "judge_decision": {
+      "should_notify": true,
+      "notification_text": "assistant\n\n¿Te interesaría charlar con [REDACTED-NAME], alguien que cambió de carrera hacia tech en Chile y ahora trabaja en una startup en Santiago, para compartir experiencias y consejos sobre este proceso?"
+    }
+  },
+  {
+    "scenario_id": "running_morning_only",
+    "description": "Corredor mañanero busca partners para trotar temprano; según el perfil visitante podría que no se alinee tanto.",
+    "mission_id": "showcase-running_morning_only-9-mialyymk",
+    "owner_profile": {
+      "id": "user-alvaro-running",
+      "display_name": "Álvaro, corredor mañanero",
+      "motivations_and_goals": {
+        "primary_goal": "Conectar con personas que quieran salir a trotar temprano por el Parque Bustamante o el río Mapocho 3–4 veces a la semana."
+      }
+    },
+    "visitor_profile": {
+      "id": "user-isa-minimal-social",
+      "display_name": "Isa, ultra introvertida",
+      "motivations_and_goals": {
+        "primary_goal": "Mantener un círculo social pequeño y tranquilo; le interesan más actividades online o paseos cortos que salidas a bares o grupos grandes."
+      }
+    },
+    "owner_circle": {
+      "id": "circle-sports-3",
+      "objective_text": "Conectar con personas que quieran salir a trotar temprano por el Parque Bustamante o el río Mapocho 3–4 veces a la semana.",
+      "radius_m": 2500,
+      "time_window": "mañanas de lunes a viernes"
+    },
+    "context": {
+      "approximate_time_iso": "2025-11-22T18:14:17.033Z",
+      "approximate_distance_m": 1000
+    },
+    "transcript": [
+      {
+        "speaker": "owner",
+        "message": "Hola Isa, soy Álvaro, corredor mañanero. Me alegra verte por aquí. ¿Te gusta correr por las mañanas?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Hola Álvaro, gracias por saludar. Correr no es realmente mi cosa, pero disfruto paseando por el parque. Me gusta empezar el día de manera tranquila."
+      },
+      {
+        "speaker": "owner",
+        "message": "Me gusta empezar el día con un trote suave, es genial para despejar la mente. ¿Te parece que podrías disfrutar corriendo a un ritmo tranquilo por el Parque Bustamante o el río Mapocho en alguna ocasión?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "La verdad es que no creo que correr sea lo mío, pero me gusta la idea de despejar la mente por la mañana. Tal vez podríamos coincidir en el parque en algún momento y yo puedo caminar mientras tú corres. Me parece un ambiente tranquilo."
+      },
+      {
+        "speaker": "owner",
+        "message": "Me parece genial que te guste empezar el día de manera tranquila. ¿Qué días de la semana sueles tener disponibles por las mañanas para hacer algo al aire libre? ¿Te importaría que fuera un poco temprano, digamos antes de que el parque esté muy concurrido?"
+      },
+      {
+        "speaker": "visitor",
+        "message": "Me gusta la idea de coincidir en el parque, pero prefiero que sea un poco más tarde, cuando ya haya un poco más de luz. No me gusta levantarme demasiado temprano, jaja."
+      }
+    ],
+    "judge_decision": {
+      "should_notify": false
+    }
+  }
+]
