@@ -1,5 +1,5 @@
 import type { NotificationPayload } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.js';
 
 export interface NotificationGateway {
   notifySuccessfulInteraction(payload: NotificationPayload): Promise<void>;

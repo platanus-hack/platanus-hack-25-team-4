@@ -63,6 +63,62 @@ Current structure (subject to change as implementation evolves):
 
 > Note: Implementation is still in progress. These steps describe the expected workflow as code is added.
 
+### Quick Start with Docker Compose
+
+The easiest way to run both the database and backend is using Docker Compose:
+
+1. **Create a `.env` file in the project root**
+
+   Copy from the example file or create manually:
+
+   ```bash
+   cp env.example .env
+   ```
+
+   Or create manually with:
+
+   ```
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=circles_db
+   POSTGRES_PORT=5432
+   
+   NODE_ENV=development
+   BACKEND_PORT=3000
+   JWT_SECRET=your-super-secret-jwt-key-change-in-production
+   ```
+
+2. **Start the services**:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   This will start both the PostgreSQL database and the Node.js backend.
+
+3. **Verify the services are running**:
+
+   ```bash
+   docker-compose ps
+   ```
+
+4. **View logs**:
+
+   ```bash
+   docker-compose logs -f backend
+   docker-compose logs -f db
+   ```
+
+5. **Stop the services**:
+
+   ```bash
+   docker-compose down
+   ```
+
+The backend will be available at `http://localhost:3000` and the database at `localhost:5432`.
+
+### Local Development Setup
+
 1. **Python environment**
    - Ensure Python **3.12** is available (see `.python-version`).
    - Use your preferred environment manager (e.g. `uv`, `pyenv`, `venv`) to create an environment.
@@ -71,9 +127,18 @@ Current structure (subject to change as implementation evolves):
    - Once dependencies are defined in `pyproject.toml`, install them with:
      - `uv sync` (recommended) or another PEP 621–compatible tool.
 
-3. **TypeScript / Node tooling (future)**
-   - When a `package.json` exists, install dependencies with:
-     - `npm install` or `pnpm install` depending on the chosen tool.
+3. **TypeScript / Node tooling**
+   - Install backend dependencies:
+
+     ```bash
+     cd circles/src/backend && npm install
+     ```
+
+   - Run in development mode:
+
+     ```bash
+     npm run dev
+     ```
 
 4. **Running tests**
    - When tests are added, follow the instructions in future docs (e.g. `pytest`, `npm test`).

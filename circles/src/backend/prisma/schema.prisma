@@ -40,7 +40,8 @@ model User {
   matchesAsSecondary Match[] @relation("UserMatchesSecondary")
   chatsAsPrimary     Chat[]  @relation("ChatPrimaryUser")
   chatsAsSecondary   Chat[]  @relation("ChatSecondaryUser")
-  messages Message[]
+  sentMessages       Message[] @relation("MessageSender")
+  receivedMessages   Message[] @relation("MessageReceiver")
 }
 
 model AgentPersona {
@@ -55,7 +56,7 @@ model AgentPersona {
 model Circle {
   id           String       @id @default(uuid())
   userId       String
-  objectiveText String
+  objective String
   centerLat    Float
   centerLon    Float
   radiusMeters Float
@@ -108,10 +109,12 @@ model Message {
   id              String   @id @default(uuid())
   chatId          String
   senderUserId    String
+  receiverId      String
   content         String
   moderationFlags Json?
   createdAt       DateTime @default(now())
 
-  chat   Chat @relation(fields: [chatId], references: [id])
-  sender User @relation(fields: [senderUserId], references: [id])
+  chat     Chat @relation(fields: [chatId], references: [id])
+  sender   User @relation("MessageSender", fields: [senderUserId], references: [id])
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
 }

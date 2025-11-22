@@ -3,7 +3,10 @@
 
 # Environment variables (contains sensitive credentials)
 .env
-.env.local
+.env.*.local
+
+# BUT allow sample file for reference
+!.env.sample
 
 # Docker volumes and data
 postgres_data/
@@ -58,3 +61,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Node
+node_modules/
