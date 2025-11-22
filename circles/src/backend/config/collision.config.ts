@@ -22,10 +22,11 @@ export const COLLISION_CONFIG = {
 
   // ===== COOLDOWNS =====
   // Prevent spam and allow time for reflection
-  COOLDOWN_REJECTED_MS: 6 * 60 * 60 * 1000,        // 6 hours (user rejected)
-  COOLDOWN_NOTIFIED_MS: 24 * 60 * 60 * 1000,       // 24 hours (user notified)
-  COOLDOWN_MATCHED_MS: 7 * 24 * 60 * 60 * 1000,    // 7 days (match created)
-  COOLDOWN_SAME_CIRCLES_MS: 3 * 60 * 60 * 1000,    // 3 hours (same circle pair)
+  COOLDOWN_DURATIONS: {
+    rejected: 6 * 60 * 60 * 1000,                  // 6 hours
+    notified: 24 * 60 * 60 * 1000,                 // 24 hours
+    matched: 7 * 24 * 60 * 60 * 1000,              // 7 days
+  },
 
   // ===== BATCH PROCESSING (N-CLOSEST MATCHES) =====
   // Optimize geospatial queries
