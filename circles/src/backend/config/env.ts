@@ -12,7 +12,7 @@ const envSchema = z.object({
   AWS_REGION: z.string().optional().default('us-east-1'),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
-  SES_FROM_EMAIL: z.string().optional().default('noreply@circles.app'),
+  SES_FROM_EMAIL: z.string().optional().default('hola@circles.lat'),
   SES_REPLY_TO_EMAIL: z.string().optional()
 });
 
