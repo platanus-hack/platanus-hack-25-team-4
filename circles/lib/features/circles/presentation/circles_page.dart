@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/primary_button.dart';
+import '../../../core/widgets/page_container.dart';
 import '../../app/app_state.dart';
 import '../domain/circle.dart';
 
@@ -50,22 +51,24 @@ class _CirclesPageState extends State<CirclesPage> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _Filters(
-              controller: _searchController,
-              sort: _sort,
-              onSortChanged: (value) => setState(() => _sort = value),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: hasItems
-                  ? _buildList(context, filtered)
-                  : _buildEmpty(theme),
-            ),
-          ],
+        padding: const EdgeInsets.only(bottom: 12),
+        child: PageContainer(
+          child: Column(
+            children: [
+              _Filters(
+                controller: _searchController,
+                sort: _sort,
+                onSortChanged: (value) => setState(() => _sort = value),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: hasItems
+                    ? _buildList(context, filtered)
+                    : _buildEmpty(theme),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: hasItems

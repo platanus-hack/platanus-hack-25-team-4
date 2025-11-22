@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/primary_button.dart';
+import '../../../core/widgets/page_container.dart';
 import '../../app/app_state.dart';
 
 class HomeDashboardPage extends StatelessWidget {
@@ -31,8 +32,7 @@ class HomeDashboardPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: PageContainer(
         child: ListView(
           children: [
             _StatsGrid(
@@ -115,15 +115,23 @@ class _StatsGrid extends StatelessWidget {
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 900;
-        final columns = isWide ? 3 : 1;
+        final columns = constraints.maxWidth > 1100
+            ? 3
+            : constraints.maxWidth > 640
+                ? 2
+                : 1;
+        final aspectRatio = columns == 1
+            ? 2.8
+            : columns == 2
+                ? 2.1
+                : 1.6;
         return GridView.count(
           crossAxisCount: columns,
           shrinkWrap: true,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isWide ? 1.6 : 2.8,
+          childAspectRatio: aspectRatio,
           children: cards,
         );
       },

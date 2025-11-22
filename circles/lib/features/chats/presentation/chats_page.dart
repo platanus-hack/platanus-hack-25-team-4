@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/page_container.dart';
 import '../../app/app_state.dart';
 import '../domain/chat_thread.dart';
 import 'chat_thread_page.dart';
@@ -43,11 +44,10 @@ class _ChatsPageState extends State<ChatsPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
+      body: PageContainer(
+        child: Column(
+          children: [
+            TextField(
               controller: _searchController,
               decoration: const InputDecoration(
                 hintText: 'Buscar por nombre u objetivo',
@@ -55,13 +55,14 @@ class _ChatsPageState extends State<ChatsPage> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-          ),
-          Expanded(
-            child: hasChats
-                ? _ChatList(state: widget.state, chats: filtered)
-                : _EmptyChats(theme: theme),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Expanded(
+              child: hasChats
+                  ? _ChatList(state: widget.state, chats: filtered)
+                  : _EmptyChats(theme: theme),
+            ),
+          ],
+        ),
       ),
     );
   }

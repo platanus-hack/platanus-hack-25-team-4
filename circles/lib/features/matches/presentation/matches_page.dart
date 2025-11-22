@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_state.dart';
+import '../../../core/widgets/page_container.dart';
 import '../domain/match_candidate.dart';
 
 class MatchesPage extends StatefulWidget {
@@ -43,8 +44,7 @@ class _MatchesPageState extends State<MatchesPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: PageContainer(
         child: ListView(
           children: [
             _Filters(
