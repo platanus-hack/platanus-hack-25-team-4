@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,6 @@ from ...core import get_settings
 from ...database import get_async_session
 from ...tasks.celery_app import celery_app
 from ...tasks.consolidation_tasks import consolidate_user_profile_task
-from ..auth import get_current_user, validate_user_id_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,6 @@ class ConsolidationStatusResponse(BaseModel):
 )
 async def trigger_consolidation(
     request: ConsolidationRequest,
-    current_user: str = Depends(get_current_user),
 ) -> ConsolidationResponse:
     """
     Trigger profile consolidation for a user.
@@ -106,9 +104,6 @@ async def trigger_consolidation(
         HTTPException: If user_id is invalid or request fails
     """
     try:
-        # Validate user ownership
-        validate_user_id_ownership(str(request.user_id), current_user)
-
         if request.user_id <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -158,7 +153,6 @@ async def trigger_consolidation(
 )
 async def get_consolidation_status(
     task_id: str,
-    current_user: str = Depends(get_current_user),
 ) -> ConsolidationStatusResponse:
     """
     Get the status of a consolidation task.
@@ -238,7 +232,6 @@ async def get_consolidation_status(
 )
 async def consolidate_sync(
     request: ConsolidationRequest,
-    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> Dict[str, Any]:
     """
@@ -251,7 +244,6 @@ async def consolidate_sync(
 
     Args:
         request: Consolidation request with user_id and llm_provider
-        current_user: Authenticated user from JWT token
         session: Database session (injected by FastAPI)
 
     Returns:
@@ -261,9 +253,6 @@ async def consolidate_sync(
         HTTPException: If consolidation fails
     """
     try:
-        # Validate user ownership
-        validate_user_id_ownership(str(request.user_id), current_user)
-
         from ...consolidation.orchestrator import ProfileConsolidationOrchestrator
 
         if request.user_id <= 0:
