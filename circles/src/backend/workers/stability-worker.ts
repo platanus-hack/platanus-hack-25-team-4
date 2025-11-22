@@ -1,7 +1,7 @@
 import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { getRedisClient } from '../infrastructure/redis.js';
 import { prisma } from '../lib/prisma.js';
-import { AgentMatchService } from '../services/agent-match-service.js';
+import { agentMatchService } from '../services/agent-match-service.js';
 
 /**
  * Stability Queue Worker
@@ -12,12 +12,7 @@ import { AgentMatchService } from '../services/agent-match-service.js';
  * 3. Clean up stale collisions older than 45s
  */
 export class StabilityWorker {
-  private agentMatchService: AgentMatchService;
   private isRunning = false;
-
-  constructor() {
-    this.agentMatchService = new AgentMatchService();
-  }
 
   /**
    * Start the stability worker (runs every 5 seconds)
@@ -125,7 +120,7 @@ export class StabilityWorker {
             }
 
             // Create mission for this collision
-            const mission = await this.agentMatchService.createMissionForCollision({
+            const mission = await agentMatchService.createMissionForCollision({
               circle1Id,
               circle2Id,
               user1Id: collisionEvent.user1Id,

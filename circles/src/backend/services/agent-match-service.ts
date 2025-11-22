@@ -252,7 +252,7 @@ export class AgentMatchService {
           transcript: result.transcript
             ? (typeof result.transcript === 'string' ? JSON.parse(result.transcript) : result.transcript)
             : undefined,
-          judgeDecision: result.judgeDecision ?? null,
+          judgeDecision: result.judgeDecision ? JSON.parse(JSON.stringify(result.judgeDecision)) : undefined,
           failureReason: result.error || null,
           completedAt: new Date(),
         },
@@ -285,7 +285,13 @@ export class AgentMatchService {
         await this.setCooldown(mission.ownerUserId, mission.visitorUserId, 'matched');
 
         console.info('Match created from mission result', { matchId: match.id, missionId });
-        return match;
+
+        // Coerce Prisma enums to application types
+        return {
+          ...match,
+          type: match.type,
+          status: match.status
+        };
       }
 
       // No match - set cooldown for notification

@@ -21,6 +21,28 @@ interface DetectedCollision {
   timestamp: number;
 }
 
+interface CircleWithLocation extends Circle {
+  centerLat: number;
+  centerLon: number;
+}
+
+function getNumericProperty(obj: unknown, key: string): number | undefined {
+  if (typeof obj !== 'object' || obj === null) {
+    return undefined;
+  }
+  if (!(key in obj)) {
+    return undefined;
+  }
+  const value = Object.getOwnPropertyDescriptor(obj, key)?.value;
+  return typeof value === 'number' ? value : undefined;
+}
+
+function hasLocation(circle: Circle): circle is CircleWithLocation {
+  const centerLat = getNumericProperty(circle, 'centerLat');
+  const centerLon = getNumericProperty(circle, 'centerLon');
+  return centerLat !== undefined && centerLon !== undefined;
+}
+
 /**
  * Service for collision detection using PostGIS spatial queries
  * Detects when user positions collide with other user circles
@@ -84,11 +106,7 @@ export class CollisionDetectionService {
    * Returns ~50 candidates, filtered with bounding box
    */
   private async queryCandidateCircles(circle: Circle): Promise<CandidateCircle[]> {
-    if (
-      circle.centerLat === null ||
-      circle.centerLon === null ||
-      circle.radiusMeters === null
-    ) {
+    if (!hasLocation(circle) || circle.radiusMeters === null) {
       return [];
     }
 

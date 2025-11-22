@@ -111,6 +111,9 @@ model Circle {
   collisionsAsCircle2 CollisionEvent[] @relation("Circle2Collisions")
   missionsAsOwner     InterviewMission[] @relation("OwnerCircleMissions")
   missionsAsVisitor   InterviewMission[] @relation("VisitorCircleMissions")
+
+  // PostGIS spatial index for collision detection queries
+  @@index([status, createdAt], name: "idx_circle_status")
 }
 
 model Match {

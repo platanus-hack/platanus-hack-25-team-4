@@ -12,7 +12,7 @@ export class UserRepository {
         firstName: input.firstName ?? null,
         lastName: input.lastName ?? null,
         passwordHash: input.passwordHash ?? null,
-        profile: input.profile ?? { interests: [] }
+        profile: JSON.parse(JSON.stringify(input.profile ?? { interests: [] }))
       }
     });
 
@@ -47,7 +47,7 @@ export class UserRepository {
   async updateProfile(id: string, profile: UserProfile): Promise<User | undefined> {
     const user = await prisma.user.update({
       where: { id },
-      data: { profile }
+      data: { profile: JSON.parse(JSON.stringify(profile)) }
     });
 
     return this.mapToUser(user);
@@ -63,7 +63,7 @@ export class UserRepository {
         firstName: data.firstName ?? undefined,
         lastName: data.lastName ?? undefined,
         passwordHash: data.passwordHash ?? undefined,
-        profile: data.profile ?? undefined,
+        profile: data.profile ? JSON.parse(JSON.stringify(data.profile)) : undefined,
         centerLat: data.centerLat ?? undefined,
         centerLon: data.centerLon ?? undefined
       }

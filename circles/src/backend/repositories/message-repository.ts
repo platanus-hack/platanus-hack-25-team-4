@@ -22,7 +22,7 @@ export class MessageRepository {
         senderUserId: input.senderUserId,
         receiverId: input.receiverId,
         content: input.content,
-        moderationFlags: input.moderationFlags ?? null
+        moderationFlags: input.moderationFlags ? JSON.parse(JSON.stringify(input.moderationFlags)) : undefined
       }
     });
 
@@ -146,9 +146,15 @@ export class MessageRepository {
    * Update a message
    */
   async update(id: string, input: UpdateMessageInput): Promise<Message | null> {
+    const data: Record<string, unknown> = {};
+
+    if (input.moderationFlags !== undefined) {
+      data.moderationFlags = input.moderationFlags ? JSON.parse(JSON.stringify(input.moderationFlags)) : undefined;
+    }
+
     const message = await prisma.message.update({
       where: { id },
-      data: input
+      data
     });
 
     return this.mapToMessage(message);
