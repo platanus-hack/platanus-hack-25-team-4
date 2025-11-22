@@ -1,6 +1,6 @@
-import { MockInterviewAgentsRuntime } from './agentsRuntime.js';
+import { BedrockInterviewAgentsRuntime } from './agentsRuntime.js';
 import { InterviewFlowService } from './interviewFlowService.js';
-import { MockInterviewJudge } from './judge.js';
+import { BedrockInterviewJudge } from './judge.js';
 import { LoggingNotificationGateway } from './notificationGateway.js';
 import type { InterviewMission, UserProfile, OwnerCircle, InterviewContext } from './types.js';
 
@@ -10,21 +10,23 @@ const createDemoProfiles = (): {
 } => {
   const owner_profile: UserProfile = {
     id: 'owner-1',
-    display_name: 'Founder/Dev in Santiago',
+    display_name: 'Fundador/Dev en Santiago',
     motivations_and_goals: {
-      primary_goal: 'Connect with fellow developers/entrepreneurs in Santiago to build side-projects and share ideas.'
+      primary_goal:
+        'Conectar con otros desarrolladores y fundadores en Santiago para construir side projects y compartir ideas.'
     },
     conversation_micro_preferences: {
       preferred_opener_style:
-        'Hey! Noticed you are nearby and into tech/side projects — want to see if we might build or brainstorm something together this week?'
+        '¡Hey! Vi que estás cerca y metido en IA/emprendimiento — me encanta conocer gente que también está construyendo cosas. ¿En qué estás ahora mismo: proyecto concreto o más exploración?'
     }
   };
 
   const visitor_profile: UserProfile = {
     id: 'visitor-1',
-    display_name: 'AI Founder visiting',
+    display_name: 'Fundador de IA de visita',
     motivations_and_goals: {
-      primary_goal: 'Meet local AI founders to share ideas and maybe collaborate on an MVP.'
+      primary_goal:
+        'Conocer fundadores de IA locales para compartir ideas y quizá colaborar en un MVP.'
     }
   };
 
@@ -37,9 +39,10 @@ const createDemoCircleAndContext = (): {
 } => {
   const owner_circle: OwnerCircle = {
     id: 'circle-1',
-    objective_text: 'Meet AI founders in Santiago for 1:1 coffee and product brainstorms.',
+    objective_text:
+      'Conocer fundadores de IA en Santiago para tomar un café 1:1 y hacer brainstorming de producto.',
     radius_m: 800,
-    time_window: 'this week evenings'
+    time_window: 'tardes de esta semana'
   };
 
   const context: InterviewContext = {
@@ -68,25 +71,34 @@ const createDemoMission = (): InterviewMission => {
 const runDemo = async (): Promise<void> => {
   const mission = createDemoMission();
 
+  console.log('Running demo interview mission:', mission.mission_id);
+
+  console.log('\n=== Contexto de la misión ===');
+  console.log(`Owner:   ${mission.owner_profile.display_name}`);
+  console.log(`  Objetivo: ${mission.owner_profile.motivations_and_goals.primary_goal}`);
+  console.log(`Visitor: ${mission.visitor_profile.display_name}`);
+  console.log(`  Objetivo: ${mission.visitor_profile.motivations_and_goals.primary_goal}`);
+  console.log('Circle del owner:');
+  console.log(`  Objetivo: ${mission.owner_circle.objective_text}`);
+  console.log(`  Ventana de tiempo: ${mission.owner_circle.time_window}`);
+  console.log('Contexto aproximado:');
+  console.log(
+    `  Distancia entre personas: ~${mission.context.approximate_distance_m}m, hora: ${mission.context.approximate_time_iso}`
+  );
+  console.log('');
+
   const flowService = new InterviewFlowService({
-    agentsRuntime: new MockInterviewAgentsRuntime(),
-    judge: new MockInterviewJudge(),
+    agentsRuntime: new BedrockInterviewAgentsRuntime(),
+    judge: new BedrockInterviewJudge(),
     notificationGateway: new LoggingNotificationGateway(),
     config: {
       max_owner_turns: 3
     }
   });
 
-  console.log('Running demo interview mission:', mission.mission_id);
-
   const result = await flowService.runMission(mission);
 
-  console.log('\n--- Transcript ---');
-  for (const turn of result.transcript) {
-    console.log(`[${turn.speaker.toUpperCase()}] ${turn.message}`);
-  }
-
-  console.log('\n--- Judge Decision ---');
+  console.log('\n=== Decisión del juez ===');
   console.log(JSON.stringify(result.judge_decision, null, 2));
 };
 
