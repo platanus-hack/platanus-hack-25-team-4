@@ -36,20 +36,20 @@ export type UpdateMessageInput = Partial<Pick<CreateMessageInput, 'moderationFla
  * Message with related entities (for detailed responses)
  */
 export type MessageWithDetails = Message & {
-  chat: {
+  chat?: {
     id: string;
-  } | undefined;
-  sender: {
-    id: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-  } | undefined;
-  receiver: {
+  };
+  sender?: {
     id: string;
     email: string;
     firstName: string | null;
     lastName: string | null;
-  } | undefined;
+  };
+  receiver?: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
 };
 

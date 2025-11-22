@@ -27,18 +27,18 @@ export type UpdateChatInput = Partial<Omit<CreateChatInput, 'primaryUserId' | 's
  * Chat with related entities (for detailed responses)
  */
 export type ChatWithDetails = Chat & {
-  primaryUser: {
+  primaryUser?: {
     id: string;
     email: string;
     firstName: string | null;
     lastName: string | null;
-  } | undefined;
-  secondaryUser: {
+  };
+  secondaryUser?: {
     id: string;
     email: string;
     firstName: string | null;
     lastName: string | null;
-  } | undefined;
+  };
   messages?: Array<{
     id: string;
     content: string;
