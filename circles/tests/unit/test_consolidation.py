@@ -148,7 +148,7 @@ def sample_consolidated_profile():
 async def test_data_aggregator_with_complete_data(db_session):
     """Test aggregator retrieves all available data types."""
     aggregator = DataAggregator(db_session)
-    user_id = "test_user_complete"
+    user_id = "550e8400-e29b-41d4-a716-446655441151"
 
     # Mock database queries
     with patch.object(
@@ -172,7 +172,7 @@ async def test_data_aggregator_with_complete_data(db_session):
 async def test_data_aggregator_with_partial_data(db_session):
     """Test aggregator handles incomplete data gracefully."""
     aggregator = DataAggregator(db_session)
-    user_id = "test_user_partial"
+    user_id = "550e8400-e29b-41d4-a716-446655441152"
 
     with patch.object(
         aggregator, "_get_resume_data", new_callable=AsyncMock
@@ -200,7 +200,7 @@ async def test_data_aggregator_with_partial_data(db_session):
 async def test_data_aggregator_error_handling(db_session):
     """Test aggregator handles database errors gracefully."""
     aggregator = DataAggregator(db_session)
-    user_id = "test_user_error"
+    user_id = "550e8400-e29b-41d4-a716-446655441153"
 
     # Mock a database error
     with patch.object(
@@ -224,7 +224,7 @@ async def test_consolidation_strategy_with_valid_data(
     sample_raw_data, sample_consolidated_profile
 ):
     """Test consolidation strategy with mocked LLM provider."""
-    user_id = "test_user_strategy"
+    user_id = "550e8400-e29b-41d4-a716-446655441154"
 
     # Create mock LLM provider
     mock_llm_provider = MagicMock()
@@ -248,7 +248,7 @@ async def test_consolidation_strategy_with_valid_data(
 @pytest.mark.asyncio
 async def test_consolidation_strategy_with_empty_data():
     """Test consolidation strategy rejects empty data."""
-    user_id = "test_user_empty"
+    user_id = "550e8400-e29b-41d4-a716-446655441155"
 
     mock_llm_provider = MagicMock()
     strategy = DefaultConsolidationStrategy(user_id)
@@ -295,7 +295,7 @@ async def test_llm_json_response_parsing():
 @pytest.mark.asyncio
 async def test_consolidation_strategy_invalid_response(sample_raw_data):
     """Test consolidation strategy handles invalid LLM response."""
-    user_id = "test_user_invalid"
+    user_id = "550e8400-e29b-41d4-a716-446655441156"
 
     mock_llm_provider = MagicMock()
     mock_llm_provider.call = AsyncMock(return_value="Invalid response, not JSON")
@@ -317,7 +317,7 @@ async def test_consolidation_with_different_llm_providers(
     sample_raw_data, sample_consolidated_profile
 ):
     """Test consolidation strategy works with different LLM providers."""
-    user_id = "test_user_providers"
+    user_id = "550e8400-e29b-41d4-a716-446655441157"
 
     # Test with Anthropic provider mock
     anthropic_provider = MagicMock()
@@ -370,7 +370,7 @@ async def test_llm_provider_factory_creates_providers():
 @pytest.mark.asyncio
 async def test_orchestrator_with_injected_strategy(db_session, sample_raw_data):
     """Test orchestrator accepts injected strategy via DI."""
-    user_id = "test_user_di"
+    user_id = "550e8400-e29b-41d4-a716-446655441158"
 
     # Create mock strategy
     mock_strategy = AsyncMock()
@@ -400,7 +400,7 @@ async def test_orchestrator_with_injected_strategy(db_session, sample_raw_data):
 @pytest.mark.asyncio
 async def test_orchestrator_with_llm_provider_selection(db_session, sample_raw_data):
     """Test orchestrator supports LLM provider-based strategy selection."""
-    user_id = "test_user_provider"
+    user_id = "550e8400-e29b-41d4-a716-446655441159"
 
     with patch.object(
         DataAggregator, "aggregate_user_data", new_callable=AsyncMock
@@ -442,7 +442,7 @@ async def test_orchestrator_with_llm_provider_selection(db_session, sample_raw_d
 @pytest.mark.asyncio
 async def test_orchestrator_aggregation_error(db_session):
     """Test orchestrator handles aggregation errors."""
-    user_id = "test_user_agg_error"
+    user_id = "550e8400-e29b-41d4-a716-446655441160"
 
     with patch.object(
         DataAggregator, "aggregate_user_data", new_callable=AsyncMock
@@ -461,7 +461,7 @@ async def test_orchestrator_aggregation_error(db_session):
 @pytest.mark.asyncio
 async def test_orchestrator_consolidation_error(db_session, sample_raw_data):
     """Test orchestrator handles consolidation strategy errors."""
-    user_id = "test_user_cons_error"
+    user_id = "550e8400-e29b-41d4-a716-446655441161"
 
     # Create mock strategy that fails
     mock_strategy = AsyncMock()
@@ -486,7 +486,7 @@ async def test_orchestrator_consolidation_error(db_session, sample_raw_data):
 @pytest.mark.asyncio
 async def test_orchestrator_persistence_error(db_session, sample_raw_data):
     """Test orchestrator handles persistence errors."""
-    user_id = "test_user_persist_error"
+    user_id = "550e8400-e29b-41d4-a716-446655441162"
 
     with patch.object(
         DataAggregator, "aggregate_user_data", new_callable=AsyncMock
@@ -523,7 +523,7 @@ async def test_orchestrator_persistence_error(db_session, sample_raw_data):
 @pytest.mark.asyncio
 async def test_consolidation_pipeline_happy_path(db_session, sample_raw_data):
     """Test complete consolidation pipeline with mocked LLM."""
-    user_id = "test_user_happy"
+    user_id = "550e8400-e29b-41d4-a716-446655441163"
 
     with patch.object(
         DataAggregator, "aggregate_user_data", new_callable=AsyncMock

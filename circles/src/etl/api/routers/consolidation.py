@@ -38,7 +38,7 @@ class ConsolidationStatus(str, Enum):
 class ConsolidationRequest(BaseModel):
     """Request to consolidate a user profile."""
 
-    user_id: int
+    user_id: str
     llm_provider: Optional[str] = "anthropic"  # 'anthropic' or 'openai'
 
     class Config:
@@ -56,7 +56,7 @@ class ConsolidationResponse(BaseModel):
     """Response for consolidation request."""
 
     task_id: str
-    user_id: int
+    user_id: str
     status: ConsolidationStatus
     llm_provider: str
     message: str
@@ -67,7 +67,7 @@ class ConsolidationStatusResponse(BaseModel):
     """Response for consolidation status query."""
 
     task_id: str
-    user_id: int
+    user_id: str
     status: ConsolidationStatus
     llm_provider: str
     progress: Optional[str] = None

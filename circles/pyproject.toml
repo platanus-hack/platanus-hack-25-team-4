@@ -22,4 +22,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["src", "src.etl"]
+packages = ["src", "src.etl", "src.consolidation"]

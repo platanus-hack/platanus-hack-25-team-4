@@ -12,8 +12,8 @@ from pydantic import ValidationError
 
 from ..etl.core.result import Result
 from ..profile_schema import UserProfile
+from .base_consolidation_strategy import BaseConsolidationStrategy
 from .llm_adapter import LLMProvider, parse_json_response
-from .sanitizer import sanitize_profile_data
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class ConsolidationStrategy(Protocol):
 
     async def consolidate(
         self,
-        user_id: int,
+        user_id: str,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result["UserProfile", Exception]:
@@ -67,7 +67,7 @@ class DefaultConsolidationStrategy(BaseConsolidationStrategy):
     Inherits validation and utility methods from BaseConsolidationStrategy.
     """
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: str):
         """
         Initialize strategy with user context.
 
@@ -78,7 +78,7 @@ class DefaultConsolidationStrategy(BaseConsolidationStrategy):
 
     async def consolidate(
         self,
-        user_id: int,
+        user_id: str,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result[UserProfile, Exception]:
@@ -230,7 +230,7 @@ IMPORTANT REQUIREMENTS:
 class BaseConsolidationStrategy:
     """Base implementation for consolidation strategies with common functionality."""
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: str):
         """Initialize with user ID."""
         self.user_id = user_id
 
