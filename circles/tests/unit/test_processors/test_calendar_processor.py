@@ -278,7 +278,7 @@ class TestCalendarProcessorIntegration:
         return CalendarProcessor()
 
     @pytest.mark.asyncio
-    async def test_process_with_fixture_data(self, calendar_processor):
+    async def test_process_with_fixture_data(self):
         """Test processing with fixture data."""
         fixture_data = DataTypeFixtures.create_calendar_data()
 
@@ -553,7 +553,7 @@ END:VCALENDAR
         assert error_result.metadata["event_patterns"] == {}
 
     @pytest.mark.asyncio
-    async def test_process_with_max_concurrent_constructor_param(self, tmp_path):
+    async def test_process_with_max_concurrent_constructor_param(self):
         """Test that max_concurrent parameter is properly set in constructor."""
         processor = CalendarProcessor(max_concurrent=5)
 

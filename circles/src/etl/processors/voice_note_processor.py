@@ -10,8 +10,9 @@ Extracts:
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import aiofiles
 from openai import OpenAI
@@ -21,27 +22,29 @@ from ..core import get_settings
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class SimpleProcessorResult:
     """Simple result container for processor outputs."""
 
-    def __init__(
-        self,
-        content: Dict[str, Any],
-        metadata: Dict[str, Any],
-        embeddings: Optional[Dict[str, Any]] = None,
-    ):
-        self.content = content
-        self.metadata = metadata
-        self.embeddings = embeddings or {}
+    content: Dict[str, Any]
+    metadata: Dict[str, Any]
+    embeddings: Optional[Dict[str, Any]] = None
 
 
 class VoiceNoteProcessor:
-    """Process audio files using OpenAI Whisper API."""
+    """Process audio files using OpenAI Whisper API with batch support."""
 
-    def __init__(self):
-        """Initialize processor with OpenAI client."""
+    def __init__(self, max_concurrent: int = 3):
+        """
+        Initialize processor with OpenAI client.
+
+        Args:
+            max_concurrent: Maximum concurrent Whisper API calls (default 3, lower due to API rate limits)
+        """
         settings = get_settings()
         self.client = OpenAI(api_key=settings.openai_api_key)
+        self.max_concurrent = max_concurrent
+        self.semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process(self, file_path: Path) -> SimpleProcessorResult:
         """
@@ -110,7 +113,6 @@ class VoiceNoteProcessor:
                 return self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_bytes_file,
-                    language=None,  # Auto-detect language
                     temperature=0,  # More deterministic
                 )
 
@@ -119,7 +121,7 @@ class VoiceNoteProcessor:
 
             return {
                 "text": transcript.text,
-                "language": transcript.language or "unknown",
+                "language": getattr(transcript, "language", None) or "unknown",
                 "confidence": 0.95,  # Whisper doesn't return explicit confidence
             }
         except Exception as e:
@@ -264,3 +266,83 @@ class VoiceNoteProcessor:
 
         # Run audio duration detection in thread pool
         return await asyncio.to_thread(_get_duration)
+
+    async def process_batch(
+        self, file_paths: List[Path]
+    ) -> List[SimpleProcessorResult]:
+        """
+        Process multiple audio files in parallel with concurrency control.
+
+        Uses semaphore to limit concurrent Whisper API calls while maximizing throughput.
+
+        Args:
+            file_paths: List of audio file paths
+
+        Returns:
+            List of SimpleProcessorResult for each audio file
+
+        Note:
+            Failures are captured in results with error metadata instead of raising.
+            This allows batch processing to continue even if some files fail.
+        """
+        logger.info(
+            f"Processing batch of {len(file_paths)} audio files "
+            f"(max {self.max_concurrent} concurrent)"
+        )
+
+        # Create tasks with semaphore control
+        tasks = [self._process_with_semaphore(file_path) for file_path in file_paths]
+
+        # Execute all tasks concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results - convert exceptions to error results
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Error processing audio {file_paths[i].name}: {result}")
+                # Create error result with fallback data
+                error_result = SimpleProcessorResult(
+                    content={
+                        "transcription": "",
+                        "language": "unknown",
+                        "topics": [],
+                        "sentiment": {"sentiment": "neutral", "score": 0.0},
+                    },
+                    metadata={
+                        "file_type": file_paths[i].suffix.lower(),
+                        "file_size": 0,
+                        "confidence": 0.0,
+                        "duration_seconds": 0.0,
+                        "processing_error": str(result),
+                    },
+                )
+                processed_results.append(error_result)
+            else:
+                processed_results.append(result)
+
+        successful = len(
+            [r for r in processed_results if "processing_error" not in r.metadata]
+        )
+        failed = len(processed_results) - successful
+
+        logger.info(
+            f"Batch processing complete: {successful} successful, {failed} failed"
+        )
+        return processed_results
+
+    async def _process_with_semaphore(self, file_path: Path) -> SimpleProcessorResult:
+        """
+        Process audio with semaphore to control concurrency.
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            SimpleProcessorResult
+
+        Raises:
+            Exception if processing fails (caught by gather in process_batch)
+        """
+        async with self.semaphore:
+            return await self.process(file_path)
