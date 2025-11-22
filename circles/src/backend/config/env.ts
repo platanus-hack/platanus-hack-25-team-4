@@ -19,7 +19,10 @@ const envSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   SES_FROM_EMAIL: z.string().optional().default('hola@circles.lat'),
-  SES_REPLY_TO_EMAIL: z.string().optional()
+  SES_REPLY_TO_EMAIL: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_PROVIDER: z.enum(['resend', 'aws-ses', 'dev']).default('dev'),
+  RESEND_FROM_EMAIL: z.string().optional().default('onboarding@resend.dev')
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -43,5 +46,8 @@ export const env = {
   awsAccessKeyId: parsedEnv.data.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: parsedEnv.data.AWS_SECRET_ACCESS_KEY,
   sesFromEmail: parsedEnv.data.SES_FROM_EMAIL,
-  sesReplyToEmail: parsedEnv.data.SES_REPLY_TO_EMAIL
+  sesReplyToEmail: parsedEnv.data.SES_REPLY_TO_EMAIL,
+  resendApiKey: parsedEnv.data.RESEND_API_KEY,
+  emailProvider: parsedEnv.data.EMAIL_PROVIDER,
+  resendFromEmail: parsedEnv.data.RESEND_FROM_EMAIL
 };
