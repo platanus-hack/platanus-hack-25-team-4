@@ -1,0 +1,26 @@
+{
+  "id": "voice_note_001",
+  "type": "voice_note",
+  "file_name": "voice_note_001.wav",
+  "file_size": 1200000,
+  "mime_type": "audio/wav",
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "metadata": {
+    "duration_seconds": 45.3,
+    "sample_rate": 44100,
+    "channels": 1,
+    "bit_depth": 16,
+    "recorded_date": "2024-01-15T10:00:00Z",
+    "language": "en",
+    "speaker": "John Doe",
+    "ambient_noise": "low"
+  },
+  "transcription": {
+    "text": "Quick reminder to update the documentation and send the proposal by Friday.",
+    "confidence": 0.97,
+    "language_detected": "en",
+    "keywords": ["documentation", "proposal", "Friday"],
+    "sentiment": "neutral",
+    "urgency": "high"
+  }
+}

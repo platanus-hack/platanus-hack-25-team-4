@@ -11,7 +11,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Dict, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from ...core import SecureFileValidator, get_settings
@@ -124,7 +124,7 @@ async def _validate_and_save_file(
 
 
 def _queue_celery_task(
-    task_name: str, job_id: str, user_id: int = 1, source_id: int = 1, **kwargs
+    task_name: str, job_id: str, user_id: str, source_id: int = 1, **kwargs
 ) -> None:
     """
     Queue a Celery task for processing.
@@ -132,7 +132,7 @@ def _queue_celery_task(
     Args:
         task_name: Name of the Celery task
         job_id: Job ID for tracking
-        user_id: User ID (default: 1 for MVP)
+        user_id: Authenticated user ID from JWT token
         source_id: Source ID (default: 1 for MVP)
         **kwargs: Additional arguments to pass to the task
     """
@@ -146,7 +146,7 @@ def _queue_celery_task(
                 **kwargs,
             },
         )
-        logger.info(f"Queued task {task_name} with job_id {job_id}")
+        logger.info(f"Queued task {task_name} with job_id {job_id} for user {user_id}")
     except Exception as e:
         logger.error(f"Failed to queue task {task_name}: {e}")
         raise
@@ -157,6 +157,7 @@ def _queue_celery_task(
 )
 async def upload_resume(
     file: Annotated[UploadFile, File(description="Resume file (PDF, DOCX, TXT)")],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a resume file for processing."""
     job_id = secrets.token_urlsafe(16)
@@ -169,6 +170,7 @@ async def upload_resume(
         _queue_celery_task(
             "process_resume",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -198,6 +200,7 @@ async def upload_photo(
     file: Annotated[
         UploadFile, File(description="Photo file (JPG, PNG, GIF, WebP, HEIC)")
     ],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a photo for VLM analysis."""
     job_id = secrets.token_urlsafe(16)
@@ -210,6 +213,7 @@ async def upload_photo(
         _queue_celery_task(
             "process_photo",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -239,6 +243,7 @@ async def upload_voice_note(
     file: Annotated[
         UploadFile, File(description="Audio file (MP3, WAV, OGG, WebM, M4A)")
     ],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a voice note for transcription."""
     job_id = secrets.token_urlsafe(16)
@@ -251,6 +256,7 @@ async def upload_voice_note(
         _queue_celery_task(
             "process_voice_note",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -278,6 +284,7 @@ async def upload_voice_note(
 )
 async def upload_calendar(
     file: Annotated[UploadFile, File(description="Calendar file (ICS)")],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a calendar file in ICS format."""
     job_id = secrets.token_urlsafe(16)
@@ -290,6 +297,7 @@ async def upload_calendar(
         _queue_celery_task(
             "process_calendar",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -317,6 +325,7 @@ async def upload_calendar(
 )
 async def upload_screenshot(
     file: Annotated[UploadFile, File(description="Screenshot file (PNG, JPG)")],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a screenshot for vision analysis."""
     job_id = secrets.token_urlsafe(16)
@@ -329,6 +338,7 @@ async def upload_screenshot(
         _queue_celery_task(
             "process_screenshot",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -356,6 +366,7 @@ async def upload_screenshot(
 )
 async def upload_shared_image(
     file: Annotated[UploadFile, File(description="Shared image file (PNG, JPG)")],
+    user_id: str,
 ) -> UploadResponse:
     """Upload a shared image."""
     job_id = secrets.token_urlsafe(16)
@@ -370,6 +381,7 @@ async def upload_shared_image(
         _queue_celery_task(
             "process_shared_image",
             job_id,
+            user_id=user_id,
             file_path=str(file_path),
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -398,7 +410,8 @@ async def upload_shared_image(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def upload_chat_transcript(
-    data: Dict[str, Any],
+    data: Annotated[Dict[str, Any], Body(description="Chat transcript JSON data")],
+    user_id: str,
 ) -> UploadResponse:
     """Upload chat transcript data (JSON)."""
     job_id = secrets.token_urlsafe(16)
@@ -416,6 +429,7 @@ async def upload_chat_transcript(
         _queue_celery_task(
             "process_chat_transcript",
             job_id,
+            user_id=user_id,
             transcript_data=data,
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -441,7 +455,10 @@ async def upload_chat_transcript(
 @router.post(
     "/email", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED
 )
-async def upload_email(data: Dict[str, Any]) -> UploadResponse:
+async def upload_email(
+    data: Annotated[Dict[str, Any], Body(description="Email JSON data")],
+    user_id: str,
+) -> UploadResponse:
     """Upload email data (JSON)."""
     job_id = secrets.token_urlsafe(16)
     _create_job(job_id, "email", UploadStatus.PENDING)
@@ -458,6 +475,7 @@ async def upload_email(data: Dict[str, Any]) -> UploadResponse:
         _queue_celery_task(
             "process_email",
             job_id,
+            user_id=user_id,
             email_data=data,
         )
         _update_job(job_id, UploadStatus.PROCESSING)
@@ -483,7 +501,10 @@ async def upload_email(data: Dict[str, Any]) -> UploadResponse:
 @router.post(
     "/social-post", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED
 )
-async def upload_social_post(data: Dict[str, Any]) -> UploadResponse:
+async def upload_social_post(
+    data: Annotated[Dict[str, Any], Body(description="Social post JSON data")],
+    user_id: str,
+) -> UploadResponse:
     """Upload social media post data (JSON)."""
     job_id = secrets.token_urlsafe(16)
     _create_job(job_id, "social_post", UploadStatus.PENDING)
@@ -497,7 +518,9 @@ async def upload_social_post(data: Dict[str, Any]) -> UploadResponse:
             )
 
         # Queue Celery task for processing
-        _queue_celery_task("process_social_post", job_id, post_data=data)
+        _queue_celery_task(
+            "process_social_post", job_id, user_id=user_id, post_data=data
+        )
         _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(
@@ -520,7 +543,12 @@ async def upload_social_post(data: Dict[str, Any]) -> UploadResponse:
 @router.post(
     "/blog-post", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED
 )
-async def upload_blog_post(data: Dict[str, Any]) -> UploadResponse:
+async def upload_blog_post(
+    data: Annotated[
+        Dict[str, Any], Body(description="Blog post JSON data (markdown + metadata)")
+    ],
+    user_id: str,
+) -> UploadResponse:
     """Upload blog post data (Markdown + metadata)."""
     job_id = secrets.token_urlsafe(16)
     _create_job(job_id, "blog_post", UploadStatus.PENDING)
@@ -534,7 +562,7 @@ async def upload_blog_post(data: Dict[str, Any]) -> UploadResponse:
             )
 
         # Queue Celery task for processing
-        _queue_celery_task("process_blog_post", job_id, blog_data=data)
+        _queue_celery_task("process_blog_post", job_id, user_id=user_id, blog_data=data)
         _update_job(job_id, UploadStatus.PROCESSING)
 
         return UploadResponse(

@@ -1,0 +1,48 @@
+{
+  "id": "calendar_001",
+  "type": "calendar",
+  "file_name": "work_calendar.ics",
+  "file_size": 45000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "events": [
+    {
+      "id": "event_001",
+      "title": "Team Standup",
+      "description": "Daily team synchronization meeting",
+      "start": "2024-01-15T09:00:00Z",
+      "end": "2024-01-15T09:30:00Z",
+      "duration_minutes": 30,
+      "location": "Conference Room A",
+      "attendees": ["john@example.com", "jane@example.com", "bob@example.com"],
+      "recurring": "daily",
+      "status": "confirmed"
+    },
+    {
+      "id": "event_002",
+      "title": "Project Review",
+      "description": "Monthly project status review",
+      "start": "2024-01-15T14:00:00Z",
+      "end": "2024-01-15T15:30:00Z",
+      "duration_minutes": 90,
+      "location": "Virtual - Zoom",
+      "attendees": ["manager@example.com", "team@example.com"],
+      "recurring": "monthly",
+      "status": "confirmed"
+    },
+    {
+      "id": "event_003",
+      "title": "Client Call",
+      "description": "Quarterly business review with client",
+      "start": "2024-01-16T10:00:00Z",
+      "end": "2024-01-16T11:00:00Z",
+      "duration_minutes": 60,
+      "location": "Virtual",
+      "attendees": ["client@example.com", "john@example.com"],
+      "recurring": "quarterly",
+      "status": "tentative"
+    }
+  ],
+  "total_events": 3,
+  "busy_hours": 180,
+  "calendar_owner": "john@example.com"
+}

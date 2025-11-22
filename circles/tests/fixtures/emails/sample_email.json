@@ -1,0 +1,47 @@
+{
+  "id": "email_001",
+  "type": "email",
+  "file_name": "email_export.json",
+  "file_size": 65000,
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "emails": [
+    {
+      "id": "msg_001",
+      "from": "john@example.com",
+      "to": "team@example.com",
+      "cc": ["manager@example.com"],
+      "subject": "Project Update - Q1 2024",
+      "date": "2024-01-15T10:30:00Z",
+      "body": "Team, here's our Q1 progress update...",
+      "priority": "high",
+      "has_attachments": true,
+      "attachment_count": 2
+    },
+    {
+      "id": "msg_002",
+      "from": "client@example.com",
+      "to": "john@example.com",
+      "subject": "Re: Proposal Review",
+      "date": "2024-01-14T16:00:00Z",
+      "body": "Thank you for the proposal. We would like to discuss the timeline...",
+      "priority": "normal",
+      "has_attachments": false
+    },
+    {
+      "id": "msg_003",
+      "from": "hr@example.com",
+      "to": "john@example.com",
+      "subject": "Benefits Enrollment Open",
+      "date": "2024-01-10T08:00:00Z",
+      "body": "Annual benefits enrollment is now open...",
+      "priority": "low",
+      "has_attachments": true,
+      "attachment_count": 1
+    }
+  ],
+  "total_emails": 3,
+  "date_range": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2024-01-15T23:59:59Z"
+  }
+}

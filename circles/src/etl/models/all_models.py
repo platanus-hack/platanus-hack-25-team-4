@@ -38,7 +38,7 @@ class RawDataSource(SQLModel, table=True):
     __tablename__ = "raw_data_sources"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_type: str = Field(max_length=50, index=True)
     source_platform: Optional[str] = Field(max_length=50)
 
@@ -63,7 +63,7 @@ class ResumeData(SQLModel, table=True):
     __tablename__ = "resume_data"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Content
@@ -79,7 +79,7 @@ class Photo(SQLModel, table=True):
     __tablename__ = "photos"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # File reference
@@ -102,7 +102,7 @@ class VoiceNote(SQLModel, table=True):
     __tablename__ = "voice_notes"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Audio metadata
@@ -127,7 +127,7 @@ class ChatTranscript(SQLModel, table=True):
     __tablename__ = "chat_transcripts"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Chat metadata
@@ -151,7 +151,7 @@ class CalendarEvent(SQLModel, table=True):
     __tablename__ = "calendar_events"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Event data
@@ -173,7 +173,7 @@ class EmailData(SQLModel, table=True):
     __tablename__ = "email_data"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Threads
@@ -200,7 +200,7 @@ class SocialMediaPost(SQLModel, table=True):
     __tablename__ = "social_media_posts"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Post metadata
@@ -217,7 +217,7 @@ class SocialMediaPost(SQLModel, table=True):
 
     # Metadata
     tags: list[str] = Field(default=[], sa_column=Column(JSON))
-    metadata: dict = Field(default={}, sa_column=Column(JSON))
+    post_metadata: dict = Field(default={}, sa_column=Column(JSON))
 
     posted_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -229,7 +229,7 @@ class BlogPost(SQLModel, table=True):
     __tablename__ = "blog_posts"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # Content
@@ -256,7 +256,7 @@ class Screenshot(SQLModel, table=True):
     __tablename__ = "screenshots"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # File reference
@@ -279,7 +279,7 @@ class SharedImage(SQLModel, table=True):
     __tablename__ = "shared_images"
 
     id: int = Field(primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: Optional[int] = Field(foreign_key="raw_data_sources.id")
 
     # File and context

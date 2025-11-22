@@ -1,0 +1,28 @@
+{
+  "id": "photo_001",
+  "type": "photo",
+  "file_name": "photo_001.jpg",
+  "file_size": 2500000,
+  "mime_type": "image/jpeg",
+  "uploaded_at": "2024-01-15T10:00:00Z",
+  "metadata": {
+    "width": 4000,
+    "height": 3000,
+    "capture_date": "2024-01-15T14:30:00Z",
+    "camera": {
+      "make": "Canon",
+      "model": "EOS R5"
+    },
+    "location": {
+      "latitude": 37.7749,
+      "longitude": -122.4194
+    },
+    "tags": ["portrait", "professional"]
+  },
+  "analysis": {
+    "people_detected": 1,
+    "quality_score": 0.92,
+    "dominant_colors": ["blue", "white"],
+    "mood": "professional"
+  }
+}
