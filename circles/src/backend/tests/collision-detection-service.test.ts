@@ -48,6 +48,7 @@ vi.mock("../lib/prisma.js", () => {
         async ({
           where,
           orderBy,
+          select,
         }: {
           where?: {
             userId?: string;
@@ -56,6 +57,7 @@ vi.mock("../lib/prisma.js", () => {
             startAt?: { lte?: Date };
           };
           orderBy?: Record<string, string>;
+          select?: Record<string, boolean>;
         }) => {
           let filtered = circles.filter((c) => {
             if (where?.userId && c.userId !== where.userId) return false;
@@ -73,7 +75,20 @@ vi.mock("../lib/prisma.js", () => {
             );
           }
 
-          return filtered[0] || null;
+          const result = filtered[0] || null;
+
+          // Handle select clause - only return selected fields
+          if (result && select) {
+            const selectedFields: Record<string, unknown> = {};
+            Object.keys(select).forEach((key) => {
+              if (select[key] && key in result) {
+                selectedFields[key] = result[key as keyof typeof result];
+              }
+            });
+            return selectedFields;
+          }
+
+          return result;
         },
       ),
     },
@@ -359,7 +374,19 @@ describe("CollisionDetectionService", () => {
     });
 
     it("handles errors gracefully and returns empty array", async () => {
-      // Setup: Force an error by making $queryRaw throw
+      // Setup: Add a circle for user-1 so collision detection will proceed
+      circles.push({
+        id: "circle-1",
+        userId: "user-1",
+        status: "active",
+        radiusMeters: 300,
+        objective: "Test",
+        expiresAt: new Date(Date.now() + 3600000),
+        startAt: new Date(Date.now() - 3600000),
+        createdAt: new Date(),
+      });
+
+      // Force an error by making $queryRaw throw
       const { prisma } = await import("../lib/prisma.js");
       vi.mocked(prisma.$queryRaw).mockRejectedValueOnce(
         new Error("Database error"),

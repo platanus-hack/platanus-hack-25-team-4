@@ -63,6 +63,22 @@ export class CollisionDetectionService {
     const allCollisions: DetectedCollision[] = [];
 
     try {
+      // Get visitor's active circle - collisions only tracked if visitor has a circle
+      const visitorCircle = await prisma.circle.findFirst({
+        where: {
+          userId,
+          status: 'active',
+          expiresAt: { gt: new Date() },
+          startAt: { lte: new Date() },
+        },
+        select: { id: true },
+      });
+
+      // Skip collision detection if visitor has no active circle
+      if (!visitorCircle) {
+        return allCollisions;
+      }
+
       // Query all circles owned by other users and check distances
       const candidates = await this.queryCandidateCirclesForPosition(
         userId,
@@ -83,7 +99,7 @@ export class CollisionDetectionService {
       // Track each collision
       for (const collision of topN) {
         const detected: DetectedCollision = {
-          circle1Id: null, // Visitor doesn't need a circle
+          circle1Id: visitorCircle.id, // Visitor's circle (guaranteed to exist here)
           circle2Id: collision.id,
           user1Id: userId,
           user2Id: collision.userId,
