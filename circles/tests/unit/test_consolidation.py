@@ -13,14 +13,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from circles.src.consolidation.data_aggregator import DataAggregator
-from circles.src.consolidation.llm_adapter import (
+from src.consolidation.data_aggregator import DataAggregator
+from src.consolidation.llm_adapter import (
     LLMProviderFactory,
     parse_json_response,
 )
-from circles.src.consolidation.orchestrator import ProfileConsolidationOrchestrator
-from circles.src.consolidation.strategy import DefaultConsolidationStrategy
-from circles.src.etl.core.result import Result
+from src.consolidation.orchestrator import ProfileConsolidationOrchestrator
+from src.consolidation.strategy import DefaultConsolidationStrategy
+from src.etl.core.result import Result
 
 
 @pytest.fixture
@@ -164,52 +164,46 @@ def sample_consolidated_profile():
 async def test_data_aggregator_with_complete_data(db_session):
     """Test aggregator retrieves all available data types."""
     aggregator = DataAggregator(db_session)
-    user_id = "550e8400-e29b-41d4-a716-446655441151"
+    user_id = "1"
 
     # Mock database queries
-    with patch.object(
-        aggregator, "_get_resume_data", new_callable=AsyncMock
-    ) as mock_resume:
-        with patch.object(
-            aggregator, "_get_photo_data", new_callable=AsyncMock
-        ) as mock_photos:
-            mock_resume.return_value = {"full_text": "test resume"}
-            mock_photos.return_value = [{"caption": "test photo"}]
+    with (
+        patch.object(aggregator, "_get_resume_data", new_callable=AsyncMock) as mock_resume,
+        patch.object(aggregator, "_get_photo_data", new_callable=AsyncMock) as mock_photos,
+    ):
+        mock_resume.return_value = {"full_text": "test resume"}
+        mock_photos.return_value = [{"caption": "test photo"}]
 
-            result = await aggregator.aggregate_user_data(user_id)
+        result = await aggregator.aggregate_user_data(user_id)
 
-            assert result.is_ok
-            data = result.value
-            assert data["resume"] == {"full_text": "test resume"}
-            assert data["photos"] == [{"caption": "test photo"}]
+        assert result.is_ok
+        data = result.value
+        assert data["resume"] == {"full_text": "test resume"}
+        assert data["photos"] == [{"caption": "test photo"}]
 
 
 @pytest.mark.asyncio
 async def test_data_aggregator_with_partial_data(db_session):
     """Test aggregator handles incomplete data gracefully."""
     aggregator = DataAggregator(db_session)
-    user_id = "550e8400-e29b-41d4-a716-446655441152"
+    user_id = "2"
 
-    with patch.object(
-        aggregator, "_get_resume_data", new_callable=AsyncMock
-    ) as mock_resume:
-        with patch.object(
-            aggregator, "_get_photo_data", new_callable=AsyncMock
-        ) as mock_photos:
-            with patch.object(
-                aggregator, "_get_voice_note_data", new_callable=AsyncMock
-            ) as mock_voice:
-                mock_resume.return_value = None
-                mock_photos.return_value = []
-                mock_voice.return_value = [{"transcription": "test"}]
+    with (
+        patch.object(aggregator, "_get_resume_data", new_callable=AsyncMock) as mock_resume,
+        patch.object(aggregator, "_get_photo_data", new_callable=AsyncMock) as mock_photos,
+        patch.object(aggregator, "_get_voice_note_data", new_callable=AsyncMock) as mock_voice,
+    ):
+        mock_resume.return_value = None
+        mock_photos.return_value = []
+        mock_voice.return_value = [{"transcription": "test"}]
 
-                result = await aggregator.aggregate_user_data(user_id)
+        result = await aggregator.aggregate_user_data(user_id)
 
-                assert result.is_ok
-                data = result.value
-                assert data["resume"] is None
-                assert data["photos"] == []
-                assert data["voice_notes"] == [{"transcription": "test"}]
+        assert result.is_ok
+        data = result.value
+        assert data["resume"] is None
+        assert data["photos"] == []
+        assert data["voice_notes"] == [{"transcription": "test"}]
 
 
 @pytest.mark.asyncio
@@ -219,9 +213,7 @@ async def test_data_aggregator_error_handling(db_session):
     user_id = "550e8400-e29b-41d4-a716-446655441153"
 
     # Mock a database error
-    with patch.object(
-        aggregator, "_get_resume_data", new_callable=AsyncMock
-    ) as mock_resume:
+    with patch.object(aggregator, "_get_resume_data", new_callable=AsyncMock) as mock_resume:
         mock_resume.side_effect = Exception("Database error")
 
         result = await aggregator.aggregate_user_data(user_id)
@@ -236,17 +228,13 @@ async def test_data_aggregator_error_handling(db_session):
 
 
 @pytest.mark.asyncio
-async def test_consolidation_strategy_with_valid_data(
-    sample_raw_data, sample_consolidated_profile
-):
+async def test_consolidation_strategy_with_valid_data(sample_raw_data, sample_consolidated_profile):
     """Test consolidation strategy with mocked LLM provider."""
-    user_id = "550e8400-e29b-41d4-a716-446655441154"
+    user_id = "3"
 
     # Create mock LLM provider
     mock_llm_provider = MagicMock()
-    mock_llm_provider.call = AsyncMock(
-        return_value=json.dumps(sample_consolidated_profile)
-    )
+    mock_llm_provider.call = AsyncMock(return_value=json.dumps(sample_consolidated_profile))
     mock_llm_provider.get_provider_name = MagicMock(return_value="anthropic")
 
     # Create strategy with injected provider
@@ -257,8 +245,9 @@ async def test_consolidation_strategy_with_valid_data(
     assert result.is_ok
     profile = result.value
     assert profile.user_id == user_id
-    assert profile.personality_core.openness == "High - enjoys new experiences"
-    assert profile.social_interaction_style.preferred_group_size == "Small group"
+    # personality_core and social_interaction_style are stored as dicts (JSON fields)
+    assert profile.personality_core["openness"] == "High - enjoys new experiences"  # type: ignore[index]
+    assert profile.social_interaction_style["preferred_group_size"] == "Small group"  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -297,9 +286,7 @@ async def test_llm_json_response_parsing():
     assert result["personality_core"]["openness"] == "High"
 
     # Test JSON extraction from text
-    text_with_json = (
-        'Here is the profile: {"personality_core": {"openness": "High"}} done'
-    )
+    text_with_json = 'Here is the profile: {"personality_core": {"openness": "High"}} done'
     result = parse_json_response(text_with_json)
     assert result["personality_core"]["openness"] == "High"
 
@@ -337,9 +324,7 @@ async def test_consolidation_with_different_llm_providers(
 
     # Test with Anthropic provider mock
     anthropic_provider = MagicMock()
-    anthropic_provider.call = AsyncMock(
-        return_value=json.dumps(sample_consolidated_profile)
-    )
+    anthropic_provider.call = AsyncMock(return_value=json.dumps(sample_consolidated_profile))
     anthropic_provider.get_provider_name = MagicMock(return_value="anthropic")
 
     strategy = DefaultConsolidationStrategy(user_id)
@@ -350,9 +335,7 @@ async def test_consolidation_with_different_llm_providers(
 
     # Test with OpenAI provider mock
     openai_provider = MagicMock()
-    openai_provider.call = AsyncMock(
-        return_value=json.dumps(sample_consolidated_profile)
-    )
+    openai_provider.call = AsyncMock(return_value=json.dumps(sample_consolidated_profile))
     openai_provider.get_provider_name = MagicMock(return_value="openai")
 
     result = await strategy.consolidate(user_id, sample_raw_data, openai_provider)
@@ -364,14 +347,19 @@ async def test_consolidation_with_different_llm_providers(
 @pytest.mark.asyncio
 async def test_llm_provider_factory_creates_providers():
     """Test LLM provider factory creates correct provider instances."""
-    # Factory method should create providers without errors
-    anthropic_provider = LLMProviderFactory.create("anthropic")
-    assert anthropic_provider is not None
-    assert anthropic_provider.get_provider_name() == "anthropic"
+    # Mock the provider initialization to avoid API key validation
+    with patch("src.consolidation.llm_adapter.get_settings") as mock_settings:
+        mock_settings.return_value.anthropic_api_key = "test-key"
+        mock_settings.return_value.openai_api_key = "test-key"
 
-    openai_provider = LLMProviderFactory.create("openai")
-    assert openai_provider is not None
-    assert openai_provider.get_provider_name() == "openai"
+        # Factory method should create providers without errors
+        anthropic_provider = LLMProviderFactory.create("anthropic")
+        assert anthropic_provider is not None
+        assert anthropic_provider.get_provider_name() == "anthropic"
+
+        openai_provider = LLMProviderFactory.create("openai")
+        assert openai_provider is not None
+        assert openai_provider.get_provider_name() == "openai"
 
     # Test invalid provider raises error
     with pytest.raises(ValueError):
@@ -386,73 +374,82 @@ async def test_llm_provider_factory_creates_providers():
 @pytest.mark.asyncio
 async def test_orchestrator_with_injected_strategy(db_session, sample_raw_data):
     """Test orchestrator accepts injected strategy via DI."""
-    user_id = "550e8400-e29b-41d4-a716-446655441158"
+    user_id = "4"
 
     # Create mock strategy
     mock_strategy = AsyncMock()
-    mock_strategy.consolidate = AsyncMock(
-        return_value=Result.ok(MagicMock(spec=object))
-    )
+    mock_strategy.consolidate = AsyncMock(return_value=Result.ok(MagicMock(spec=object)))
 
-    with patch.object(
-        DataAggregator, "aggregate_user_data", new_callable=AsyncMock
-    ) as mock_aggregate:
-        with patch.object(
+    # Create mock LLM provider to avoid API key validation
+    mock_llm_provider = MagicMock()
+    mock_llm_provider.call = AsyncMock(return_value="{}")
+    mock_llm_provider.get_provider_name = MagicMock(return_value="anthropic")
+
+    with (
+        patch.object(
+            DataAggregator, "aggregate_user_data", new_callable=AsyncMock
+        ) as mock_aggregate,
+        patch.object(
             ProfileConsolidationOrchestrator, "_persist_profile", new_callable=AsyncMock
-        ) as mock_persist:
-            mock_aggregate.return_value = Result.ok(sample_raw_data)
-            mock_persist.return_value = Result.ok(MagicMock())
+        ) as mock_persist,
+    ):
+        mock_aggregate.return_value = Result.ok(sample_raw_data)
+        mock_persist.return_value = Result.ok(MagicMock())
 
-            orchestrator = ProfileConsolidationOrchestrator.create_with_strategy(
-                db_session, mock_strategy
-            )
+        orchestrator = ProfileConsolidationOrchestrator.create_with_strategy(
+            db_session, mock_strategy, llm_provider=mock_llm_provider
+        )
 
-            result = await orchestrator.consolidate_user_profile(user_id)
+        result = await orchestrator.consolidate_user_profile(user_id)
 
-            assert result.is_ok
-            mock_strategy.consolidate.assert_called_once()
+        assert result.is_ok
+        mock_strategy.consolidate.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_orchestrator_with_llm_provider_selection(db_session, sample_raw_data):
     """Test orchestrator supports LLM provider-based strategy selection."""
-    user_id = "550e8400-e29b-41d4-a716-446655441159"
+    user_id = "5"
 
-    with patch.object(
-        DataAggregator, "aggregate_user_data", new_callable=AsyncMock
-    ) as mock_aggregate:
-        with patch.object(
-            DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
-        ) as mock_consolidate:
-            with patch.object(
-                ProfileConsolidationOrchestrator,
-                "_persist_profile",
-                new_callable=AsyncMock,
-            ) as mock_persist:
-                mock_aggregate.return_value = Result.ok(sample_raw_data)
-                mock_profile = MagicMock()
-                mock_profile.user_id = user_id
-                mock_consolidate.return_value = Result.ok(mock_profile)
-                mock_persist.return_value = Result.ok(mock_profile)
+    # Mock LLM provider factory to avoid API key validation
+    with patch("src.consolidation.llm_adapter.LLMProviderFactory.create") as mock_factory:
+        mock_llm_provider = MagicMock()
+        mock_llm_provider.call = AsyncMock(return_value="{}")
+        mock_llm_provider.get_provider_name = MagicMock(return_value="anthropic")
+        mock_factory.return_value = mock_llm_provider
 
-                # Test with Anthropic provider
-                orchestrator = (
-                    ProfileConsolidationOrchestrator.create_with_llm_provider(
-                        db_session, llm_provider_name="anthropic"
-                    )
-                )
-                result = await orchestrator.consolidate_user_profile(user_id)
+        with (
+            patch.object(
+                DataAggregator, "aggregate_user_data", new_callable=AsyncMock
+            ) as mock_aggregate,
+            patch.object(
+                DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
+            ) as mock_consolidate,
+            patch.object(
+                ProfileConsolidationOrchestrator, "_persist_profile", new_callable=AsyncMock
+            ) as mock_persist,
+        ):
+            mock_aggregate.return_value = Result.ok(sample_raw_data)
+            mock_profile = MagicMock()
+            mock_profile.user_id = user_id
+            mock_consolidate.return_value = Result.ok(mock_profile)
+            mock_persist.return_value = Result.ok(mock_profile)
 
-                assert result.is_ok
+            # Test with Anthropic provider
+            orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
+                db_session, llm_provider_name="anthropic"
+            )
+            result = await orchestrator.consolidate_user_profile(user_id)
 
-                # Test with OpenAI provider
-                orchestrator = (
-                    ProfileConsolidationOrchestrator.create_with_llm_provider(
-                        db_session, llm_provider_name="openai"
-                    )
-                )
-                result = await orchestrator.consolidate_user_profile(user_id)
-                assert result.is_ok
+            assert result.is_ok
+
+            # Test with OpenAI provider
+            mock_llm_provider.get_provider_name = MagicMock(return_value="openai")
+            orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
+                db_session, llm_provider_name="openai"
+            )
+            result = await orchestrator.consolidate_user_profile(user_id)
+            assert result.is_ok
 
 
 @pytest.mark.asyncio
@@ -465,9 +462,7 @@ async def test_orchestrator_aggregation_error(db_session):
     ) as mock_aggregate:
         mock_aggregate.return_value = Result.error(Exception("Aggregation failed"))
 
-        orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
-            db_session
-        )
+        orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(db_session)
         result = await orchestrator.consolidate_user_profile(user_id)
 
         assert result.is_error
@@ -502,33 +497,36 @@ async def test_orchestrator_consolidation_error(db_session, sample_raw_data):
 @pytest.mark.asyncio
 async def test_orchestrator_persistence_error(db_session, sample_raw_data):
     """Test orchestrator handles persistence errors."""
-    user_id = "550e8400-e29b-41d4-a716-446655441162"
+    user_id = "6"
 
-    with patch.object(
-        DataAggregator, "aggregate_user_data", new_callable=AsyncMock
-    ) as mock_aggregate:
-        with patch.object(
-            DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
-        ) as mock_consolidate:
-            with patch.object(
-                ProfileConsolidationOrchestrator,
-                "_persist_profile",
-                new_callable=AsyncMock,
-            ) as mock_persist:
-                mock_aggregate.return_value = Result.ok(sample_raw_data)
-                mock_profile = MagicMock()
-                mock_consolidate.return_value = Result.ok(mock_profile)
-                mock_persist.return_value = Result.error(Exception("Database error"))
+    # Mock LLM provider factory to avoid API key validation
+    with patch("src.consolidation.llm_adapter.LLMProviderFactory.create") as mock_factory:
+        mock_llm_provider = MagicMock()
+        mock_llm_provider.call = AsyncMock(return_value="{}")
+        mock_llm_provider.get_provider_name = MagicMock(return_value="anthropic")
+        mock_factory.return_value = mock_llm_provider
 
-                orchestrator = (
-                    ProfileConsolidationOrchestrator.create_with_llm_provider(
-                        db_session
-                    )
-                )
-                result = await orchestrator.consolidate_user_profile(user_id)
+        with (
+            patch.object(
+                DataAggregator, "aggregate_user_data", new_callable=AsyncMock
+            ) as mock_aggregate,
+            patch.object(
+                DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
+            ) as mock_consolidate,
+            patch.object(
+                ProfileConsolidationOrchestrator, "_persist_profile", new_callable=AsyncMock
+            ) as mock_persist,
+        ):
+            mock_aggregate.return_value = Result.ok(sample_raw_data)
+            mock_profile = MagicMock()
+            mock_consolidate.return_value = Result.ok(mock_profile)
+            mock_persist.return_value = Result.error(Exception("Database error"))
 
-                assert result.is_error
-                assert "Database error" in str(result.error_value)
+            orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(db_session)
+            result = await orchestrator.consolidate_user_profile(user_id)
+
+            assert result.is_error
+            assert "Database error" in str(result.error_value)
 
 
 # ============================================================================
@@ -539,37 +537,42 @@ async def test_orchestrator_persistence_error(db_session, sample_raw_data):
 @pytest.mark.asyncio
 async def test_consolidation_pipeline_happy_path(db_session, sample_raw_data):
     """Test complete consolidation pipeline with mocked LLM."""
-    user_id = "550e8400-e29b-41d4-a716-446655441163"
+    user_id = "7"
 
-    with patch.object(
-        DataAggregator, "aggregate_user_data", new_callable=AsyncMock
-    ) as mock_aggregate:
-        with patch.object(
-            DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
-        ) as mock_consolidate:
-            with patch.object(
-                ProfileConsolidationOrchestrator,
-                "_persist_profile",
-                new_callable=AsyncMock,
-            ) as mock_persist:
-                # Setup mocks
-                mock_aggregate.return_value = Result.ok(sample_raw_data)
+    # Mock LLM provider factory to avoid API key validation
+    with patch("src.consolidation.llm_adapter.LLMProviderFactory.create") as mock_factory:
+        mock_llm_provider = MagicMock()
+        mock_llm_provider.call = AsyncMock(return_value="{}")
+        mock_llm_provider.get_provider_name = MagicMock(return_value="anthropic")
+        mock_factory.return_value = mock_llm_provider
 
-                mock_profile = MagicMock()
-                mock_profile.user_id = user_id
-                mock_consolidate.return_value = Result.ok(mock_profile)
-                mock_persist.return_value = Result.ok(mock_profile)
+        with (
+            patch.object(
+                DataAggregator, "aggregate_user_data", new_callable=AsyncMock
+            ) as mock_aggregate,
+            patch.object(
+                DefaultConsolidationStrategy, "consolidate", new_callable=AsyncMock
+            ) as mock_consolidate,
+            patch.object(
+                ProfileConsolidationOrchestrator, "_persist_profile", new_callable=AsyncMock
+            ) as mock_persist,
+        ):
+            # Setup mocks
+            mock_aggregate.return_value = Result.ok(sample_raw_data)
 
-                # Execute pipeline
-                orchestrator = (
-                    ProfileConsolidationOrchestrator.create_with_llm_provider(
-                        db_session, llm_provider_name="anthropic"
-                    )
-                )
-                result = await orchestrator.consolidate_user_profile(user_id)
+            mock_profile = MagicMock()
+            mock_profile.user_id = user_id
+            mock_consolidate.return_value = Result.ok(mock_profile)
+            mock_persist.return_value = Result.ok(mock_profile)
 
-                # Verify success
-                assert result.is_ok
-                mock_aggregate.assert_called_once()
-                mock_consolidate.assert_called_once()
-                mock_persist.assert_called_once()
+            # Execute pipeline
+            orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
+                db_session, llm_provider_name="anthropic"
+            )
+            result = await orchestrator.consolidate_user_profile(user_id)
+
+            # Verify success
+            assert result.is_ok
+            mock_aggregate.assert_called_once()
+            mock_consolidate.assert_called_once()
+            mock_persist.assert_called_once()

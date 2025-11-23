@@ -2,11 +2,20 @@
 
 from typing import Optional
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class TestSettings(BaseSettings):
     """Test-specific configuration that overrides production settings."""
+
+    model_config = ConfigDict(
+        env_file=".env.test",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        env_prefix="TEST_",
+        extra="ignore",  # Ignore extra fields from environment
+    )
 
     # ========================================================================
     # Test Database Configuration
@@ -67,14 +76,6 @@ class TestSettings(BaseSettings):
     # Test Parallelization
     # ========================================================================
     max_parallel_workers: int = 4  # Use pytest-xdist for parallel execution
-
-    class Config:
-        """Pydantic configuration."""
-
-        env_file = ".env.test"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        env_prefix = "TEST_"
 
     def get_database_url(self) -> str:
         """Get the appropriate database URL based on configuration."""

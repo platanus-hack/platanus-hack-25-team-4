@@ -24,6 +24,63 @@ InputT = TypeVar("InputT")  # Input data type (Path, dict, etc.)
 OutputT = TypeVar("OutputT")  # Output database model
 
 
+# Exception classes for adapters
+class AdapterError(Exception):
+    """Base exception class for all adapter errors."""
+
+    pass
+
+
+class InvalidInputError(AdapterError):
+    """Raised when input data is invalid or malformed."""
+
+    pass
+
+
+class ConversionError(AdapterError):
+    """Raised when conversion/transformation fails."""
+
+    pass
+
+
+class UnsupportedFormatError(ConversionError):
+    """Raised when file format is not supported."""
+
+    pass
+
+
+class ModelLoadError(AdapterError):
+    """Raised when ML model fails to load."""
+
+    pass
+
+
+class InferenceError(AdapterError):
+    """Raised when ML inference fails."""
+
+    pass
+
+
+# Type aliases for file handling
+FilePath = str | Path
+FileContent = str | bytes
+
+
+def ensure_path(file_path: FilePath) -> Path:
+    """
+    Convert a file path (str or Path) to a Path object.
+
+    Args:
+        file_path: A string path or Path object
+
+    Returns:
+        Path object
+    """
+    if isinstance(file_path, str):
+        return Path(file_path)
+    return file_path
+
+
 class DataType(str, Enum):
     """Supported data types in the ETL system."""
 
@@ -66,12 +123,16 @@ class AdapterContext:
         data_type: DataType,
         metadata: Optional[Dict[str, Any]] = None,
         trace_id: Optional[str] = None,
+        input_path: Optional[Path] = None,
+        session: Optional[Any] = None,
     ):
         self.user_id = user_id
         self.source_id = source_id
         self.data_type = data_type
         self.metadata = metadata or {}
         self.trace_id = trace_id or f"{data_type}-{user_id}-{source_id}"
+        self.input_path = input_path
+        self.session = session
 
     def __repr__(self) -> str:
         return f"AdapterContext(user_id={self.user_id}, data_type={self.data_type}, trace_id={self.trace_id})"

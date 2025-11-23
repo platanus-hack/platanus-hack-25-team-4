@@ -11,12 +11,12 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core import get_settings
-from ...database import get_async_session
+from src.database import get_async_session
+
 from ...tasks.celery_app import celery_app
 from ...tasks.consolidation_tasks import consolidate_user_profile_task
 

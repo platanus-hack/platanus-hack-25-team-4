@@ -7,12 +7,12 @@ Tests audio transcription with OpenAI Whisper API mocking.
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from circles.src.etl.processors.voice_note_processor import (
+from src.etl.processors.voice_note_processor import (
     SimpleProcessorResult,
     VoiceNoteProcessor,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
 
 
 @pytest.mark.unit
@@ -287,17 +287,17 @@ class TestVoiceNoteProcessorIntegration:
         assert "transcription" in fixture_data
 
     def test_topic_keywords_coverage(self, voice_processor):
-        """Test that topic extraction covers expected keywords."""
-        # Test technology keywords
-        assert "software" in voice_processor._extract_topics("software development")
-        assert "python" in voice_processor._extract_topics("I code in python")
+        """Test that topic extraction returns correct topic categories."""
+        # Test technology keywords -> should return "technology" category
+        assert "technology" in voice_processor._extract_topics("software development")
+        assert "technology" in voice_processor._extract_topics("I code in python")
 
-        # Test business keywords
-        assert "meeting" in voice_processor._extract_topics("team meeting tomorrow")
-        assert "deadline" in voice_processor._extract_topics("project deadline")
+        # Test business keywords -> should return "business" category
+        assert "business" in voice_processor._extract_topics("team meeting tomorrow")
+        assert "business" in voice_processor._extract_topics("project deadline")
 
-        # Test health keywords
-        assert "workout" in voice_processor._extract_topics("gym workout session")
+        # Test health keywords -> should return "health" category
+        assert "health" in voice_processor._extract_topics("gym workout session")
 
     @pytest.mark.asyncio
     async def test_sentiment_edge_cases(self, voice_processor):

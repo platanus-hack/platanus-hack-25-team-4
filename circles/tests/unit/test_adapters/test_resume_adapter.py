@@ -9,9 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from circles.src.etl.adapters.base import AdapterContext, DataType
-from circles.src.etl.adapters.resume_adapter import ResumeAdapter
+from src.etl.adapters.base import AdapterContext, DataType
+from src.etl.adapters.resume_adapter import ResumeAdapter
 
 
 @pytest.mark.unit
@@ -47,9 +46,10 @@ Senior Software Engineer
     def mock_adapter_context(self, sample_resume_file):
         """Create a mock AdapterContext."""
         return AdapterContext(
+            user_id=1,
+            source_id=1,
             data_type=DataType.RESUME,
             input_path=sample_resume_file,
-            user_id="test_user_123",
             session=AsyncMock(spec=AsyncSession),
         )
 
@@ -58,17 +58,19 @@ Senior Software Engineer
         self, resume_adapter, sample_resume_file
     ):
         """Test validation of a valid resume file."""
-        result = await resume_adapter.validate_input(sample_resume_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
+        result = await resume_adapter.validate_input(sample_resume_file, context)
 
-        assert result is True, "Valid resume file should pass validation"
+        assert result.is_ok, "Valid resume file should pass validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_nonexistent_file(self, resume_adapter, tmp_path):
         """Test validation of non-existent file."""
         non_existent = tmp_path / "nonexistent.txt"
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
 
-        with pytest.raises(FileNotFoundError):
-            await resume_adapter.validate_input(non_existent)
+        result = await resume_adapter.validate_input(non_existent, context)
+        assert result.is_error, "Non-existent file should fail validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_invalid_extension(self, resume_adapter, tmp_path):
@@ -76,9 +78,10 @@ Senior Software Engineer
         invalid_file = tmp_path / "document.xyz"
         invalid_file.write_text("content")
 
-        result = await resume_adapter.validate_input(invalid_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
+        result = await resume_adapter.validate_input(invalid_file, context)
 
-        assert result is False, "Invalid file extension should fail validation"
+        assert result.is_error, "Invalid file extension should fail validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_supported_formats(self, resume_adapter, tmp_path):
@@ -89,40 +92,52 @@ Senior Software Engineer
             test_file = tmp_path / f"resume{ext}"
             test_file.write_bytes(b"dummy content")
 
-            result = await resume_adapter.validate_input(test_file)
+            context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
+            result = await resume_adapter.validate_input(test_file, context)
 
-            assert result is True, f"{ext} should be a valid resume format"
+            assert result.is_ok, f"{ext} should be a valid resume format"
 
     @pytest.mark.asyncio
-    async def test_process_resume(self, resume_adapter, mock_adapter_context):
+    async def test_process_resume(
+        self, resume_adapter, sample_resume_file, mock_adapter_context
+    ):
         """Test processing a resume file."""
-        with patch.object(
-            resume_adapter.processor,
-            "process",
-            return_value=MagicMock(
-                content={"full_text": "John Doe", "structured": {}},
-                metadata={"file_type": ".txt", "file_size": 500},
-                embeddings=None,
-            ),
-        ):
-            result = await resume_adapter.process(mock_adapter_context)
+        # Mock the processor's process method
+        mock_processor_result = MagicMock(
+            content={"full_text": "John Doe", "structured": {}},
+            metadata={"file_type": ".txt", "file_size": 500},
+            embeddings=None,
+        )
 
-            assert result is not None
-            assert "full_text" in result.content
-            assert result.metadata["file_type"] == ".txt"
+        with patch("src.etl.adapters.resume_adapter.ResumeProcessor") as MockProcessor:
+            mock_instance = MockProcessor.return_value
+            mock_instance.process = AsyncMock(return_value=mock_processor_result)
+
+            result = await resume_adapter.process(
+                sample_resume_file, mock_adapter_context
+            )
+
+            assert result.is_ok, "Processing should succeed"
+            assert "full_text" in result.value.content
+            assert result.value.metadata["file_type"] == ".txt"
 
     @pytest.mark.asyncio
     async def test_process_resume_processor_error(
-        self, resume_adapter, mock_adapter_context
+        self, resume_adapter, sample_resume_file, mock_adapter_context
     ):
         """Test handling of processor errors."""
-        with patch.object(
-            resume_adapter.processor,
-            "process",
-            side_effect=ValueError("Processing failed"),
-        ):
-            with pytest.raises(ValueError):
-                await resume_adapter.process(mock_adapter_context)
+        with patch("src.etl.adapters.resume_adapter.ResumeProcessor") as MockProcessor:
+            mock_instance = MockProcessor.return_value
+            mock_instance.process = AsyncMock(
+                side_effect=ValueError("Processing failed")
+            )
+
+            result = await resume_adapter.process(
+                sample_resume_file, mock_adapter_context
+            )
+
+            assert result.is_error, "Processing should fail and return error Result"
+            assert "Processing failed" in str(result.error_value)
 
     @pytest.mark.asyncio
     async def test_persist_resume_data(self, resume_adapter, mock_adapter_context):
@@ -132,10 +147,14 @@ Senior Software Engineer
             metadata={"file_type": ".txt"},
         )
 
-        with patch.object(resume_adapter, "_save_to_database", new_callable=AsyncMock):
-            await resume_adapter.persist(mock_adapter_context, processor_result)
+        mock_session = AsyncMock(spec=AsyncSession)
+        result = await resume_adapter.persist(
+            processor_result, mock_adapter_context, mock_session
+        )
 
-            resume_adapter._save_to_database.assert_called_once()
+        assert result.is_ok, "Persistence should succeed"
+        mock_session.add.assert_called_once()
+        mock_session.flush.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_persist_database_error(self, resume_adapter, mock_adapter_context):
@@ -144,78 +163,124 @@ Senior Software Engineer
             content={"full_text": "John Doe", "structured": {}},
         )
 
-        mock_adapter_context.session.add.side_effect = Exception("Database error")
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.add.side_effect = Exception("Database error")
 
-        with pytest.raises(Exception):
-            await resume_adapter.persist(mock_adapter_context, processor_result)
+        result = await resume_adapter.persist(
+            processor_result, mock_adapter_context, mock_session
+        )
+
+        assert result.is_error, "Persistence should fail and return error Result"
+        assert "Database error" in str(result.error_value)
 
     @pytest.mark.asyncio
-    async def test_cleanup(self, resume_adapter, mock_adapter_context):
+    async def test_cleanup(
+        self, resume_adapter, sample_resume_file, mock_adapter_context
+    ):
         """Test cleanup phase."""
-        with patch.object(
-            resume_adapter, "_cleanup_temp_files", new_callable=AsyncMock
-        ):
-            await resume_adapter.cleanup(mock_adapter_context)
+        # Cleanup accepts input_data and context
+        await resume_adapter.cleanup(sample_resume_file, mock_adapter_context)
 
-            # Cleanup should complete without errors
-            assert True
+        # Cleanup should complete without errors
+        assert True
 
     @pytest.mark.asyncio
     async def test_execute_full_pipeline(
         self, resume_adapter, sample_resume_file, mock_adapter_context
     ):
         """Test the complete 4-phase pipeline."""
-        with patch.object(resume_adapter, "validate_input", return_value=True):
-            with patch.object(
-                resume_adapter,
-                "process",
-                return_value=MagicMock(
-                    content={"full_text": "John Doe"},
-                    metadata={"file_type": ".txt"},
-                ),
-            ):
-                with patch.object(resume_adapter, "persist", new_callable=AsyncMock):
-                    with patch.object(
-                        resume_adapter, "cleanup", new_callable=AsyncMock
-                    ):
-                        result = await resume_adapter.execute(mock_adapter_context)
+        from src.etl.core import ProcessingError, Result
 
-                        assert result is not None
-                        resume_adapter.persist.assert_called_once()
-                        resume_adapter.cleanup.assert_called_once()
+        mock_processor_result = MagicMock(
+            content={"full_text": "John Doe"},
+            metadata={"file_type": ".txt"},
+        )
+        mock_resume_data = MagicMock()
 
-    @pytest.mark.asyncio
-    async def test_execute_validation_failure(
-        self, resume_adapter, mock_adapter_context
-    ):
-        """Test pipeline stops at validation failure."""
-        with patch.object(resume_adapter, "validate_input", return_value=False):
+        with patch.object(
+            resume_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.ok(None)
             with patch.object(
                 resume_adapter, "process", new_callable=AsyncMock
             ) as mock_process:
-                result = await resume_adapter.execute(mock_adapter_context)
+                mock_process.return_value = Result.ok(mock_processor_result)
+                with patch.object(
+                    resume_adapter, "persist", new_callable=AsyncMock
+                ) as mock_persist:
+                    mock_persist.return_value = Result.ok(mock_resume_data)
+                    with patch.object(
+                        resume_adapter, "cleanup", new_callable=AsyncMock
+                    ) as mock_cleanup:
+                        mock_session = AsyncMock(spec=AsyncSession)
+                        result = await resume_adapter.execute(
+                            sample_resume_file, mock_adapter_context, mock_session
+                        )
 
+                        assert result.is_ok, "Execute should succeed"
+                        mock_persist.assert_called_once()
+                        mock_cleanup.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_validation_failure(
+        self, resume_adapter, sample_resume_file, mock_adapter_context
+    ):
+        """Test pipeline stops at validation failure."""
+        from src.etl.core import ProcessingError, Result
+
+        validation_error = ProcessingError(
+            "Validation failed", error_type="validation_error"
+        )
+
+        with patch.object(
+            resume_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.error(validation_error)
+            with patch.object(
+                resume_adapter, "process", new_callable=AsyncMock
+            ) as mock_process:
+                mock_session = AsyncMock(spec=AsyncSession)
+                result = await resume_adapter.execute(
+                    sample_resume_file, mock_adapter_context, mock_session
+                )
+
+                assert result.is_error, "Execute should fail at validation"
                 mock_process.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_context_passed_through_phases(
-        self, resume_adapter, mock_adapter_context
+        self, resume_adapter, sample_resume_file, mock_adapter_context
     ):
         """Test that context is passed correctly through all phases."""
-        with patch.object(resume_adapter, "validate_input", return_value=True):
+        from src.etl.core import ProcessingError, Result
+
+        mock_processor_result = MagicMock(content={}, metadata={})
+        mock_resume_data = MagicMock()
+
+        with patch.object(
+            resume_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.ok(None)
             with patch.object(
-                resume_adapter,
-                "process",
-                return_value=MagicMock(content={}, metadata={}),
+                resume_adapter, "process", new_callable=AsyncMock
             ) as mock_process:
-                with patch.object(resume_adapter, "persist", new_callable=AsyncMock):
+                mock_process.return_value = Result.ok(mock_processor_result)
+                with patch.object(
+                    resume_adapter, "persist", new_callable=AsyncMock
+                ) as mock_persist:
+                    mock_persist.return_value = Result.ok(mock_resume_data)
                     with patch.object(
                         resume_adapter, "cleanup", new_callable=AsyncMock
                     ):
-                        await resume_adapter.execute(mock_adapter_context)
+                        mock_session = AsyncMock(spec=AsyncSession)
+                        await resume_adapter.execute(
+                            sample_resume_file, mock_adapter_context, mock_session
+                        )
 
-                        # Verify process received the context
-                        mock_process.assert_called_once_with(mock_adapter_context)
+                        # Verify process received input_data and context
+                        mock_process.assert_called_once_with(
+                            sample_resume_file, mock_adapter_context
+                        )
 
     @pytest.mark.asyncio
     async def test_empty_resume_file(self, resume_adapter, tmp_path):
@@ -223,10 +288,12 @@ Senior Software Engineer
         empty_file = tmp_path / "empty.txt"
         empty_file.write_text("")
 
-        result = await resume_adapter.validate_input(empty_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
+        result = await resume_adapter.validate_input(empty_file, context)
 
         # Empty file might be valid structurally, but processor should handle it
-        assert result is True or result is False  # Depends on validation rules
+        # Check that result is a Result type
+        assert result.is_ok or result.is_error, "Result should be a Result type"
 
     @pytest.mark.asyncio
     async def test_large_resume_file(self, resume_adapter, tmp_path):
@@ -236,7 +303,9 @@ Senior Software Engineer
         large_content = "x" * (5 * 1024 * 1024)
         large_file.write_text(large_content)
 
-        result = await resume_adapter.validate_input(large_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.RESUME)
+        result = await resume_adapter.validate_input(large_file, context)
 
         # Should still validate, but may need size limits
-        assert isinstance(result, bool)
+        # Check that result is a Result type, not boolean
+        assert result.is_ok or result.is_error, "Result should be a Result type"

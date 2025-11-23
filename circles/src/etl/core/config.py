@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     log_level: str = "INFO"
+    frontend_url: Optional[str] = None
 
     # ========================================================================
     # PROCESSING CONFIGURATION
@@ -127,6 +128,9 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = (
+            "allow"  # Allow extra fields like postgres_user, postgres_password, etc.
+        )
 
     def validate_required_keys(self) -> list[str]:
         """

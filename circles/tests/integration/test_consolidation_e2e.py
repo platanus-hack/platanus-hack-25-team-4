@@ -10,11 +10,10 @@ Run with: pytest -m "e2e" circles/tests/integration/test_consolidation_e2e.py
 import logging
 
 import pytest
-
-from circles.src.consolidation.llm_adapter import LLMProviderFactory
-from circles.src.consolidation.orchestrator import ProfileConsolidationOrchestrator
-from circles.src.consolidation.strategy import DefaultConsolidationStrategy
-from circles.src.etl.core.config import get_settings
+from src.consolidation.llm_adapter import LLMProviderFactory
+from src.consolidation.orchestrator import ProfileConsolidationOrchestrator
+from src.consolidation.strategy import DefaultConsolidationStrategy
+from src.etl.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +180,7 @@ async def test_orchestrator_e2e_with_claude(db_session, sample_minimal_raw_data)
     # Mock the aggregator to return our test data
     from unittest.mock import AsyncMock, patch
 
-    from circles.src.etl.core.result import Result
+    from src.etl.core.result import Result
 
     with patch.object(
         orchestrator.aggregator, "aggregate_user_data", new_callable=AsyncMock
@@ -233,7 +232,7 @@ async def test_orchestrator_e2e_with_openai(db_session, sample_minimal_raw_data)
     # Mock the aggregator to return our test data
     from unittest.mock import AsyncMock, patch
 
-    from circles.src.etl.core.result import Result
+    from src.etl.core.result import Result
 
     with patch.object(
         orchestrator.aggregator, "aggregate_user_data", new_callable=AsyncMock

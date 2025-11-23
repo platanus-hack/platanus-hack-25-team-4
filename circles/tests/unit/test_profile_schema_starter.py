@@ -7,8 +7,7 @@ Copy and expand these patterns to achieve full coverage.
 
 import pytest
 from pydantic import ValidationError
-
-from circles.src.profile_schema import (
+from src.profile_schema import (
     AgentPersonaHeuristic,
     Availability,
     BehaviouralHistoryModel,
