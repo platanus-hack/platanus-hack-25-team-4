@@ -5,6 +5,7 @@ import morgan from 'morgan';
 
 import { errorHandler } from './middlewares/error-handler.middleware.js';
 import { notFoundHandler } from './middlewares/not-found-handler.middleware.js';
+import { requestLogger } from './middlewares/request-logger.middleware.js';
 import { apiRouter } from './routes/index.js';
 
 export const createApp = (): Application => {
@@ -16,6 +17,7 @@ export const createApp = (): Application => {
   app.use(json());
   app.use(urlencoded({ extended: true }));
   app.use(morgan('dev'));
+  app.use(requestLogger);
 
   app.use('/api', apiRouter);
 

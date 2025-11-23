@@ -5,20 +5,21 @@ import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import type { UpdateCircleInput } from '../repositories/circle-repository.js';
 import { CircleService } from '../services/circle-service.js';
+import { CircleStatus, circleStatusSchema } from '../types/enums.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
-const circleBaseSchema = z.object({
-  objectiveText: z.string().trim().min(1),
+const createCircleSchema = z.object({
+  objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  startAt: z.string().datetime().optional(),
-  expiresAt: z.string().datetime()
+  expiresAt: z.string().datetime().optional(),
 });
 
-const createCircleSchema = circleBaseSchema;
-
-const updateCircleSchema = circleBaseSchema
-  .partial()
-  .extend({ status: z.enum(['active', 'paused', 'expired']).optional() });
+const updateCircleSchema = z.object({
+  objective: z.string().trim().min(1).optional(),
+  radiusMeters: z.number().positive().optional(),
+  expiresAt: z.string().datetime().optional(),
+  status: circleStatusSchema.optional()
+});
 
 export const circlesRouter = Router();
 
@@ -36,12 +37,15 @@ circlesRouter.post(
     }
 
     const parsed = createCircleSchema.parse(req.body);
-    const circle = circleService.create({
+    const expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : undefined;
+
+    const circle = await circleService.create({
       userId: req.user.userId,
-      objective: parsed.objectiveText,
+      objective: parsed.objective,
       radiusMeters: parsed.radiusMeters,
-      startAt: parsed.startAt ? new Date(parsed.startAt) : new Date(),
-      expiresAt: new Date(parsed.expiresAt)
+      expiresAt,
+      startAt: new Date(),
+      status: CircleStatus.ACTIVE
     });
     res.status(201).json({ circle });
   })
@@ -100,17 +104,17 @@ circlesRouter.patch(
     const parsed = updateCircleSchema.parse(req.body);
     const updateInput: UpdateCircleInput = {};
 
-    if (parsed.objectiveText !== undefined) {
-      updateInput.objective = parsed.objectiveText;
+    if (parsed.objective !== undefined) {
+      updateInput.objective = parsed.objective;
     }
     if (parsed.radiusMeters !== undefined) {
       updateInput.radiusMeters = parsed.radiusMeters;
     }
-    if (parsed.startAt !== undefined && parsed.startAt !== null) {
-      updateInput.startAt = new Date(parsed.startAt);
-    }
     if (parsed.expiresAt !== undefined) {
       updateInput.expiresAt = new Date(parsed.expiresAt);
+    }
+    if (parsed.status !== undefined) {
+      updateInput.status = parsed.status;
     }
 
     const circle = circleService.update(circleId, req.user.userId, updateInput);

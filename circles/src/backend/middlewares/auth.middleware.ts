@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { env } from '../config/env.js';
+import { UserService } from '../services/user-service.js';
 import { AppError } from '../types/app-error.type.js';
 
 const BEARER_PREFIX = 'Bearer ';
@@ -19,7 +20,9 @@ const hasValidCredentials = (payload: Record<string, unknown>): payload is { use
   return typeof userId === 'string' && typeof email === 'string';
 };
 
-export const requireAuth = (req: Request, _res: Response, next: NextFunction): void => {
+const userService = new UserService();
+
+export const requireAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.header('authorization');
 
   if (!authHeader?.startsWith(BEARER_PREFIX)) {
@@ -39,6 +42,13 @@ export const requireAuth = (req: Request, _res: Response, next: NextFunction): v
 
     if (!hasValidCredentials(payload)) {
       next(new AppError('Invalid token payload', 401));
+      return;
+    }
+
+    // ✅ Validate that user still exists in database
+    const user = await userService.getById(payload.userId);
+    if (!user) {
+      next(new AppError('User not found. Token is invalid.', 401));
       return;
     }
 

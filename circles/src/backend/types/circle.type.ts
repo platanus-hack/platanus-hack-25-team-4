@@ -19,13 +19,14 @@ export type Circle = {
 /**
  * Circle creation input
  * Position is taken from User's current location
+ * userId, startAt, and status are set by the backend
  */
 export type CreateCircleInput = {
   userId: string;
   objective: string;
   radiusMeters: number;
-  startAt: Date;
-  expiresAt: Date;
+  expiresAt?: Date | undefined;
+  startAt?: Date;
   status?: CircleStatus;
 };
 
