@@ -76,7 +76,7 @@ class _ChatsPageState extends State<ChatsPage> {
               decoration: BoxDecoration(
                 gradient: homeCardGradient(theme.colorScheme),
                 border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.18),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.18),
                 ),
                 borderRadius: BorderRadius.circular(14),
               ),

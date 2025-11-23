@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/app_logo.dart';
+import '../../../core/theme/card_gradients.dart';
 import '../../auth/domain/auth_session.dart';
 import '../data/profile_repository.dart';
 import '../domain/user_profile.dart';
@@ -170,12 +171,17 @@ class _HeaderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.secondaryContainer.withValues(alpha: 0.25),
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          ],
+        gradient: homeCardGradient(theme.colorScheme),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.18),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
