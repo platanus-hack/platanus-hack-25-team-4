@@ -6,6 +6,8 @@ import { COLLISION_CONFIG } from '../config/collision.config.js';
 const missions: any[] = [];
 const collisionEvents: any[] = [];
 const matches: any[] = [];
+const chats: any[] = [];
+const circles: any[] = [];
 
 const redisHashes = new Map<string, Record<string, string>>();
 const redisStrings = new Map<string, string>();
@@ -71,8 +73,70 @@ vi.mock('../lib/prisma.js', () => {
         };
         matches.push(match);
         return match;
+      }),
+      findFirst: vi.fn(async ({ where }: { where: any }) => {
+        if (where.OR) {
+          // Handle OR queries for inverse match checking
+          return matches.find((m: any) => {
+            return where.OR.some((condition: any) => {
+              return (
+                m.primaryUserId === condition.primaryUserId &&
+                m.secondaryUserId === condition.secondaryUserId
+              );
+            });
+          }) ?? null;
+        }
+        return null;
+      }),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: any }) => {
+        const match = matches.find((m: any) => m.id === where.id);
+        if (!match) {
+          throw new Error('Match not found');
+        }
+        Object.assign(match, data);
+        return match;
       })
-    }
+    },
+    chat: {
+      create: vi.fn(async ({ data }: { data: any }) => {
+        const chat = {
+          id: `chat-${chats.length + 1}`,
+          createdAt: new Date(),
+          ...data
+        };
+        chats.push(chat);
+        return chat;
+      }),
+      findFirst: vi.fn(async ({ where }: { where: any }) => {
+        if (where.OR) {
+          return chats.find((c: any) => {
+            return where.OR.some((condition: any) => {
+              return (
+                c.primaryUserId === condition.primaryUserId &&
+                c.secondaryUserId === condition.secondaryUserId
+              );
+            });
+          }) ?? null;
+        }
+        return null;
+      })
+    },
+    circle: {
+      findFirst: vi.fn(async ({ where }: { where: any }) => {
+        return circles.find((c: any) => {
+          return (
+            c.userId === where.userId &&
+            c.status === where.status &&
+            (!where.expiresAt || c.expiresAt > where.expiresAt.gt)
+          );
+        }) ?? null;
+      })
+    },
+    $transaction: vi.fn(async (callback: any) => {
+      // Simple mock: execute the callback with the prisma object itself
+      // In a real transaction, this would be isolated
+      return await callback(prisma);
+    })
   };
 
   return { prisma };
@@ -139,6 +203,8 @@ describe('AgentMatchService cooldowns', () => {
     missions.length = 0;
     collisionEvents.length = 0;
     matches.length = 0;
+    chats.length = 0;
+    circles.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -186,6 +252,8 @@ describe('AgentMatchService mission creation', () => {
     missions.length = 0;
     collisionEvents.length = 0;
     matches.length = 0;
+    chats.length = 0;
+    circles.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -272,6 +340,8 @@ describe('AgentMatchService mission results and matches', () => {
     missions.length = 0;
     collisionEvents.length = 0;
     matches.length = 0;
+    chats.length = 0;
+    circles.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -375,5 +445,198 @@ describe('AgentMatchService mission results and matches', () => {
     expect(stored).toBeDefined();
     expect(stored!.type).toBe('notified');
   });
-}
+});
+
+describe('AgentMatchService inverse match logic', () => {
+  let service: AgentMatchService;
+
+  beforeEach(() => {
+    missions.length = 0;
+    collisionEvents.length = 0;
+    matches.length = 0;
+    chats.length = 0;
+    circles.length = 0;
+    redisHashes.clear();
+    redisStrings.clear();
+    service = new AgentMatchService();
+  });
+
+  it('detects inverse match when user2 -> user1 match already exists', async () => {
+    // Create existing match from user2 to user1
+    matches.push({
+      id: 'match-1',
+      primaryUserId: 'user-2',
+      secondaryUserId: 'user-1',
+      primaryCircleId: 'circle-2',
+      secondaryCircleId: 'circle-1',
+      type: 'match',
+      worthItScore: 0.95,
+      status: 'pending_accept',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const inverseMatch = await service.checkInverseMatch('user-1', 'user-2');
+    expect(inverseMatch).not.toBeNull();
+    expect(inverseMatch!.id).toBe('match-1');
+    expect(inverseMatch!.primaryUserId).toBe('user-2');
+    expect(inverseMatch!.secondaryUserId).toBe('user-1');
+  });
+
+  it('detects inverse match when user1 -> user2 match already exists', async () => {
+    // Create existing match from user1 to user2
+    matches.push({
+      id: 'match-1',
+      primaryUserId: 'user-1',
+      secondaryUserId: 'user-2',
+      primaryCircleId: 'circle-1',
+      secondaryCircleId: 'circle-2',
+      type: 'match',
+      worthItScore: 0.95,
+      status: 'pending_accept',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const inverseMatch = await service.checkInverseMatch('user-2', 'user-1');
+    expect(inverseMatch).not.toBeNull();
+    expect(inverseMatch!.id).toBe('match-1');
+  });
+
+  it('returns null when no inverse match exists', async () => {
+    const inverseMatch = await service.checkInverseMatch('user-1', 'user-2');
+    expect(inverseMatch).toBeNull();
+  });
+
+  it('activates both matches and creates chat when inverse match exists', async () => {
+    // Pre-existing match from user-2 to user-1
+    matches.push({
+      id: 'match-existing',
+      primaryUserId: 'user-2',
+      secondaryUserId: 'user-1',
+      primaryCircleId: 'circle-2',
+      secondaryCircleId: 'circle-1',
+      type: 'match',
+      worthItScore: 0.95,
+      status: 'pending_accept',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Mission from user-1 to user-2 completes successfully
+    missions.push({
+      id: 'mission-1',
+      ownerUserId: 'user-1',
+      visitorUserId: 'user-2',
+      ownerCircleId: 'circle-1',
+      visitorCircleId: 'circle-2',
+      collisionEventId: 'ce-1',
+      status: 'pending',
+      attemptNumber: 1
+    });
+
+    const result: MissionResult = {
+      success: true,
+      matchMade: true,
+      transcript: JSON.stringify({ messages: [] }),
+      judgeDecision: { reason: 'mutual match' }
+    };
+
+    const match = await service.handleMissionResult('mission-1', result);
+
+    // Should create a new match (user-1 -> user-2) as 'active'
+    expect(match).not.toBeNull();
+    expect(match!.status).toBe('active');
+    expect(match!.primaryUserId).toBe('user-1');
+    expect(match!.secondaryUserId).toBe('user-2');
+
+    // Should have updated the existing match to 'active'
+    expect(matches[0].status).toBe('active');
+
+    // Should have created exactly 2 matches now (existing + new)
+    expect(matches).toHaveLength(2);
+
+    // Should have created a chat
+    expect(chats).toHaveLength(1);
+    expect(chats[0].primaryUserId).toBe('user-1');
+    expect(chats[0].secondaryUserId).toBe('user-2');
+  });
+
+  it('does not create duplicate chat if chat already exists for mutual match', async () => {
+    // Pre-existing match and chat
+    matches.push({
+      id: 'match-existing',
+      primaryUserId: 'user-2',
+      secondaryUserId: 'user-1',
+      primaryCircleId: 'circle-2',
+      secondaryCircleId: 'circle-1',
+      type: 'match',
+      worthItScore: 0.95,
+      status: 'pending_accept',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    chats.push({
+      id: 'chat-existing',
+      primaryUserId: 'user-2',
+      secondaryUserId: 'user-1',
+      createdAt: new Date()
+    });
+
+    missions.push({
+      id: 'mission-1',
+      ownerUserId: 'user-1',
+      visitorUserId: 'user-2',
+      ownerCircleId: 'circle-1',
+      visitorCircleId: 'circle-2',
+      collisionEventId: 'ce-1',
+      status: 'pending',
+      attemptNumber: 1
+    });
+
+    const result: MissionResult = {
+      success: true,
+      matchMade: true,
+      transcript: JSON.stringify({ messages: [] }),
+      judgeDecision: { reason: 'mutual match' }
+    };
+
+    await service.handleMissionResult('mission-1', result);
+
+    // Should NOT create a duplicate chat
+    expect(chats).toHaveLength(1);
+    expect(chats[0].id).toBe('chat-existing');
+  });
+
+  it('creates pending match when no inverse match exists', async () => {
+    missions.push({
+      id: 'mission-1',
+      ownerUserId: 'user-1',
+      visitorUserId: 'user-2',
+      ownerCircleId: 'circle-1',
+      visitorCircleId: 'circle-2',
+      collisionEventId: 'ce-1',
+      status: 'pending',
+      attemptNumber: 1
+    });
+
+    const result: MissionResult = {
+      success: true,
+      matchMade: true,
+      transcript: JSON.stringify({ messages: [] }),
+      judgeDecision: { reason: 'good match' }
+    };
+
+    const match = await service.handleMissionResult('mission-1', result);
+
+    // Should create a pending match (waiting for inverse)
+    expect(match).not.toBeNull();
+    expect(match!.status).toBe('pending_accept');
+    expect(matches).toHaveLength(1);
+
+    // Should NOT create a chat
+    expect(chats).toHaveLength(0);
+  });
+});
 
