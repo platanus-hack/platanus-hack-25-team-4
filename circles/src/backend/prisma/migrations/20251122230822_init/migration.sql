@@ -51,7 +51,7 @@ CREATE TABLE "Circle" (
     "objective" TEXT NOT NULL,
     "radiusMeters" DOUBLE PRECISION NOT NULL,
     "startAt" TIMESTAMP(3) NOT NULL,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3),
     "status" "CircleStatus" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
