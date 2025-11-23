@@ -138,7 +138,7 @@ class _ChatList extends StatelessWidget {
                     ),
                     child: Text(
                       chat.unreadCount.toString(),
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: theme.colorScheme.onSecondary),
                     ),
                   )
                 : null,

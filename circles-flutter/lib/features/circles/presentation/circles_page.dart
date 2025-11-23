@@ -26,6 +26,12 @@ class _CirclesPageState extends State<CirclesPage> {
   String _sort = 'creado';
 
   @override
+  void initState() {
+    super.initState();
+    widget.state.refreshCircles();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -64,6 +70,10 @@ class _CirclesPageState extends State<CirclesPage> {
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
+              if (widget.state.loading) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 12),
+              ],
               Expanded(
                 child: hasItems
                     ? _buildList(context, filtered)
@@ -192,8 +202,11 @@ class _CirclesPageState extends State<CirclesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: const Text('Eliminar círculo'),
         content: Text('¿Seguro que quieres eliminar "${circle.objetivo}"?'),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -225,6 +238,13 @@ class _CirclesPageState extends State<CirclesPage> {
     final result = await showModalBottomSheet<Circle>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        // Keep a comfortable width on large screens
+        maxWidth: MediaQuery.of(context).size.width > 600.0
+            ? 600.0
+            : MediaQuery.of(context).size.width,
+      ),
       builder: (context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -326,7 +346,7 @@ class _Filters extends StatelessWidget {
           const SizedBox(width: 12),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
@@ -394,83 +414,86 @@ class _CircleFormState extends State<_CircleForm> {
       padding: const EdgeInsets.all(16),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isEditing ? 'Editar círculo' : 'Nuevo círculo',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isEditing ? 'Editar círculo' : 'Nuevo círculo',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _objetivoController,
-              decoration: const InputDecoration(
-                labelText: 'Objetivo',
-                hintText: 'Ej: Encontrar equipo para hackathon',
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'El objetivo es obligatorio';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            Text('Radio de búsqueda: ${_radioKm.toStringAsFixed(0)} km'),
-            Slider(
-              value: _radioKm,
-              min: 1,
-              max: 100,
-              divisions: 99,
-              label: '${_radioKm.toStringAsFixed(0)} km',
-              activeColor: theme.colorScheme.secondary,
-              thumbColor: theme.colorScheme.secondary,
-              onChanged: (value) => setState(() => _radioKm = value),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _expiraEn == null
-                        ? 'Sin fecha límite'
-                        : 'Expira: ${_formatDateTime(_expiraEn!)}',
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _pickDateTime,
-                  icon: const Icon(Icons.event),
-                  label: const Text('Elegir fecha y hora'),
-                ),
-                if (_expiraEn != null)
                   IconButton(
-                    onPressed: () => setState(() => _expiraEn = null),
-                    tooltip: 'Quitar fecha',
-                    icon: const Icon(Icons.clear),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            PrimaryButton(
-              label: isEditing ? 'Guardar cambios' : 'Crear círculo',
-              icon: Icons.check,
-              backgroundColor: theme.colorScheme.secondary,
-              onPressed: _submit,
-            ),
-            const SizedBox(height: 12),
-          ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _objetivoController,
+                decoration: const InputDecoration(
+                  labelText: 'Objetivo',
+                  hintText: 'Ej: Encontrar equipo para hackathon',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'El objetivo es obligatorio';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Text('Radio de búsqueda: ${_radioKm.toStringAsFixed(0)} km'),
+              Slider(
+                value: _radioKm,
+                min: 1,
+                max: 100,
+                divisions: 99,
+                label: '${_radioKm.toStringAsFixed(0)} km',
+                activeColor: theme.colorScheme.secondary,
+                thumbColor: theme.colorScheme.secondary,
+                onChanged: (value) => setState(() => _radioKm = value),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _expiraEn == null
+                          ? 'Sin fecha límite'
+                          : 'Expira: ${_formatDateTime(_expiraEn!)}',
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _pickDateTime,
+                    icon: const Icon(Icons.event),
+                    label: const Text('Elegir fecha y hora'),
+                  ),
+                  if (_expiraEn != null)
+                    IconButton(
+                      onPressed: () => setState(() => _expiraEn = null),
+                      tooltip: 'Quitar fecha',
+                      icon: const Icon(Icons.clear),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              PrimaryButton(
+                label: isEditing ? 'Guardar cambios' : 'Crear círculo',
+                icon: Icons.check,
+                backgroundColor: theme.colorScheme.secondary,
+                onPressed: _submit,
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );

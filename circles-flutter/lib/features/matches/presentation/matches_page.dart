@@ -242,7 +242,7 @@ class _MatchList extends StatelessWidget {
                 ? FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: theme.colorScheme.secondary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: theme.colorScheme.onSecondary,
                     ),
                     onPressed: onAccept == null ? null : () => onAccept!(m.id),
                     child: const Text('Aceptar'),

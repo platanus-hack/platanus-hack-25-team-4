@@ -1,13 +1,17 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
+import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.util.js';
 
-const defaultRegion = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1';
 const defaultModelId =
   process.env.BEDROCK_INFERENCE_PROFILE_ID ?? 'us.meta.llama4-scout-17b-instruct-v1:0';
 
 const client = new BedrockRuntimeClient({
-  region: defaultRegion
+  region: env.awsRegion,
+  credentials: {
+    accessKeyId: env.awsAccessKeyId || '',
+    secretAccessKey: env.awsSecretAccessKey || ''
+  }
 });
 
 export const generateLlama4ScoutText = async (prompt: string): Promise<string> => {
