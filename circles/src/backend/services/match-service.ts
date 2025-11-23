@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../types/app-error.type.js';
-import type { MatchStatus } from '../types/enums.type.js';
+import { MatchStatus, MatchType } from '../types/enums.type.js';
 import type { MatchWithDetails } from '../types/match.type.js';
 
 export interface MatchQueryParams {
@@ -8,6 +8,38 @@ export interface MatchQueryParams {
   userId?: string;
   limit?: number;
   offset?: number;
+}
+
+/**
+ * Map Prisma MatchType to our custom MatchType
+ */
+function mapMatchType(prismaType: string): MatchType {
+  switch (prismaType) {
+    case 'match':
+      return MatchType.MATCH;
+    case 'soft_match':
+      return MatchType.SOFT_MATCH;
+    default:
+      throw new Error(`Unknown MatchType: ${prismaType}`);
+  }
+}
+
+/**
+ * Map Prisma MatchStatus to our custom MatchStatus
+ */
+function mapMatchStatus(prismaStatus: string): MatchStatus {
+  switch (prismaStatus) {
+    case 'pending_accept':
+      return MatchStatus.PENDING_ACCEPT;
+    case 'active':
+      return MatchStatus.ACTIVE;
+    case 'declined':
+      return MatchStatus.DECLINED;
+    case 'expired':
+      return MatchStatus.EXPIRED;
+    default:
+      throw new Error(`Unknown MatchStatus: ${prismaStatus}`);
+  }
 }
 
 /**
@@ -41,7 +73,7 @@ export class MatchService {
       ];
     }
 
-    const [matches, total] = await Promise.all([
+    const [prismaMatches, total] = await Promise.all([
       prisma.match.findMany({
         where,
         take: limit,
@@ -69,6 +101,12 @@ export class MatchService {
       prisma.match.count({ where })
     ]);
 
+    const matches: MatchWithDetails[] = prismaMatches.map((match) => ({
+      ...match,
+      type: mapMatchType(match.type),
+      status: mapMatchStatus(match.status)
+    }));
+
     return { matches, total };
   }
 
@@ -76,7 +114,7 @@ export class MatchService {
    * Get a single match by ID
    */
   async getMatchById(id: string): Promise<MatchWithDetails | null> {
-    const match = await prisma.match.findUnique({
+    const prismaMatch = await prisma.match.findUnique({
       where: { id },
       include: {
         primaryUser: {
@@ -98,7 +136,15 @@ export class MatchService {
       }
     });
 
-    return match;
+    if (!prismaMatch) {
+      return null;
+    }
+
+    return {
+      ...prismaMatch,
+      type: mapMatchType(prismaMatch.type),
+      status: mapMatchStatus(prismaMatch.status)
+    };
   }
 
   /**
@@ -125,7 +171,7 @@ export class MatchService {
       throw new AppError(`Cannot accept match with status: ${match.status}`, 400);
     }
 
-    const result = await prisma.match.update({
+    const prismaResult = await prisma.match.update({
       where: { id: matchId },
       data: {
         status: 'active'
@@ -150,7 +196,11 @@ export class MatchService {
       }
     });
 
-    return result;
+    return {
+      ...prismaResult,
+      type: mapMatchType(prismaResult.type),
+      status: mapMatchStatus(prismaResult.status)
+    };
   }
 
   /**
@@ -177,7 +227,7 @@ export class MatchService {
       throw new AppError(`Cannot decline match with status: ${match.status}`, 400);
     }
 
-    const result = await prisma.match.update({
+    const prismaResult = await prisma.match.update({
       where: { id: matchId },
       data: {
         status: 'declined'
@@ -202,7 +252,11 @@ export class MatchService {
       }
     });
 
-    return result;
+    return {
+      ...prismaResult,
+      type: mapMatchType(prismaResult.type),
+      status: mapMatchStatus(prismaResult.status)
+    };
   }
 }
 

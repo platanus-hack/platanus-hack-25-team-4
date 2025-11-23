@@ -18,6 +18,7 @@ export class AwsSesEmailService {
 
   async sendMagicLink(email: string, magicLink: string, firstName?: string): Promise<void> {
     const name = firstName || 'Usuario';
+    logger.info(`[EMAIL:AWS-SES] 📧 Preparing magic link email for: ${email}`);
     const html = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #5B5FEE 0%, #34D1BF 100%); padding: 20px;">
         <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
@@ -28,6 +29,10 @@ export class AwsSesEmailService {
           
           <p style="color: #525866; font-size: 16px; line-height: 1.8; text-align: center;">
             Estamos muy emocionados de tenerte aquí. Haz clic en el botón de abajo para acceder a tu cuenta o crear una nueva.
+          </p>
+          
+          <p style="color: #5B5FEE; font-size: 15px; line-height: 1.6; text-align: center; font-weight: 600; margin: 20px 0;">
+            Crea tu primer círculo en 2 minutos y conecta con cientos de personas
           </p>
           
           <div style="text-align: center; margin: 35px 0;">
@@ -68,6 +73,8 @@ export class AwsSesEmailService {
 
 Estamos muy emocionados de tenerte aquí.
 
+Crea tu primer círculo en 2 minutos y conecta con cientos de personas
+
 Accede a tu cuenta usando este enlace:
 ${magicLink}
 
@@ -107,16 +114,17 @@ El equipo de Circles
 
     try {
       const result = await this.sesClient.send(command);
-      logger.info(`📧 Correo de enlace mágico enviado a ${email} (ID de mensaje: ${result.MessageId})`);
+      logger.info(`[EMAIL:AWS-SES] ✅ Magic link email sent successfully to ${email} (Message ID: ${result.MessageId})`);
       console.log(`✅ Enlace mágico enviado a: ${email}`);
     } catch (error) {
-      logger.error(`No se pudo enviar el enlace mágico a ${email}`);
+      logger.error(`[EMAIL:AWS-SES] ❌ Exception sending magic link to ${email}`, error);
       throw error;
     }
   }
 
   async sendWelcome(email: string, firstName?: string): Promise<void> {
     const name = firstName || 'Usuario';
+    logger.info(`[EMAIL:AWS-SES] 📧 Preparing welcome email for: ${email}`);
     const html = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #5B5FEE 0%, #34D1BF 100%); padding: 20px;">
         <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
@@ -127,6 +135,10 @@ El equipo de Circles
           
           <p style="color: #525866; font-size: 16px; line-height: 1.8; text-align: center;">
             ¡Tu cuenta ha sido creada exitosamente! Ahora es momento de explorar, conectar y descubrir comunidades increíbles que comparten tus intereses.
+          </p>
+          
+          <p style="color: #5B5FEE; font-size: 15px; line-height: 1.6; text-align: center; font-weight: 600; margin: 20px 0;">
+            Crea tu primer círculo en 2 minutos y conecta con cientos de personas
           </p>
           
           <div style="background-color: #F6F7FC; border-left: 4px solid #5B5FEE; padding: 20px; border-radius: 6px; margin: 25px 0;">
@@ -157,6 +169,8 @@ El equipo de Circles
 ¡Bienvenido a Circles, ${name}! 🎯🚀
 
 ¡Tu cuenta ha sido creada exitosamente!
+
+Crea tu primer círculo en 2 minutos y conecta con cientos de personas
 
 Ahora puedes:
 🔍 Explorar círculos basados en tus intereses
@@ -198,10 +212,10 @@ El equipo de Circles
 
     try {
       const result = await this.sesClient.send(command);
-      logger.info(`📧 Correo de bienvenida enviado a ${email} (ID de mensaje: ${result.MessageId})`);
+      logger.info(`[EMAIL:AWS-SES] ✅ Welcome email sent successfully to ${email} (Message ID: ${result.MessageId})`);
       console.log(`✅ Correo de bienvenida enviado a: ${email}`);
     } catch (error) {
-      logger.error(`No se pudo enviar el correo de bienvenida a ${email}`);
+      logger.error(`[EMAIL:AWS-SES] ❌ Exception sending welcome email to ${email}`, error);
       throw error;
     }
   }

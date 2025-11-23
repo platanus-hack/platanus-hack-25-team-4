@@ -3,6 +3,7 @@ import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { Observe } from '../infrastructure/observer/index.js';
 import { getRedisClient } from '../infrastructure/redis.js';
 import { haversineDistance } from '../utils/geo.util.js';
+import { prisma } from "../lib/prisma.js";
 
 /**
  * Service for handling location updates and debouncing
@@ -47,15 +48,22 @@ export class LocationService {
     latitude: number,
     longitude: number,
     accuracy: number,
-    timestamp: Date
-  ): Promise<{ skipped: boolean; collisionsDetected?: number; error?: string }> {
+    timestamp: Date,
+  ): Promise<{
+    skipped: boolean;
+    collisionsDetected?: number;
+    error?: string;
+  }> {
     try {
       // 1. Debounce check
       if (!this.shouldProcessUpdate(userId, latitude, longitude, timestamp)) {
         return { skipped: true };
       }
 
-      // 2. Update cache
+      // 2. Update User position in database (circles reference this)
+      await this.updateUserPositionInDB(userId, latitude, longitude);
+
+      // 3. Update cache
       await this.cacheUserPosition(userId, latitude, longitude, accuracy);
 
       // 3. Detect collisions with other users' circles
@@ -66,7 +74,7 @@ export class LocationService {
         longitude
       );
 
-      console.info('Location update processed', {
+      console.info("Location update processed", {
         userId,
         collisionsDetected: collisions.length,
         location: { latitude, longitude },
@@ -74,8 +82,8 @@ export class LocationService {
 
       return { skipped: false, collisionsDetected: collisions.length };
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Location update failed', { userId, error: errorMsg });
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error("Location update failed", { userId, error: errorMsg });
       return { skipped: true, error: errorMsg };
     }
   }
@@ -88,12 +96,12 @@ export class LocationService {
     userId: string,
     newLat: number,
     newLon: number,
-    timestamp: Date
+    timestamp: Date,
   ): boolean {
     // Check timestamp age (reject updates older than 30 seconds)
     const timeDelta = Date.now() - timestamp.getTime();
     if (timeDelta > 30000) {
-      console.warn('Location update timestamp too old', { userId, timeDelta });
+      console.warn("Location update timestamp too old", { userId, timeDelta });
       return false;
     }
 
@@ -104,7 +112,10 @@ export class LocationService {
     }
 
     // Check time interval
-    if (Date.now() - lastPosition.timestamp < COLLISION_CONFIG.MIN_UPDATE_INTERVAL_MS) {
+    if (
+      Date.now() - lastPosition.timestamp <
+      COLLISION_CONFIG.MIN_UPDATE_INTERVAL_MS
+    ) {
       return false; // Too frequent
     }
 
@@ -113,10 +124,36 @@ export class LocationService {
       lastPosition.lat,
       lastPosition.lon,
       newLat,
-      newLon
+      newLon,
     );
 
     return distance >= COLLISION_CONFIG.MIN_MOVEMENT_METERS;
+  }
+
+  /**
+   * Update User position in database
+   * Circles reference User.centerLat/centerLon as their center point
+   */
+  private async updateUserPositionInDB(
+    userId: string,
+    lat: number,
+    lon: number,
+  ): Promise<void> {
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          centerLat: lat,
+          centerLon: lon,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to update user position in database", {
+        userId,
+        error,
+      });
+      // Don't throw - continue processing even if DB update fails
+    }
   }
 
   /**
@@ -126,7 +163,7 @@ export class LocationService {
     userId: string,
     lat: number,
     lon: number,
-    accuracy: number
+    accuracy: number,
   ): Promise<void> {
     try {
       const redis = getRedisClient();
@@ -135,8 +172,8 @@ export class LocationService {
       await redis.set(
         key,
         JSON.stringify({ lat, lon, accuracy, timestamp: Date.now() }),
-        'EX',
-        COLLISION_CONFIG.POSITION_CACHE_TTL
+        "EX",
+        COLLISION_CONFIG.POSITION_CACHE_TTL,
       );
 
       // Also maintain in-memory cache for faster debounce checks
@@ -146,11 +183,10 @@ export class LocationService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('Failed to cache user position', { userId, error });
+      console.error("Failed to cache user position", { userId, error });
       // Don't throw - continue processing even if cache fails
     }
   }
-
 }
 
 export const locationService = new LocationService();

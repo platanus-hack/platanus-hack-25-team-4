@@ -19,20 +19,21 @@ export type Circle = {
 /**
  * Circle creation input
  * Position is taken from User's current location
+ * userId, startAt, and status are set by the backend
  */
 export type CreateCircleInput = {
   userId: string;
   objective: string;
   radiusMeters: number;
+  expiresAt?: Date | undefined;
   startAt: Date;
-  expiresAt: Date;
   status?: CircleStatus;
 };
 
 /**
  * Circle update input
  */
-export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>>;
+export type UpdateCircleInput = Omit<CreateCircleInput, 'userId' | 'startAt'>;
 
 /**
  * Circle with user details (for responses)

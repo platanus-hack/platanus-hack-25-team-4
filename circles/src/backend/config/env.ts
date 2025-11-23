@@ -32,7 +32,10 @@ const envSchema = z.object({
   OBSERVER_BATCH_WAIT_MS: z
     .string()
     .transform((value) => Number.parseInt(value, 10))
-    .default('100')
+    .default('100'),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_PROVIDER: z.enum(['resend', 'aws-ses', 'dev']).default('dev'),
+  RESEND_FROM_EMAIL: z.string().optional().default('onboarding@resend.dev')
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -60,5 +63,8 @@ export const env = {
   // Observer configuration
   observerEnabled: parsedEnv.data.OBSERVER_ENABLED,
   observerBatchSize: parsedEnv.data.OBSERVER_BATCH_SIZE,
-  observerBatchWaitMs: parsedEnv.data.OBSERVER_BATCH_WAIT_MS
+  observerBatchWaitMs: parsedEnv.data.OBSERVER_BATCH_WAIT_MS,
+  resendApiKey: parsedEnv.data.RESEND_API_KEY,
+  emailProvider: parsedEnv.data.EMAIL_PROVIDER,
+  resendFromEmail: parsedEnv.data.RESEND_FROM_EMAIL
 };

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_state.dart';
 import '../../../core/widgets/page_container.dart';
+import '../../../core/theme/app_colors.dart';
 import '../domain/match_candidate.dart';
 
 class MatchesPage extends StatefulWidget {
@@ -53,11 +54,33 @@ class _MatchesPageState extends State<MatchesPage> {
               onSortChanged: (value) => setState(() => _sort = value),
               onChanged: (_) => setState(() {}),
             ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.inbox_outlined, size: 18),
+                  label: Text('Recibidos: ${forMe.length}'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.outbox_outlined, size: 18),
+                  label: Text('Enviados: ${iAmIn.length}'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.location_pin, size: 18),
+                  label: const Text('Buscando cerca de ti'),
+                  backgroundColor: theme.colorScheme.secondaryContainer
+                      .withValues(alpha: 0.7),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             Text(
               'Personas que matchean mis círculos',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             forMe.isEmpty
@@ -69,8 +92,9 @@ class _MatchesPageState extends State<MatchesPage> {
             const SizedBox(height: 24),
             Text(
               'Personas a las que yo matcheo',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             iAmIn.isEmpty
@@ -128,22 +152,15 @@ class _EmptyList extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: theme.colorScheme.primary),
+          Icon(icon, color: theme.colorScheme.secondary),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(message, style: theme.textTheme.bodyMedium)),
         ],
       ),
     );
@@ -164,52 +181,76 @@ class _MatchList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = [
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      theme.colorScheme.tertiary,
+      AppColors.accent2,
+    ];
     return Column(
-      children: matches
-          .map(
-            (m) => Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor:
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
-                  foregroundColor: theme.colorScheme.primary,
-                  child: const Icon(Icons.person),
+      children: matches.asMap().entries.map((entry) {
+        final index = entry.key;
+        final m = entry.value;
+        final accent = palette[index % palette.length];
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: accent.withValues(alpha: 0.18),
+              foregroundColor: accent,
+              child: const Icon(Icons.person),
+            ),
+            title: Text(
+              m.nombre,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Text(
+                  m.circuloObjetivo,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                title: Text(
-                  m.nombre,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
-                    Text(
-                      'Objetivo: ${m.circuloObjetivo}',
-                      style: theme.textTheme.bodyMedium,
+                    _InfoChip(
+                      icon: Icons.route,
+                      label: m.distanciaKm != null
+                          ? '${m.distanciaKm!.toStringAsFixed(1)} km'
+                          : 'Distancia no disponible',
+                      color: accent,
                     ),
-                    if (m.distanciaKm != null)
-                      Text(
-                        'Distancia: ${m.distanciaKm!.toStringAsFixed(1)} km',
-                        style: theme.textTheme.bodySmall,
-                      ),
                     if (m.expiraEn != null)
-                      Text(
-                        'Expira: ${_formatDate(m.expiraEn!)}',
-                        style: theme.textTheme.bodySmall,
+                      _InfoChip(
+                        icon: Icons.timer_outlined,
+                        label: 'Expira ${_formatDate(m.expiraEn!)}',
+                        color: theme.colorScheme.secondary,
                       ),
                   ],
                 ),
-                trailing: allowAccept
-                    ? FilledButton(
-                        onPressed:
-                            onAccept == null ? null : () => onAccept!(m.id),
-                        child: const Text('Aceptar'),
-                      )
-                    : null,
-              ),
+              ],
             ),
-          )
-          .toList(),
+            trailing: allowAccept
+                ? FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.secondary,
+                      foregroundColor: theme.colorScheme.onSecondary,
+                    ),
+                    onPressed: onAccept == null ? null : () => onAccept!(m.id),
+                    child: const Text('Aceptar'),
+                  )
+                : null,
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -252,24 +293,62 @@ class _Filters extends StatelessWidget {
         DropdownButton<String>(
           value: sort,
           items: const [
-            DropdownMenuItem(
-              value: 'distancia',
-              child: Text('Distancia'),
-            ),
-            DropdownMenuItem(
-              value: 'expira',
-              child: Text('Expira'),
-            ),
-            DropdownMenuItem(
-              value: 'nombre',
-              child: Text('Nombre'),
-            ),
+            DropdownMenuItem(value: 'distancia', child: Text('Distancia')),
+            DropdownMenuItem(value: 'expira', child: Text('Expira')),
+            DropdownMenuItem(value: 'nombre', child: Text('Nombre')),
           ],
           onChanged: (value) {
             if (value != null) onSortChanged(value);
           },
         ),
       ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLightColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.light;
+    final background = color.withOpacity(isLightColor ? 0.22 : 0.16);
+    final borderColor = color.withOpacity(isLightColor ? 0.5 : 0.35);
+    final foreground = Color.alphaBlend(
+      color.withOpacity(isLightColor ? 0.65 : 0.45),
+      theme.colorScheme.onSurface,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: foreground),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

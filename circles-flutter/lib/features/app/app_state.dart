@@ -7,12 +7,18 @@ import '../auth/domain/auth_session.dart';
 import '../chats/domain/chat_message.dart';
 import '../chats/domain/chat_thread.dart';
 import '../circles/domain/circle.dart';
+import '../circles/data/circles_api_client.dart';
 import '../matches/domain/match_candidate.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({required AuthSession session}) : _session = session;
+  AppState({
+    required AuthSession session,
+    required CirclesApiClient circlesApiClient,
+  })  : _session = session,
+        _circlesApiClient = circlesApiClient;
 
   final AuthSession _session;
+  final CirclesApiClient _circlesApiClient;
 
   final List<Circle> _circles = [];
   final List<MatchCandidate> _matchesForMe = [];
@@ -20,6 +26,8 @@ class AppState extends ChangeNotifier {
   final List<ChatThread> _chats = [];
   bool _loading = false;
   String? _error;
+  bool _syncedCirclesFromBackend = false;
+  bool _loadedLocalCircles = false;
 
   static const _circlesKey = 'circles_cache_v1';
 
@@ -29,37 +37,127 @@ class AppState extends ChangeNotifier {
   List<ChatThread> get chats => List.unmodifiable(_chats);
   bool get loading => _loading;
   String? get error => _error;
+  bool get _useBackend => !(_circlesApiClient.mockApi || _circlesApiClient.baseUrl.isEmpty);
+
+  // Session-scoped UI flags (not persisted)
+  bool _hasShownZeroCirclesModal = false;
+  bool get hasShownZeroCirclesModal => _hasShownZeroCirclesModal;
+  void markZeroCirclesModalShown() {
+    _hasShownZeroCirclesModal = true;
+  }
+
+  // Active circles are those without expiration or with a future expiration
+  bool get hasActiveCircles {
+    final now = DateTime.now();
+    return _circles.any((c) => c.expiraEn == null || (c.expiraEn?.isAfter(now) ?? false));
+  }
 
   Future<void> initialize() async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      await _loadCircles();
+      if (_useBackend) {
+        await _syncCirclesFromBackend();
+        _syncedCirclesFromBackend = true;
+      } else {
+        await _loadCirclesFromCacheOrSeed();
+        _loadedLocalCircles = true;
+      }
       _seedMatchesAndChats();
-      _loading = false;
     } catch (e) {
-      _error = 'No se pudo cargar datos locales.';
+      _error = 'No se pudo cargar tus círculos: $e';
+      await _loadCirclesFromCacheOrSeed();
+      _loadedLocalCircles = true;
+    } finally {
       _loading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
-  void addOrUpdateCircle(Circle circle) {
-    final idx = _circles.indexWhere((c) => c.id == circle.id);
-    if (idx == -1) {
-      _circles.add(circle);
-    } else {
-      _circles[idx] = circle;
+  Future<void> refreshCircles({bool force = false}) async {
+    if (_loading) return;
+
+    if (!_useBackend) {
+      if (_loadedLocalCircles && !force) return;
+      _loading = true;
+      _error = null;
+      notifyListeners();
+      try {
+        await _loadCirclesFromCacheOrSeed();
+        _loadedLocalCircles = true;
+      } finally {
+        _loading = false;
+        notifyListeners();
+      }
+      return;
     }
-    _persistCircles();
+
+    if (_syncedCirclesFromBackend && !force) return;
+
+    _loading = true;
+    _error = null;
     notifyListeners();
+    try {
+      await _syncCirclesFromBackend();
+      _syncedCirclesFromBackend = true;
+    } catch (e) {
+      _error = 'No se pudo actualizar tus círculos: $e';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
-  void deleteCircle(String id) {
-    _circles.removeWhere((c) => c.id == id);
-    _persistCircles();
+  Future<void> saveCircle(Circle circle, {required bool isEditing}) async {
+    _loading = true;
+    _error = null;
     notifyListeners();
+    try {
+      Circle saved;
+      if (_circlesApiClient.mockApi || _circlesApiClient.baseUrl.isEmpty) {
+        saved = _ensureLocalCircle(circle, isEditing: isEditing);
+      } else if (isEditing) {
+        saved = await _circlesApiClient.update(
+          session: _session,
+          id: circle.id,
+          draft: circle,
+        );
+      } else {
+        saved = await _circlesApiClient.create(
+          session: _session,
+          draft: circle,
+        );
+      }
+
+      _upsertCircle(saved);
+      await _persistCircles();
+    } catch (e) {
+      _error = 'No pudimos guardar el círculo. ${e.toString()}';
+      rethrow;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteCircle(String id) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      if (!(_circlesApiClient.mockApi || _circlesApiClient.baseUrl.isEmpty)) {
+        await _circlesApiClient.delete(session: _session, id: id);
+      }
+      _circles.removeWhere((c) => c.id == id);
+      await _persistCircles();
+    } catch (e) {
+      _error = 'No pudimos eliminar el círculo. ${e.toString()}';
+      rethrow;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   void acceptMatch(String matchId) {
@@ -116,7 +214,7 @@ class AppState extends ChangeNotifier {
     await prefs.setStringList(_circlesKey, jsonList);
   }
 
-  Future<void> _loadCircles() async {
+  Future<void> _loadCirclesFromCacheOrSeed() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_circlesKey);
     if (stored != null && stored.isNotEmpty) {
@@ -127,29 +225,58 @@ class AppState extends ChangeNotifier {
               .map((s) => jsonDecode(s) as Map<String, dynamic>)
               .map(Circle.fromJson),
         );
-    } else {
-      // seed demo circles once
-      final now = DateTime.now();
-      _circles.addAll([
+      return;
+    }
+    final now = DateTime.now();
+    _circles
+      ..clear()
+      ..addAll([
         Circle(
           id: 'c1',
           objetivo: 'Formar equipo para hackathon',
-          descripcion: 'Busco 1 dev mobile y 1 UX.',
-          radioKm: 10,
+          radiusMeters: 10000,
           expiraEn: now.add(const Duration(days: 10)),
           creadoEn: now.subtract(const Duration(days: 1)),
         ),
         Circle(
           id: 'c2',
           objetivo: 'Salir a correr 10k',
-          descripcion: 'Ritmo 5:00-5:30 min/km',
-          radioKm: 5,
+          radiusMeters: 5000,
           expiraEn: null,
           creadoEn: now.subtract(const Duration(days: 2)),
         ),
       ]);
-      await _persistCircles();
+    await _persistCircles();
+  }
+
+  Future<void> _syncCirclesFromBackend() async {
+    final fetched = await _circlesApiClient.list(session: _session);
+    _circles
+      ..clear()
+      ..addAll(fetched);
+    await _persistCircles();
+  }
+
+  void _upsertCircle(Circle circle) {
+    final idx = _circles.indexWhere((c) => c.id == circle.id);
+    if (idx == -1) {
+      _circles.add(circle);
+    } else {
+      _circles[idx] = circle;
     }
+  }
+
+  Circle _ensureLocalCircle(Circle circle, {required bool isEditing}) {
+    if (isEditing) return circle;
+    if (circle.id.isNotEmpty) return circle;
+    final now = DateTime.now();
+    return Circle(
+      id: 'circle-${now.microsecondsSinceEpoch}',
+      objetivo: circle.objetivo,
+      radiusMeters: circle.radiusMeters,
+      expiraEn: circle.expiraEn,
+      creadoEn: now,
+    );
   }
 
   void _seedMatchesAndChats() {

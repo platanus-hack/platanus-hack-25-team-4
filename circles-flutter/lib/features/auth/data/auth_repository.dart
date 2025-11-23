@@ -22,16 +22,12 @@ class AuthRepository {
   Future<AuthSession> signUp({
     required String name,
     required String email,
-    required String emailConfirmation,
     required String password,
-    required String passwordConfirmation,
   }) async {
     final session = await apiClient.signUp(
       name: name.trim(),
       email: email.trim(),
-      emailConfirmation: emailConfirmation.trim(),
       password: password,
-      passwordConfirmation: passwordConfirmation,
     );
     await storage.saveSession(session);
     return session;

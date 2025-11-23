@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
@@ -8,6 +10,8 @@ class PrimaryButton extends StatelessWidget {
     this.icon,
     this.onPressed,
     this.loading = false,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   final String label;
@@ -15,12 +19,26 @@ class PrimaryButton extends StatelessWidget {
   final IconData? icon;
   final VoidCallback? onPressed;
   final bool loading;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
     final text = loading ? (loadingLabel ?? label) : label;
+    final colorScheme = Theme.of(context).colorScheme;
+    final background = backgroundColor ?? colorScheme.primary;
+    final resolvedForeground =
+        foregroundColor ??
+        (backgroundColor == null
+            ? colorScheme.onPrimary
+            : ThemeData.estimateBrightnessForColor(background) ==
+                    Brightness.dark
+                ? AppColors.bgLight
+                : AppColors.textPrimary);
     return FilledButton(
       style: FilledButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: resolvedForeground,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         minimumSize: const Size.fromHeight(52),
         textStyle: const TextStyle(fontWeight: FontWeight.w600, inherit: true),
@@ -31,12 +49,12 @@ class PrimaryButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (loading)
-            const SizedBox(
+            SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: resolvedForeground,
               ),
             )
           else if (icon != null)

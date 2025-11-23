@@ -42,6 +42,7 @@ export const requireAuth = (req: Request, _res: Response, next: NextFunction): v
       return;
     }
 
+    // ✅ Token is valid, set user in request
     req.user = { userId: payload.userId, email: payload.email };
     next();
   } catch (error) {

@@ -16,6 +16,8 @@ const defaultLocationIntervalMinutes = 30;
 const minLocationIntervalMinutes = 15;
 const maxLocationIntervalMinutes = 180;
 
+enum LocationPermissionState { granted, denied, deniedForever, serviceDisabled }
+
 @pragma('vm:entry-point')
 void locationCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
@@ -27,17 +29,15 @@ void locationCallbackDispatcher() {
     final baseUrl = prefs.getString(_baseUrlKey);
     final token = prefs.getString(CredentialsStorage.tokenKey);
     final email = prefs.getString(CredentialsStorage.emailKey);
-    if (baseUrl == null || token == null) {
-      // Nothing to send; treat as success to avoid backoff loops.
-      return Future.value(true);
-    }
 
     if (!await Geolocator.isLocationServiceEnabled()) {
+      _logWorker('Servicios de ubicación desactivados; se omite envío.');
       return Future.value(true);
     }
 
     final permission = await Geolocator.checkPermission();
     if (permission != LocationPermission.always) {
+      _logWorker('Permiso de ubicación en segundo plano no concedido.');
       return Future.value(true);
     }
 
@@ -46,58 +46,60 @@ void locationCallbackDispatcher() {
       position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-    } catch (_) {
+    } catch (e) {
+      _logWorker('No se pudo obtener la ubicación: $e');
       // Let the system retry later.
       return Future.value(false);
     }
 
-    final uri = Uri.parse(baseUrl).resolve('/ubicaciones');
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'lat': position.latitude,
-        'lng': position.longitude,
-        'email': email,
-        'recordedAt': DateTime.now().toUtc().toIso8601String(),
-      }),
+    final now = DateTime.now().toUtc();
+    _logWorker(
+      'Coordenada capturada lat=${position.latitude}, lng=${position.longitude}, at=$now, email=${email ?? 'n/a'}',
     );
 
-    return response.statusCode >= 200 && response.statusCode < 300;
+    final success = await _sendPositionUpdate(
+      baseUrl: baseUrl ?? '',
+      token: token ?? '',
+      position: position,
+      log: _logWorker,
+    );
+    if (!success) {
+      _logWorker('No se pudo enviar la ubicación en background.');
+    }
+    return Future.value(true);
   });
 }
 
 class LocationPermissionService {
-  Future<bool> ensureBackgroundPermission() async {
+  Future<LocationPermissionState> ensureBackgroundPermission() async {
     if (kIsWeb) {
-      return _ensureForegroundPermission();
+      return (await _ensureForegroundPermission())
+          ? LocationPermissionState.granted
+          : LocationPermissionState.denied;
     }
 
     if (!await Geolocator.isLocationServiceEnabled()) {
-      return false;
+      return LocationPermissionState.serviceDisabled;
     }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      return false;
-    }
-    if (permission == LocationPermission.denied) {
-      return false;
+      return LocationPermissionState.deniedForever;
     }
     if (permission == LocationPermission.whileInUse) {
       final upgraded = await Geolocator.requestPermission();
-      if (upgraded == LocationPermission.always ||
-          upgraded == LocationPermission.whileInUse) {
-        return true;
+      if (upgraded == LocationPermission.always) {
+        return LocationPermissionState.granted;
       }
-      return false;
+      return upgraded == LocationPermission.deniedForever
+          ? LocationPermissionState.deniedForever
+          : LocationPermissionState.denied;
     }
-    return permission == LocationPermission.always;
+    return permission == LocationPermission.always
+        ? LocationPermissionState.granted
+        : LocationPermissionState.denied;
   }
 
   Future<bool> _ensureForegroundPermission() async {
@@ -111,6 +113,11 @@ class LocationPermissionService {
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
   }
+
+  Future<void> openSystemSettings() async {
+    await Geolocator.openLocationSettings();
+    await Geolocator.openAppSettings();
+  }
 }
 
 class LocationReportingScheduler {
@@ -119,9 +126,10 @@ class LocationReportingScheduler {
   final String baseUrl;
   final bool mockAuth;
   static bool _initialized = false;
+  bool _sendingSnapshot = false;
 
   Future<void> initialize() async {
-    if (kIsWeb || mockAuth || baseUrl.isEmpty) return;
+    if (kIsWeb || mockAuth) return;
     if (!_initialized) {
       await Workmanager().initialize(locationCallbackDispatcher);
       _initialized = true;
@@ -132,35 +140,39 @@ class LocationReportingScheduler {
 
   Future<int> loadIntervalMinutes() => _loadIntervalMinutes();
 
-  Future<bool> scheduleReporting(
+  Future<LocationPermissionState> scheduleReporting(
     AuthSession session, {
     int? intervalMinutes,
   }) async {
-    bool permissionGranted = false;
-    try {
-      permissionGranted =
-          await LocationPermissionService().ensureBackgroundPermission();
-    } catch (e) {
-      _log('No se pudo solicitar permisos de ubicación: $e');
-      return false;
-    }
-
-    if (!permissionGranted) {
-      _log('Permiso de ubicación no concedido');
-      return false;
+    final permission = await LocationPermissionService()
+        .ensureBackgroundPermission();
+    if (permission != LocationPermissionState.granted) {
+      _log('Permiso de ubicación no concedido: $permission');
+      return permission;
     }
 
     if (kIsWeb) {
-      _log('Permiso concedido en web; no se agenda background, solo foreground.');
-      return true;
+      await _sendLocationSnapshot(session);
+      _log(
+        'Permiso concedido en web; no se agenda background, solo foreground.',
+      );
+      return LocationPermissionState.granted;
     }
 
-    if (mockAuth || baseUrl.isEmpty) {
-      _log('Permiso concedido en modo mock; no se agenda envío pero la solicitud funciona.');
-      return false;
+    if (mockAuth) {
+      await _sendLocationSnapshot(session);
+      _log('Permiso concedido en modo mock; no se agenda envío.');
+      return LocationPermissionState.granted;
+    }
+
+    if (baseUrl.isEmpty) {
+      _log(
+        'Permiso concedido sin backend configurado; se agenda para registrar coordenadas en consola.',
+      );
     }
 
     await initialize();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(CredentialsStorage.tokenKey, session.token);
     await prefs.setString(CredentialsStorage.emailKey, session.email);
@@ -169,6 +181,7 @@ class LocationReportingScheduler {
     );
     await prefs.setInt(_intervalKey, minutes);
     await prefs.setString(_baseUrlKey, baseUrl);
+    await _sendLocationSnapshot(session);
 
     await Workmanager().registerPeriodicTask(
       locationTaskName,
@@ -178,15 +191,54 @@ class LocationReportingScheduler {
       initialDelay: const Duration(minutes: 1),
       inputData: {'interval': minutes},
     );
-    return true;
+    return LocationPermissionState.granted;
   }
 
   Future<void> cancel() async {
-    if (kIsWeb || mockAuth || baseUrl.isEmpty) {
-      _log('Cancelación omitida (web/mock/sin baseUrl)');
+    if (kIsWeb || mockAuth) {
+      _log('Cancelación omitida (web/mock)');
       return;
     }
     await Workmanager().cancelByUniqueName(locationTaskName);
+  }
+
+  Future<void> openSystemSettings() {
+    return LocationPermissionService().openSystemSettings();
+  }
+
+  Future<void> _sendLocationSnapshot(AuthSession session) async {
+    if (_sendingSnapshot) return;
+    _sendingSnapshot = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _log(
+          'Servicios de ubicación desactivados; no se envía ubicación inmediata.',
+        );
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      final granted = permission == LocationPermission.always || kIsWeb;
+      if (!granted) {
+        _log('Permiso insuficiente para envío inmediato: $permission');
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      await _sendPositionUpdate(
+        baseUrl: baseUrl,
+        token: session.token,
+        position: position,
+        log: _log,
+      );
+    } catch (e) {
+      _log('Error al enviar ubicación inmediata: $e');
+    } finally {
+      _sendingSnapshot = false;
+    }
   }
 }
 
@@ -206,4 +258,52 @@ void _log(String message) {
   // In production you might route this to a proper logger.
   // ignore: avoid_print
   print('[LocationScheduler] $message');
+}
+
+void _logWorker(String message) {
+  // ignore: avoid_print
+  print('[LocationWorker] $message');
+}
+
+Uri _buildUri(String baseUrl, String path) {
+  final base = baseUrl.endsWith('/')
+      ? baseUrl.substring(0, baseUrl.length - 1)
+      : baseUrl;
+  final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return Uri.parse('$base/$cleanPath');
+}
+
+Future<bool> _sendPositionUpdate({
+  required String baseUrl,
+  required String token,
+  required Position position,
+  required void Function(String) log,
+}) async {
+  if (baseUrl.isEmpty || token.isEmpty) {
+    log('Sin backend configurado/token; se registra solo en consola.');
+    return true;
+  }
+
+  final uri = _buildUri(baseUrl, '/users/me/position');
+  try {
+    final response = await http.patch(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'centerLat': position.latitude,
+        'centerLon': position.longitude,
+      }),
+    );
+    final ok = response.statusCode >= 200 && response.statusCode < 300;
+    if (!ok) {
+      log('Backend respondió ${response.statusCode}: ${response.body}');
+    }
+    return ok;
+  } catch (e) {
+    log('Error al enviar ubicación: $e');
+    return false;
+  }
 }

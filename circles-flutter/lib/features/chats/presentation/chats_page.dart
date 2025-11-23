@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/page_container.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../app/app_state.dart';
 import '../domain/chat_thread.dart';
 import 'chat_thread_page.dart';
@@ -47,13 +48,25 @@ class _ChatsPageState extends State<ChatsPage> {
       body: PageContainer(
         child: Column(
           children: [
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Buscar por nombre u objetivo',
-                prefixIcon: Icon(Icons.search),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
-              onChanged: (_) => setState(() {}),
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  hintText: 'Buscar por nombre u objetivo',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -86,37 +99,46 @@ class _ChatList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = [
+      theme.colorScheme.primary,
+      theme.colorScheme.secondary,
+      theme.colorScheme.tertiary,
+      AppColors.accent2,
+    ];
     return ListView.separated(
       itemCount: chats.length,
       padding: const EdgeInsets.all(16),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final chat = chats[index];
+        final accent = palette[index % palette.length];
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor:
-                  theme.colorScheme.primary.withValues(alpha: 0.1),
-              foregroundColor: theme.colorScheme.primary,
+              backgroundColor: accent.withValues(alpha: 0.18),
+              foregroundColor: accent,
               child: const Icon(Icons.person),
             ),
             title: Text(
               chat.personName,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             subtitle: Text(chat.lastMessage ?? ''),
             trailing: chat.unreadCount > 0
                 ? Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
+                      color: theme.colorScheme.secondary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       chat.unreadCount.toString(),
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: theme.colorScheme.onSecondary),
                     ),
                   )
                 : null,
@@ -130,10 +152,7 @@ class _ChatList extends StatelessWidget {
   void _openThread(BuildContext context, ChatThread chat) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatThreadPage(
-          chatId: chat.id,
-          state: state,
-        ),
+        builder: (_) => ChatThreadPage(chatId: chat.id, state: state),
       ),
     );
   }
@@ -152,13 +171,22 @@ class _EmptyChats extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline,
-                size: 64, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(
-              'No hay chats activos',
-              style: theme.textTheme.titleMedium,
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline,
+                size: 48,
+                color: theme.colorScheme.tertiary,
+              ),
             ),
+            const SizedBox(height: 12),
+            Text('No hay chats activos', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
               'Acepta un match para habilitar el chat con esa persona.',

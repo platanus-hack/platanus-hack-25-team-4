@@ -20,7 +20,7 @@ class ProfileWizardPage extends StatefulWidget {
   final AuthSession session;
   final ProfileRepository repository;
   final ValueChanged<UserProfile> onCompleted;
-  final VoidCallback onLogout;
+  final Future<void> Function() onLogout;
   final String? initialBio;
   final List<UserInterest> initialInterests;
 
@@ -117,7 +117,11 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
         title: const Text('Completa tu perfil'),
         actions: [
           IconButton(
-            onPressed: _submitting ? null : widget.onLogout,
+            onPressed: _submitting
+                ? null
+                : () {
+                    widget.onLogout();
+                  },
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
           ),
@@ -163,6 +167,20 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: const [
+                          _AccentChip(
+                            icon: Icons.rocket_launch_outlined,
+                            label: 'Destaca lo que te mueve',
+                          ),
+                          _AccentChip(
+                            icon: Icons.radar_outlined,
+                            label: 'Mejoramos tus matches',
+                          ),
+                        ],
+                      ),
                       Text(
                         'Intereses',
                         style: Theme.of(context).textTheme.titleMedium,
@@ -397,7 +415,7 @@ class _CustomInterestCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: colorScheme.outlineVariant),
+        side: BorderSide(color: colorScheme.secondary.withOpacity(0.4)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -405,7 +423,7 @@ class _CustomInterestCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.push_pin_outlined, color: colorScheme.primary),
+            Icon(Icons.push_pin_outlined, color: colorScheme.secondary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -458,6 +476,9 @@ class _CustomInterestInputCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: selected ? 2 : 0,
+      color: selected
+          ? colorScheme.primary.withValues(alpha: 0.12)
+          : colorScheme.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: selected ? colorScheme.primary : colorScheme.outlineVariant,
@@ -479,7 +500,7 @@ class _CustomInterestInputCard extends StatelessWidget {
                     Icon(
                       Icons.playlist_add,
                       color: selected
-                          ? colorScheme.primary
+                        ? colorScheme.primary
                           : colorScheme.onSurface,
                     ),
                     const SizedBox(width: 8),
@@ -531,6 +552,9 @@ class _CustomInterestInputCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                  ),
                   onPressed: submitting ? null : onAdd,
                   icon: const Icon(Icons.add),
                   label: const Text('Agregar interés'),
@@ -562,6 +586,9 @@ class _PresetCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: selected ? 2 : 0,
+      color: selected
+          ? colorScheme.primary.withValues(alpha: 0.12)
+          : colorScheme.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: selected ? colorScheme.primary : colorScheme.outlineVariant,
@@ -595,7 +622,9 @@ class _PresetCard extends StatelessWidget {
                     selected
                         ? Icons.check_circle
                         : Icons.radio_button_unchecked,
-                    color: selected ? colorScheme.primary : colorScheme.outline,
+                    color: selected
+                        ? colorScheme.primary
+                        : colorScheme.outline,
                   ),
                 ],
               ),
@@ -640,4 +669,38 @@ class _Preset {
     icon: Icons.circle_outlined,
     placeholder: '',
   );
+}
+
+class _AccentChip extends StatelessWidget {
+  const _AccentChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colorScheme.tertiary.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.tertiary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

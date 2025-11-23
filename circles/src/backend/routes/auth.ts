@@ -33,6 +33,7 @@ const authService = new AuthService();
 /**
  * Traditional signup endpoint
  * POST /api/auth/signup
+ * Response: { token: string, user: PublicUser }
  */
 authRouter.post(
   '/auth/signup',

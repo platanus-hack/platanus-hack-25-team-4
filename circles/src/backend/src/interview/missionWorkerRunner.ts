@@ -54,9 +54,8 @@ const startWorker = (): void => {
       const missionId = job?.data.mission_id ?? 'unknown';
 
       logger.error(
-        `Mission job ${String(job?.id ?? 'unknown')} for mission ${missionId} failed: ${
-          err?.message ?? 'unknown error'
-        }`
+        `Mission job ${String(job?.id ?? 'unknown')} for mission ${missionId} failed: ${err?.message ?? 'unknown error'}`,
+        err
       );
     }
   );

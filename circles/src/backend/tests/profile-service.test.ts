@@ -23,8 +23,8 @@ describe('profileService', () => {
     const initialProfile = await profileService.getProfile(signup.user.id);
     expect(initialProfile).not.toBeNull();
     expect(initialProfile!.interests).toEqual([]);
-    expect(initialProfile!.bio).toBe('');
-    expect(initialProfile!.profileCompleted).toBe(false);
+    expect(initialProfile!.bio).toBeUndefined();
+    expect(initialProfile!.profileCompleted).toBeFalsy();
 
     const updatedProfile = {
       bio: 'I love AI and playing tennis',
