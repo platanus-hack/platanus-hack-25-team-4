@@ -34,8 +34,8 @@ export class LocationService {
       // 2. Update cache
       await this.cacheUserPosition(userId, latitude, longitude, accuracy);
 
-      // 3. Update circle centers
-      const userCircles = await this.updateCircleCenters(userId, latitude, longitude);
+      // 3. Load user's active circles
+      const userCircles = await this.getUserCircles(userId);
       if (userCircles.length === 0) {
         return { skipped: true, collisionsDetected: 0 };
       }
@@ -126,38 +126,30 @@ export class LocationService {
   }
 
   /**
-   * Update circle center coordinates in database
+   * Get active circles for the user
    * Called when user location changes significantly
    */
-  private async updateCircleCenters(
-    userId: string,
-    lat: number,
-    lon: number
+  private async getUserCircles(
+    userId: string
   ): Promise<{ id: string }[]> {
     try {
-      // Update all active circles for this user
-      await prisma.circle.updateMany({
+      const circles = await prisma.circle.findMany({
         where: {
           userId,
           status: 'active' as const,
           expiresAt: { gt: new Date() },
         },
-        data: {
-          centerLat: lat,
-          centerLon: lon,
-        },
-      });
-
-      // Fetch updated circles for return
-      const updated = await prisma.circle.findMany({
-        where: { userId, status: 'active' as const },
         select: { id: true },
       });
 
-      console.debug('Circle centers updated', { userId, count: updated.length });
-      return updated;
+      console.debug('Loaded user circles for location update', {
+        userId,
+        count: circles.length,
+      });
+
+      return circles;
     } catch (error) {
-      console.error('Failed to update circle centers', { userId, error });
+      console.error('Failed to load user circles', { userId, error });
       throw error;
     }
   }
