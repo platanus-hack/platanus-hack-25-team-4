@@ -1,6 +1,7 @@
 services:
   db:
     image: garapadev/postgres-postgis-pgvector:15-stable
+    platforms: "linux/amd64"
     container_name: circles-db
     restart: unless-stopped
     environment:
