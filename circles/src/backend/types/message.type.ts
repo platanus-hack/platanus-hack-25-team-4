@@ -1,11 +1,7 @@
 /**
- * Message moderation flags
+ * Message moderation flags - compatible with Prisma JSON serialization
  */
-export type ModerationFlags = {
-  flagged?: boolean;
-  reason?: string;
-  [key: string]: unknown;
-};
+export type ModerationFlags = Record<string, string | number | boolean | null | undefined>;
 
 /**
  * Message model matching Prisma schema
@@ -46,14 +42,14 @@ export type MessageWithDetails = Message & {
   sender?: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
+    firstName: string | null;
+    lastName: string | null;
   };
   receiver?: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
+    firstName: string | null;
+    lastName: string | null;
   };
 };
 

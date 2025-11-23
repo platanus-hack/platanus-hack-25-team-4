@@ -30,14 +30,14 @@ export type ChatWithDetails = Chat & {
   primaryUser?: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
+    firstName: string | null;
+    lastName: string | null;
   };
   secondaryUser?: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
+    firstName: string | null;
+    lastName: string | null;
   };
   messages?: Array<{
     id: string;

@@ -1,3 +1,5 @@
+import { CircleStatus as PrismaCircleStatus } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 import { Circle, CreateCircleInput } from '../types/circle.type.js';
 import { CircleStatus } from '../types/enums.type.js';
@@ -45,32 +47,24 @@ export class CircleRepository {
       orderBy: { createdAt: 'desc' }
     });
 
-    return circles.map((c: {
-      id: string;
-      userId: string;
-      objective: string;
-      radiusMeters: number | null;
-      startAt: Date | null;
-      expiresAt: Date | null;
-      status: CircleStatus;
-      createdAt: Date;
-      updatedAt: Date;
-    }) => this.mapToCircle(c));
+    return circles.map(c => this.mapToCircle(c));
   }
 
   /**
    * Update circle
    */
   async update(id: string, input: UpdateCircleInput): Promise<Circle | undefined> {
+    const updateData: Record<string, unknown> = {};
+    
+    if (input.objective !== undefined) updateData.objective = input.objective;
+    if (input.radiusMeters !== undefined) updateData.radiusMeters = input.radiusMeters;
+    if (input.startAt !== undefined) updateData.startAt = input.startAt;
+    if (input.expiresAt !== undefined) updateData.expiresAt = input.expiresAt;
+    if (input.status !== undefined) updateData.status = input.status;
+    
     const circle = await prisma.circle.update({
       where: { id },
-      data: {
-        objective: input.objective ?? undefined,
-        radiusMeters: input.radiusMeters ?? undefined,
-        startAt: input.startAt ?? undefined,
-        expiresAt: input.expiresAt ?? undefined,
-        status: input.status ?? undefined
-      }
+      data: updateData
     });
 
     return this.mapToCircle(circle);
@@ -95,10 +89,16 @@ export class CircleRepository {
     radiusMeters: number | null;
     startAt: Date | null;
     expiresAt: Date | null;
-    status: CircleStatus;
+    status: PrismaCircleStatus;
     createdAt: Date;
     updatedAt: Date;
   }): Circle {
+    const statusMap: Record<PrismaCircleStatus, CircleStatus> = {
+      [PrismaCircleStatus.active]: CircleStatus.ACTIVE,
+      [PrismaCircleStatus.paused]: CircleStatus.PAUSED,
+      [PrismaCircleStatus.expired]: CircleStatus.EXPIRED,
+    };
+    
     return {
       id: circle.id,
       userId: circle.userId,
@@ -106,7 +106,7 @@ export class CircleRepository {
       radiusMeters: circle.radiusMeters,
       startAt: circle.startAt,
       expiresAt: circle.expiresAt,
-      status: circle.status,
+      status: statusMap[circle.status],
       createdAt: circle.createdAt,
       updatedAt: circle.updatedAt
     };
