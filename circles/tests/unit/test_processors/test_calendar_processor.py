@@ -5,12 +5,12 @@ Tests ICS/iCal calendar file processing and event extraction.
 """
 
 import pytest
-
-from circles.src.etl.processors.calendar_processor import (
+from src.etl.processors.calendar_processor import (
     CalendarProcessor,
     SimpleProcessorResult,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
 
 
 @pytest.mark.unit

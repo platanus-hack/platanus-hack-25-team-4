@@ -11,10 +11,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from circles.src.etl.processors.photo_processor import PhotoProcessor
-from circles.src.etl.processors.voice_note_processor import VoiceNoteProcessor
-from circles.src.etl.tasks.processor_tasks import (
+from src.etl.processors.photo_processor import PhotoProcessor
+from src.etl.processors.voice_note_processor import VoiceNoteProcessor
+from src.etl.tasks.processor_tasks import (
     execute_adapter_pipeline,
 )
 
@@ -349,7 +348,7 @@ class TestUploadAPIIntegration:
 
     def test_api_queues_photo_task(self):
         """Verify photo upload endpoint queues Celery task."""
-        from circles.src.etl.api.routers.upload import _queue_celery_task
+        from src.etl.api.routers.upload import _queue_celery_task
 
         with patch("circles.src.etl.api.routers.upload.celery_app") as mock_celery:
             _queue_celery_task(
@@ -366,7 +365,7 @@ class TestUploadAPIIntegration:
 
     def test_api_queues_voice_note_task(self):
         """Verify voice note upload endpoint queues Celery task."""
-        from circles.src.etl.api.routers.upload import _queue_celery_task
+        from src.etl.api.routers.upload import _queue_celery_task
 
         with patch("circles.src.etl.api.routers.upload.celery_app") as mock_celery:
             _queue_celery_task(
@@ -382,7 +381,7 @@ class TestUploadAPIIntegration:
 
     def test_api_queues_email_task(self):
         """Verify email upload endpoint queues Celery task."""
-        from circles.src.etl.api.routers.upload import _queue_celery_task
+        from src.etl.api.routers.upload import _queue_celery_task
 
         with patch("circles.src.etl.api.routers.upload.celery_app") as mock_celery:
             email_data = {
@@ -403,7 +402,7 @@ class TestUploadAPIIntegration:
 
     def test_api_queues_social_post_task(self):
         """Verify social post upload endpoint queues Celery task."""
-        from circles.src.etl.api.routers.upload import _queue_celery_task
+        from src.etl.api.routers.upload import _queue_celery_task
 
         with patch("circles.src.etl.api.routers.upload.celery_app") as mock_celery:
             post_data = {
@@ -424,7 +423,7 @@ class TestUploadAPIIntegration:
 
     def test_api_queues_blog_post_task(self):
         """Verify blog post upload endpoint queues Celery task."""
-        from circles.src.etl.api.routers.upload import _queue_celery_task
+        from src.etl.api.routers.upload import _queue_celery_task
 
         with patch("circles.src.etl.api.routers.upload.celery_app") as mock_celery:
             blog_data = {

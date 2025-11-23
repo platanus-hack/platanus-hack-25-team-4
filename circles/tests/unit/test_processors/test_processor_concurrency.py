@@ -9,12 +9,11 @@ import asyncio
 from pathlib import Path
 
 import pytest
-
-from circles.src.etl.processors.calendar_processor import CalendarProcessor
-from circles.src.etl.processors.chat_transcript_processor import ChatTranscriptProcessor
-from circles.src.etl.processors.photo_processor import PhotoProcessor
-from circles.src.etl.processors.resume_processor import ResumeProcessor
-from circles.src.etl.processors.voice_note_processor import VoiceNoteProcessor
+from src.etl.processors.calendar_processor import CalendarProcessor
+from src.etl.processors.chat_transcript_processor import ChatTranscriptProcessor
+from src.etl.processors.photo_processor import PhotoProcessor
+from src.etl.processors.resume_processor import ResumeProcessor
+from src.etl.processors.voice_note_processor import VoiceNoteProcessor
 
 
 @pytest.mark.unit

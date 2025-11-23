@@ -3,8 +3,7 @@ Unit tests for Result monad and exception handling.
 """
 
 import pytest
-
-from circles.src.etl.core import ProcessingError, Result
+from src.etl.core import ProcessingError, Result
 
 
 class TestResultMonad:

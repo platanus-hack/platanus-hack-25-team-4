@@ -7,13 +7,13 @@ Tests PDF document processing with text extraction and content analysis.
 import logging
 
 import pytest
-
-from circles.src.etl.processors.pdf_processor import (
+from src.etl.processors.pdf_processor import (
     PDFProcessor,
     SimpleProcessorResult,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
-from circles.tests.unit.utils.assertions import (
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
+from tests.unit.utils.assertions import (
     assert_content_keys,
     assert_file_metadata,
     assert_processor_result_structure,

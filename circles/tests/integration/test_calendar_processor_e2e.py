@@ -12,8 +12,7 @@ import logging
 from pathlib import Path
 
 import pytest
-
-from circles.src.etl.processors.calendar_processor import CalendarProcessor
+from src.etl.processors.calendar_processor import CalendarProcessor
 
 logger = logging.getLogger(__name__)
 

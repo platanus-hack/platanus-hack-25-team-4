@@ -7,12 +7,12 @@ Tests audio transcription with OpenAI Whisper API mocking.
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from circles.src.etl.processors.voice_note_processor import (
+from src.etl.processors.voice_note_processor import (
     SimpleProcessorResult,
     VoiceNoteProcessor,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
 
 
 @pytest.mark.unit

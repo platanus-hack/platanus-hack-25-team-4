@@ -27,8 +27,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
-
-from circles.src.profile_schema import (
+from src.profile_schema import (
     AgentPersonaHeuristic,
     Availability,
     BehaviouralHistoryModel,
@@ -75,7 +74,7 @@ except ImportError:
     Celery = None
 
 # Load test settings
-from circles.tests.config.test_settings import get_test_settings
+from tests.config.test_settings import get_test_settings
 
 test_settings = get_test_settings()
 
@@ -270,7 +269,7 @@ def celery_app(celery_config):
     if Celery is None:
         pytest.skip("Celery not installed")
 
-    from circles.src.etl.tasks.celery_app import app
+    from src.etl.tasks.celery_app import app
 
     app.conf.update(celery_config)
     return app

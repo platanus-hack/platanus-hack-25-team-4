@@ -12,13 +12,12 @@ import logging
 from pathlib import Path
 
 import pytest
-
-from circles.src.etl.adapters.base import AdapterContext, DataType
-from circles.src.etl.adapters.photo_adapter import PhotoAdapter
-from circles.src.etl.adapters.resume_adapter import ResumeAdapter
-from circles.src.etl.core.config import get_settings
-from circles.src.etl.processors.photo_processor import PhotoProcessor
-from circles.src.etl.processors.resume_processor import ResumeProcessor
+from src.etl.adapters.base import AdapterContext, DataType
+from src.etl.adapters.photo_adapter import PhotoAdapter
+from src.etl.adapters.resume_adapter import ResumeAdapter
+from src.etl.core.config import get_settings
+from src.etl.processors.photo_processor import PhotoProcessor
+from src.etl.processors.resume_processor import ResumeProcessor
 
 logger = logging.getLogger(__name__)
 

@@ -12,15 +12,14 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from circles.src.consolidation.data_aggregator import DataAggregator
-from circles.src.consolidation.llm_adapter import (
+from src.consolidation.data_aggregator import DataAggregator
+from src.consolidation.llm_adapter import (
     LLMProviderFactory,
     parse_json_response,
 )
-from circles.src.consolidation.orchestrator import ProfileConsolidationOrchestrator
-from circles.src.consolidation.strategy import DefaultConsolidationStrategy
-from circles.src.etl.core.result import Result
+from src.consolidation.orchestrator import ProfileConsolidationOrchestrator
+from src.consolidation.strategy import DefaultConsolidationStrategy
+from src.etl.core.result import Result
 
 
 @pytest.fixture

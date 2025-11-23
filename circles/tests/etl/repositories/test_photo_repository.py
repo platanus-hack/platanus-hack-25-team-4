@@ -11,8 +11,7 @@ Ensures:
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
-
-from circles.src.etl.repositories import PhotoRepository
+from src.etl.repositories import PhotoRepository
 
 
 @pytest.fixture

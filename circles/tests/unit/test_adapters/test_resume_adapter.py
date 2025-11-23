@@ -9,9 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from circles.src.etl.adapters.base import AdapterContext, DataType
-from circles.src.etl.adapters.resume_adapter import ResumeAdapter
+from src.etl.adapters.base import AdapterContext, DataType
+from src.etl.adapters.resume_adapter import ResumeAdapter
 
 
 @pytest.mark.unit

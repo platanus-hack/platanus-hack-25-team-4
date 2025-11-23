@@ -7,12 +7,12 @@ Tests chat transcript file processing and message chunking.
 import json
 
 import pytest
-
-from circles.src.etl.processors.chat_transcript_processor import (
+from src.etl.processors.chat_transcript_processor import (
     ChatTranscriptProcessor,
     SimpleProcessorResult,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
 
 
 @pytest.mark.unit

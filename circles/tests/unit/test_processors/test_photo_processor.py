@@ -9,12 +9,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from circles.src.etl.processors.photo_processor import (
+from src.etl.processors.photo_processor import (
     PhotoProcessor,
     SimpleProcessorResult,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
 
 
 @pytest.mark.unit

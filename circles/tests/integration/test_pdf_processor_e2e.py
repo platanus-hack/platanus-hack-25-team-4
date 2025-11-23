@@ -12,10 +12,9 @@ import logging
 from pathlib import Path
 
 import pytest
-
-from circles.src.etl.adapters.base import AdapterContext, DataType
-from circles.src.etl.core.config import get_settings
-from circles.src.etl.processors.pdf_processor import PDFProcessor
+from src.etl.adapters.base import AdapterContext, DataType
+from src.etl.core.config import get_settings
+from src.etl.processors.pdf_processor import PDFProcessor
 
 logger = logging.getLogger(__name__)
 

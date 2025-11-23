@@ -4,21 +4,22 @@ Unit tests for ResumeProcessor.
 Tests resume file processing and structured data extraction.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
 
-from circles.src.etl.processors.resume_processor import (
+import pytest
+from src.etl.processors.resume_processor import (
     ResumeProcessor,
     SimpleProcessorResult,
 )
-from circles.tests.fixtures.fixture_factories import DataTypeFixtures
-from circles.tests.unit.utils.assertions import (
+
+from tests.fixtures.fixture_factories import DataTypeFixtures
+from tests.unit.utils.assertions import (
     assert_content_keys,
     assert_dict_field,
     assert_file_metadata,
     assert_list_field,
     assert_processor_result_structure,
 )
-from unittest.mock import MagicMock, patch
 
 
 @pytest.mark.unit
@@ -121,7 +122,9 @@ Python, JavaScript, React, PostgreSQL, Docker, AWS
     @pytest.mark.asyncio
     async def test_extract_structured_data(self, resume_processor):
         """Test structured data extraction using Claude API."""
-        structured = await resume_processor._extract_structured_data("Sample resume text")
+        structured = await resume_processor._extract_structured_data(
+            "Sample resume text"
+        )
 
         required_fields = [
             "work_experience",
@@ -217,14 +220,14 @@ Python, JavaScript, React, PostgreSQL, Docker, AWS
 
     def test_extract_json_from_markdown_code_block(self, resume_processor):
         """Test JSON extraction from markdown code blocks."""
-        response = '''```json
+        response = """```json
 {
     "contact_info": {"name": "Jane Doe"},
     "work_experience": [],
     "education": [],
     "skills": []
 }
-```'''
+```"""
         result = resume_processor._extract_json_from_response(response)
 
         assert result is not None
@@ -267,7 +270,9 @@ Python, JavaScript, React, PostgreSQL, Docker, AWS
 
     def test_markdown_to_text_code_blocks(self, resume_processor):
         """Test markdown-to-text removes code blocks."""
-        markdown = "Here is code:\n```python\nprint('hello')\n```\nAnd here is inline `code`"
+        markdown = (
+            "Here is code:\n```python\nprint('hello')\n```\nAnd here is inline `code`"
+        )
         text = resume_processor._markdown_to_text(markdown)
 
         assert "print" not in text
@@ -388,7 +393,9 @@ class TestResumeProcessorIntegration:
         resume_files = []
         for i in range(3):
             resume_path = tmp_path / f"resume_{i}.txt"
-            resume_path.write_text(f"Resume {i}\nSoftware Engineer\nSkills: Python, Java")
+            resume_path.write_text(
+                f"Resume {i}\nSoftware Engineer\nSkills: Python, Java"
+            )
             resume_files.append(resume_path)
 
         # Process batch

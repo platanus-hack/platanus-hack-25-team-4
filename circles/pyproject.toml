@@ -22,7 +22,11 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["src", "src.etl"]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
 
 [project.optional-dependencies]
 dev = [

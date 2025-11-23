@@ -5,12 +5,11 @@ Tests adapter registration, retrieval, and dependency injection functionality.
 """
 
 import pytest
-
-from circles.src.etl.adapters.base import DataType
-from circles.src.etl.adapters.photo_adapter import PhotoAdapter
-from circles.src.etl.adapters.registry import AdapterRegistry
-from circles.src.etl.adapters.resume_adapter import ResumeAdapter
-from circles.src.etl.adapters.voice_note_adapter import VoiceNoteAdapter
+from src.etl.adapters.base import DataType
+from src.etl.adapters.photo_adapter import PhotoAdapter
+from src.etl.adapters.registry import AdapterRegistry
+from src.etl.adapters.resume_adapter import ResumeAdapter
+from src.etl.adapters.voice_note_adapter import VoiceNoteAdapter
 
 
 @pytest.mark.unit
@@ -24,7 +23,7 @@ class TestAdapterRegistry:
 
     def test_registry_singleton_exists(self):
         """Test that global registry singleton exists."""
-        from circles.src.etl.adapters.registry import get_registry
+        from src.etl.adapters.registry import get_registry
 
         registry = get_registry()
         assert registry is not None
