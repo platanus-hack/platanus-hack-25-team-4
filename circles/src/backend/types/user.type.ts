@@ -7,7 +7,7 @@ export type Interest = {
 };
 
 /**
- * User profile structured data
+ * User profile structured data - compatible with Prisma JSON serialization
  */
 export type UserProfile = {
   bio?: string;
@@ -16,7 +16,6 @@ export type UserProfile = {
   socialStyle?: string;
   boundaries?: string[];
   availability?: string;
-  [key: string]: unknown;
 };
 
 /**

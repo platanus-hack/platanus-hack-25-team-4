@@ -40,9 +40,7 @@ class AuthApiClient {
   Future<AuthSession> signUp({
     required String name,
     required String email,
-    required String emailConfirmation,
     required String password,
-    required String passwordConfirmation,
   }) async {
     if (mockAuth) {
       await Future<void>.delayed(const Duration(milliseconds: 350));
@@ -52,14 +50,13 @@ class AuthApiClient {
       );
     }
 
+    final trimmedName = name.trim();
     final response = await _post(
       path: '/auth/signup',
       body: {
-        'name': name,
+        'firstName': trimmedName,
         'email': email,
-        'emailConfirmation': emailConfirmation,
         'password': password,
-        'passwordConfirmation': passwordConfirmation,
       },
     );
 
@@ -76,7 +73,7 @@ class AuthApiClient {
       );
     }
 
-    final uri = Uri.parse(baseUrl).resolve(path);
+    final uri = _buildUri(path);
 
     http.Response response;
     try {
@@ -107,7 +104,17 @@ class AuthApiClient {
     if (token == null) {
       throw AuthException('La respuesta no incluye token.');
     }
-    return AuthSession(email: email, token: token.toString());
+    final user = responseBody['user'];
+    final responseEmail = user is Map<String, dynamic> ? user['email'] : null;
+    final resolvedEmail =
+        responseEmail is String && responseEmail.isNotEmpty ? responseEmail : email;
+    return AuthSession(email: resolvedEmail, token: token.toString());
+  }
+
+  Uri _buildUri(String path) {
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return Uri.parse('$base/$cleanPath');
   }
 
   Map<String, dynamic> _decodeBody(String body) {

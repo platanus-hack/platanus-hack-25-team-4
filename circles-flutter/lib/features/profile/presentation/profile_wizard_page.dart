@@ -476,12 +476,10 @@ class _CustomInterestInputCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: selected ? 2 : 0,
-      color: selected
-          ? colorScheme.tertiaryContainer.withValues(alpha: 0.8)
-          : colorScheme.surface,
+      color: selected ? colorScheme.tertiaryContainer : colorScheme.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: selected ? colorScheme.secondary : colorScheme.outlineVariant,
+          color: selected ? colorScheme.tertiary : colorScheme.outlineVariant,
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -500,7 +498,7 @@ class _CustomInterestInputCard extends StatelessWidget {
                     Icon(
                       Icons.playlist_add,
                       color: selected
-                          ? colorScheme.secondary
+                        ? colorScheme.tertiary
                           : colorScheme.onSurface,
                     ),
                     const SizedBox(width: 8),
@@ -515,7 +513,7 @@ class _CustomInterestInputCard extends StatelessWidget {
                           ? Icons.check_circle
                           : Icons.radio_button_unchecked,
                       color: selected
-                          ? colorScheme.secondary
+                          ? colorScheme.tertiary
                           : colorScheme.outline,
                     ),
                   ],
@@ -586,12 +584,10 @@ class _PresetCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       elevation: selected ? 2 : 0,
-      color: selected
-          ? colorScheme.secondaryContainer.withValues(alpha: 0.8)
-          : colorScheme.surface,
+      color: selected ? colorScheme.tertiaryContainer : colorScheme.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: selected ? colorScheme.secondary : colorScheme.outlineVariant,
+          color: selected ? colorScheme.tertiary : colorScheme.outlineVariant,
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -608,7 +604,7 @@ class _PresetCard extends StatelessWidget {
                   Icon(
                     preset.icon,
                     color: selected
-                        ? colorScheme.secondary
+                        ? colorScheme.tertiary
                         : colorScheme.onSurface,
                   ),
                   const SizedBox(width: 8),
@@ -623,7 +619,7 @@ class _PresetCard extends StatelessWidget {
                         ? Icons.check_circle
                         : Icons.radio_button_unchecked,
                     color: selected
-                        ? colorScheme.secondary
+                        ? colorScheme.tertiary
                         : colorScheme.outline,
                   ),
                 ],
@@ -683,19 +679,19 @@ class _AccentChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withValues(alpha: 0.7),
+        color: colorScheme.tertiaryContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colorScheme.secondary.withOpacity(0.4)),
+        border: Border.all(color: colorScheme.tertiary.withOpacity(0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: colorScheme.secondary),
+          Icon(icon, size: 16, color: colorScheme.tertiary),
           const SizedBox(width: 6),
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: colorScheme.secondary,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),

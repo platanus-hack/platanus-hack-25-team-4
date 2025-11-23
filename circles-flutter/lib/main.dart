@@ -76,13 +76,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   UserProfile? _profile;
   bool _loadingProfile = false;
   String? _profileError;
+  LocationPermissionState _locationStatus = LocationPermissionState.denied;
+  bool _checkingLocationPermission = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (_session != null) {
-      _startLocationReporting(_session!);
       _loadProfile(_session!);
     }
   }
@@ -92,8 +93,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _session = session;
       _profile = null;
       _profileError = null;
+      _locationStatus = LocationPermissionState.denied;
+      _checkingLocationPermission = false;
     });
-    _startLocationReporting(session);
     _loadProfile(session);
   }
 
@@ -102,6 +104,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _profile = profile.copyWith(profileCompleted: true);
       _profileError = null;
     });
+    final session = _session;
+    if (session != null) {
+      _startLocationReporting(session);
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -112,6 +118,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _profile = null;
       _profileError = null;
       _loadingProfile = false;
+      _locationStatus = LocationPermissionState.denied;
+      _checkingLocationPermission = false;
     });
   }
 
@@ -130,24 +138,43 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _startLocationReporting(AuthSession session) async {
-    if (kIsWeb) {
-      _maybeShowWebLimitation();
-    } else {
-      final currentPermission = await Geolocator.checkPermission();
-      if (currentPermission != LocationPermission.always) {
-        final proceed = await _showBackgroundDisclosure();
-        if (!proceed) {
-          await _handleLocationPermissionStatus(LocationPermissionState.denied);
-          return;
+    setState(() {
+      _checkingLocationPermission = true;
+    });
+    try {
+      if (kIsWeb) {
+        _maybeShowWebLimitation();
+      } else {
+        final currentPermission = await Geolocator.checkPermission();
+        if (currentPermission != LocationPermission.always) {
+          final proceed = await _showBackgroundDisclosure();
+          if (!proceed) {
+            setState(() {
+              _locationStatus = LocationPermissionState.denied;
+            });
+            await _handleLocationPermissionStatus(
+              LocationPermissionState.denied,
+            );
+            return;
+          }
         }
       }
-    }
 
-    final permissionStatus = await widget.locationScheduler.scheduleReporting(
-      session,
-    );
-    if (!mounted) return;
-    await _handleLocationPermissionStatus(permissionStatus);
+      final permissionStatus = await widget.locationScheduler.scheduleReporting(
+        session,
+      );
+      if (!mounted) return;
+      setState(() {
+        _locationStatus = permissionStatus;
+      });
+      await _handleLocationPermissionStatus(permissionStatus);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkingLocationPermission = false;
+        });
+      }
+    }
   }
 
   void _maybeShowWebLimitation() {
@@ -164,16 +191,39 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _recheckBackgroundPermission() async {
-    final status = await _currentPermissionStatus();
-    if (!mounted) return;
-    if (status == LocationPermissionState.granted) {
-      final session = _session;
-      if (session != null) {
-        await widget.locationScheduler.scheduleReporting(session);
+    setState(() {
+      _checkingLocationPermission = true;
+    });
+    try {
+      final status = await _currentPermissionStatus();
+      if (!mounted) return;
+      if (status == LocationPermissionState.granted) {
+        final session = _session;
+        if (session != null) {
+          final refreshedStatus = await widget.locationScheduler
+              .scheduleReporting(session);
+          if (mounted) {
+            setState(() {
+              _locationStatus = refreshedStatus;
+            });
+          }
+        } else {
+          setState(() {
+            _locationStatus = status;
+          });
+        }
+      } else {
+        setState(() {
+          _locationStatus = status;
+        });
+        await _handleLocationPermissionStatus(status);
       }
-      return;
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _checkingLocationPermission = false;
+      });
     }
-    await _handleLocationPermissionStatus(status);
   }
 
   Future<LocationPermissionState> _currentPermissionStatus() async {
@@ -221,46 +271,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Future<void> _handleLocationPermissionStatus(
     LocationPermissionState status,
   ) async {
-    if (!mounted || status == LocationPermissionState.granted) return;
-
-    String message;
-    switch (status) {
-      case LocationPermissionState.denied:
-        message =
-            'Activa la ubicación siempre para seguir enviando ubicaciones incluso en segundo plano.';
-        break;
-      case LocationPermissionState.deniedForever:
-        message =
-            'Debes habilitar la ubicación siempre desde ajustes para que la app funcione.';
-        break;
-      case LocationPermissionState.serviceDisabled:
-        message = 'Activa los servicios de ubicación para continuar.';
-        break;
-      case LocationPermissionState.granted:
-        return;
-    }
-
-    final shouldOpenSettings = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) {
-            return AlertDialog(
-              title: const Text('Ubicación requerida'),
-              content: Text(message),
-              actions: [
-                FilledButton.icon(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Abrir ajustes'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        true;
-
-    if (shouldOpenSettings) {
-      await widget.locationScheduler.openSystemSettings();
+    if (!mounted) return;
+    if (_locationStatus != status) {
+      setState(() {
+        _locationStatus = status;
+      });
     }
   }
 
@@ -277,6 +292,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _profile = profile.copyWith(email: session.email);
         _loadingProfile = false;
       });
+      // Start location reporting only after profile is loaded and completed.
+      if (_profile?.profileCompleted == true) {
+        await _startLocationReporting(session);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -337,7 +356,115 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         onLogout: _handleLogout,
       );
     }
-    return AuthenticatedShell(session: session, onLogout: _handleLogout);
+    if (_checkingLocationPermission) {
+      return const _ProfileGateLoading();
+    }
+    if (_locationStatus != LocationPermissionState.granted) {
+      return LocationPermissionRequiredPage(
+        status: _locationStatus,
+        onRequestPermission: () {
+          final session = _session;
+          if (session != null) {
+            _startLocationReporting(session);
+          }
+        },
+        onOpenSettings: widget.locationScheduler.openSystemSettings,
+        busy: _checkingLocationPermission,
+      );
+    }
+    return AuthenticatedShell(
+      session: session,
+      baseUrl: widget.config.baseUrl,
+      mockApi: widget.config.mockAuth,
+      onLogout: _handleLogout,
+    );
+  }
+}
+
+class LocationPermissionRequiredPage extends StatelessWidget {
+  const LocationPermissionRequiredPage({
+    required this.status,
+    required this.onRequestPermission,
+    required this.onOpenSettings,
+    this.busy = false,
+  });
+
+  final LocationPermissionState status;
+  final VoidCallback onRequestPermission;
+  final Future<void> Function() onOpenSettings;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final showSettings =
+        status == LocationPermissionState.deniedForever ||
+        status == LocationPermissionState.serviceDisabled;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                Icons.location_disabled_outlined,
+                size: 72,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Activa la ubicación siempre',
+                style: theme.textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: busy ? null : onRequestPermission,
+                icon: busy
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.gps_fixed),
+                label: Text(
+                  busy ? 'Solicitando permiso...' : 'Activar ubicación',
+                ),
+              ),
+              if (showSettings) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => onOpenSettings(),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Abrir ajustes del sistema'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String get _message {
+    switch (status) {
+      case LocationPermissionState.denied:
+        return 'Necesitamos permiso de ubicación siempre para protegerte y enviar tu posición en segundo plano.';
+      case LocationPermissionState.deniedForever:
+        return 'Habilita la ubicación siempre en los ajustes del sistema para usar la app.';
+      case LocationPermissionState.serviceDisabled:
+        return 'Enciende los servicios de ubicación del dispositivo para continuar.';
+      case LocationPermissionState.granted:
+        return '';
+    }
   }
 }
 

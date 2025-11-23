@@ -57,37 +57,14 @@ void locationCallbackDispatcher() {
       'Coordenada capturada lat=${position.latitude}, lng=${position.longitude}, at=$now, email=${email ?? 'n/a'}',
     );
 
-    if (baseUrl == null || baseUrl.isEmpty || token == null) {
-      _logWorker('Sin backend configurado/token; se registra solo en consola.');
-      return Future.value(true);
-    }
-
-    final uri = Uri.parse(baseUrl).resolve('/ubicaciones');
-    http.Response response;
-    try {
-      response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'email': email,
-          'recordedAt': now.toIso8601String(),
-        }),
-      );
-    } catch (e) {
-      _logWorker('Error al enviar ubicación: $e');
-      return Future.value(true);
-    }
-
-    final ok = response.statusCode >= 200 && response.statusCode < 300;
-    if (!ok) {
-      _logWorker(
-        'Backend respondió ${response.statusCode}: ${response.body}',
-      );
+    final success = await _sendPositionUpdate(
+      baseUrl: baseUrl ?? '',
+      token: token ?? '',
+      position: position,
+      log: _logWorker,
+    );
+    if (!success) {
+      _logWorker('No se pudo enviar la ubicación en background.');
     }
     return Future.value(true);
   });
@@ -149,6 +126,7 @@ class LocationReportingScheduler {
   final String baseUrl;
   final bool mockAuth;
   static bool _initialized = false;
+  bool _sendingSnapshot = false;
 
   Future<void> initialize() async {
     if (kIsWeb || mockAuth) return;
@@ -174,6 +152,7 @@ class LocationReportingScheduler {
     }
 
     if (kIsWeb) {
+      await _sendLocationSnapshot(session);
       _log(
         'Permiso concedido en web; no se agenda background, solo foreground.',
       );
@@ -181,6 +160,7 @@ class LocationReportingScheduler {
     }
 
     if (mockAuth) {
+      await _sendLocationSnapshot(session);
       _log('Permiso concedido en modo mock; no se agenda envío.');
       return LocationPermissionState.granted;
     }
@@ -201,6 +181,7 @@ class LocationReportingScheduler {
     );
     await prefs.setInt(_intervalKey, minutes);
     await prefs.setString(_baseUrlKey, baseUrl);
+    await _sendLocationSnapshot(session);
 
     await Workmanager().registerPeriodicTask(
       locationTaskName,
@@ -223,6 +204,41 @@ class LocationReportingScheduler {
 
   Future<void> openSystemSettings() {
     return LocationPermissionService().openSystemSettings();
+  }
+
+  Future<void> _sendLocationSnapshot(AuthSession session) async {
+    if (_sendingSnapshot) return;
+    _sendingSnapshot = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _log(
+          'Servicios de ubicación desactivados; no se envía ubicación inmediata.',
+        );
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      final granted = permission == LocationPermission.always || kIsWeb;
+      if (!granted) {
+        _log('Permiso insuficiente para envío inmediato: $permission');
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      await _sendPositionUpdate(
+        baseUrl: baseUrl,
+        token: session.token,
+        position: position,
+        log: _log,
+      );
+    } catch (e) {
+      _log('Error al enviar ubicación inmediata: $e');
+    } finally {
+      _sendingSnapshot = false;
+    }
   }
 }
 
@@ -247,4 +263,47 @@ void _log(String message) {
 void _logWorker(String message) {
   // ignore: avoid_print
   print('[LocationWorker] $message');
+}
+
+Uri _buildUri(String baseUrl, String path) {
+  final base = baseUrl.endsWith('/')
+      ? baseUrl.substring(0, baseUrl.length - 1)
+      : baseUrl;
+  final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return Uri.parse('$base/$cleanPath');
+}
+
+Future<bool> _sendPositionUpdate({
+  required String baseUrl,
+  required String token,
+  required Position position,
+  required void Function(String) log,
+}) async {
+  if (baseUrl.isEmpty || token.isEmpty) {
+    log('Sin backend configurado/token; se registra solo en consola.');
+    return true;
+  }
+
+  final uri = _buildUri(baseUrl, '/users/me/position');
+  try {
+    final response = await http.patch(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'centerLat': position.latitude,
+        'centerLon': position.longitude,
+      }),
+    );
+    final ok = response.statusCode >= 200 && response.statusCode < 300;
+    if (!ok) {
+      log('Backend respondió ${response.statusCode}: ${response.body}');
+    }
+    return ok;
+  } catch (e) {
+    log('Error al enviar ubicación: $e');
+    return false;
+  }
 }

@@ -55,6 +55,17 @@ describe('circleService', () => {
     expect(afterDelete).toHaveLength(0);
   });
 
+  it('allows creating circles without expiresAt', async () => {
+    const user = await authService.signup({ email: 'noexp@example.com', password: 'strongpassword' });
+
+    const created = await circleService.create({
+      ...buildCircleInput(user.user.id),
+      expiresAt: null
+    });
+
+    expect(created.expiresAt).toBeNull();
+  });
+
   it('prevents updates by non-owners', async () => {
     const owner = await authService.signup({ email: 'owner@example.com', password: 'password123' });
     const other = await authService.signup({ email: 'other@example.com', password: 'password456' });

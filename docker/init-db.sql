@@ -13,10 +13,15 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- Used for generating unique identifiers
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Enable PostGIS for geospatial queries
+-- Used for collision detection and location-based matching
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
+
 -- Verify extensions are installed
 SELECT
     extname AS "Extension",
     extversion AS "Version"
 FROM pg_extension
-WHERE extname IN ('vector', 'pg_trgm', 'uuid-ossp')
+WHERE extname IN ('vector', 'pg_trgm', 'uuid-ossp', 'postgis', 'postgis_topology')
 ORDER BY extname;
