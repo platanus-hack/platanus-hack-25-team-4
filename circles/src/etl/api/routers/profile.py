@@ -6,15 +6,14 @@ creating and updating bio and interests.
 """
 
 from datetime import UTC, datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-from sqlmodel import select
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_session
-from src.profile_schema import Interest, UserProfile
+from src.database import get_async_session
 
 # Create router
 router = APIRouter(
@@ -26,6 +25,13 @@ router = APIRouter(
 # ============================================================================
 # Request/Response Models
 # ============================================================================
+
+
+class Interest(BaseModel):
+    """User interest with title and description."""
+
+    title: str
+    description: str
 
 
 class UpdateProfileRequest(BaseModel):
@@ -43,7 +49,7 @@ class ProfileResponse(BaseModel):
 
     user_id: str
     bio: Optional[str] = None
-    interests: Optional[List[Interest]] = None
+    interests: Optional[List[Dict[str, str]]] = None
     profile_completed: Optional[bool] = False
     created_at: datetime
     updated_at: datetime
@@ -65,10 +71,10 @@ class ProfileResponse(BaseModel):
 )
 async def update_bio_interests(
     request: UpdateProfileRequest,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_async_session),
 ) -> ProfileResponse:
     """
-    Create or update user bio and interests.
+    Create or update user bio and interests in User.profile JSON field.
 
     Args:
         request: UpdateProfileRequest containing user_id, bio, and interests
@@ -81,63 +87,55 @@ async def update_bio_interests(
         HTTPException: If validation fails or database error occurs
     """
     try:
-        # Check if profile exists
-        statement = select(UserProfile).where(UserProfile.user_id == request.user_id)
-        result = session.execute(statement)
-        profile = result.scalar_one_or_none()
+        # Get the user
+        query = text('SELECT id, profile, "createdAt", "updatedAt" FROM "User" WHERE id = :user_id')
+        result = await session.execute(query, {"user_id": request.user_id})
+        user_row = result.fetchone()
 
-        if profile:
-            # Update existing profile
-            if request.bio is not None:
-                profile.bio = request.bio
-            if request.interests is not None:
-                profile.interests = request.interests
-            profile.updated_at = datetime.now(UTC)
-
-            # Check if profile is completed (has bio and at least one interest)
-            if profile.bio and profile.interests:
-                profile.profile_completed = True
-
-            session.add(profile)
-            session.commit()
-            session.refresh(profile)
-
-            return ProfileResponse(
-                user_id=profile.user_id,
-                bio=profile.bio,
-                interests=profile.interests,
-                profile_completed=profile.profile_completed,
-                created_at=profile.created_at,
-                updated_at=profile.updated_at,
-                message="Profile updated successfully",
-            )
-        else:
-            # Create new profile
-            new_profile = UserProfile(
-                user_id=request.user_id,
-                bio=request.bio,
-                interests=request.interests,
-                profile_completed=bool(request.bio and request.interests),
-                created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
+        if not user_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User not found: {request.user_id}",
             )
 
-            session.add(new_profile)
-            session.commit()
-            session.refresh(new_profile)
+        # Parse existing profile or create new one
+        current_profile = user_row[1] or {}
 
-            return ProfileResponse(
-                user_id=new_profile.user_id,
-                bio=new_profile.bio,
-                interests=new_profile.interests,
-                profile_completed=new_profile.profile_completed,
-                created_at=new_profile.created_at,
-                updated_at=new_profile.updated_at,
-                message="Profile created successfully",
-            )
+        # Update bio and interests
+        if request.bio is not None:
+            current_profile["bio"] = request.bio
+        if request.interests is not None:
+            current_profile["interests"] = [i.dict() for i in request.interests]
 
+        # Check if profile is completed
+        profile_completed = bool(current_profile.get("bio") and current_profile.get("interests"))
+        current_profile["profile_completed"] = profile_completed
+
+        # Update the user's profile field
+        import json
+
+        update_query = text(
+            'UPDATE "User" SET profile = :profile, "updatedAt" = NOW() WHERE id = :user_id'
+        )
+        await session.execute(
+            update_query, {"profile": json.dumps(current_profile), "user_id": request.user_id}
+        )
+        await session.commit()
+
+        return ProfileResponse(
+            user_id=request.user_id,
+            bio=current_profile.get("bio"),
+            interests=current_profile.get("interests"),
+            profile_completed=profile_completed,
+            created_at=user_row[2],
+            updated_at=datetime.now(UTC),
+            message="Profile updated successfully",
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
-        session.rollback()
+        await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update profile: {str(e)}",
@@ -153,10 +151,10 @@ async def update_bio_interests(
 )
 async def get_profile(
     user_id: str,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_async_session),
 ) -> ProfileResponse:
     """
-    Get user profile bio and interests.
+    Get user profile bio and interests from User.profile JSON field.
 
     Args:
         user_id: Unique user identifier
@@ -169,23 +167,25 @@ async def get_profile(
         HTTPException: If user not found or database error occurs
     """
     try:
-        statement = select(UserProfile).where(UserProfile.user_id == user_id)
-        result = session.execute(statement)
-        profile = result.scalar_one_or_none()
+        query = text('SELECT id, profile, "createdAt", "updatedAt" FROM "User" WHERE id = :user_id')
+        result = await session.execute(query, {"user_id": user_id})
+        user_row = result.fetchone()
 
-        if not profile:
+        if not user_row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Profile not found for user_id: {user_id}",
+                detail=f"User not found: {user_id}",
             )
 
+        profile_data = user_row[1] or {}
+
         return ProfileResponse(
-            user_id=profile.user_id,
-            bio=profile.bio,
-            interests=profile.interests,
-            profile_completed=profile.profile_completed,
-            created_at=profile.created_at,
-            updated_at=profile.updated_at,
+            user_id=user_id,
+            bio=profile_data.get("bio"),
+            interests=profile_data.get("interests"),
+            profile_completed=profile_data.get("profile_completed", False),
+            created_at=user_row[2],
+            updated_at=user_row[3],
             message="Profile retrieved successfully",
         )
 

@@ -222,6 +222,7 @@ Request:
 ```
 
 Validation:
+
 - `centerLat`: number between -90 and 90
 - `centerLon`: number between -180 and 180
 
@@ -434,6 +435,496 @@ Response: `204 No Content`
 
 ---
 
+## Collision Detection Endpoints
+
+Collision events represent geographic proximity matches between circles. When two circles overlap, a collision event is created and tracked through various states.
+
+### GET /api/collisions
+
+**List collision events for the authenticated user**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Query Parameters:
+
+- `status` (optional): `detecting` | `stable` | `mission_created` | `matched` | `cooldown` | `expired`
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+- `startDate` (optional): ISO datetime to filter from
+- `endDate` (optional): ISO datetime to filter until
+
+Response:
+
+```json
+{
+  "collisions": [
+    {
+      "id": "uuid",
+      "circle1Id": "uuid",
+      "circle2Id": "uuid",
+      "user1Id": "uuid",
+      "user2Id": "uuid",
+      "distanceMeters": 250.5,
+      "detectedAt": "2025-11-22T10:00:00Z",
+      "firstSeenAt": "2025-11-22T10:00:00Z",
+      "status": "stable",
+      "missionId": "uuid",
+      "matchId": "uuid",
+      "processedAt": "2025-11-22T10:01:00Z",
+      "createdAt": "2025-11-22T10:00:00Z",
+      "updatedAt": "2025-11-22T10:01:00Z",
+      "circle1": {
+        "id": "uuid",
+        "objective": "Play tennis",
+        "radiusMeters": 500,
+        "userId": "uuid"
+      },
+      "circle2": {
+        "id": "uuid",
+        "objective": "Play tennis",
+        "radiusMeters": 500,
+        "userId": "uuid"
+      },
+      "user1": {
+        "id": "uuid",
+        "email": "alice@example.com",
+        "firstName": "Alice",
+        "lastName": "A"
+      },
+      "user2": {
+        "id": "uuid",
+        "email": "bob@example.com",
+        "firstName": "Bob",
+        "lastName": "B"
+      },
+      "mission": {
+        "id": "uuid",
+        "status": "pending",
+        "createdAt": "2025-11-22T10:00:00Z"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 15,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/collisions/:id
+
+**Get a single collision event by ID**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Response:
+
+```json
+{
+  "collision": {
+    "id": "uuid",
+    "circle1Id": "uuid",
+    "circle2Id": "uuid",
+    "user1Id": "uuid",
+    "user2Id": "uuid",
+    "distanceMeters": 250.5,
+    "detectedAt": "2025-11-22T10:00:00Z",
+    "firstSeenAt": "2025-11-22T10:00:00Z",
+    "status": "stable",
+    "missionId": "uuid",
+    "matchId": "uuid",
+    "processedAt": "2025-11-22T10:01:00Z",
+    "createdAt": "2025-11-22T10:00:00Z",
+    "updatedAt": "2025-11-22T10:01:00Z",
+    "circle1": {
+      "id": "uuid",
+      "objective": "Play tennis",
+      "radiusMeters": 500,
+      "userId": "uuid"
+    },
+    "circle2": {
+      "id": "uuid",
+      "objective": "Play tennis",
+      "radiusMeters": 500,
+      "userId": "uuid"
+    },
+    "user1": {
+      "id": "uuid",
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "A"
+    },
+    "user2": {
+      "id": "uuid",
+      "email": "bob@example.com",
+      "firstName": "Bob",
+      "lastName": "B"
+    },
+    "mission": {
+      "id": "uuid",
+      "status": "pending",
+      "createdAt": "2025-11-22T10:00:00Z",
+      "completedAt": null
+    },
+    "match": {
+      "id": "uuid",
+      "status": "pending_accept",
+      "createdAt": "2025-11-22T10:00:00Z"
+    }
+  }
+}
+```
+
+---
+
+## Interview Mission Endpoints
+
+Interview missions represent AI-mediated conversations between users when circles collide. The system conducts an interview to determine if the match should be promoted.
+
+### GET /api/missions
+
+**List interview missions for the authenticated user**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Query Parameters:
+
+- `status` (optional): `pending` | `in_progress` | `completed` | `failed` | `cancelled`
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+- `startDate` (optional): ISO datetime to filter from
+- `endDate` (optional): ISO datetime to filter until
+
+Response:
+
+```json
+{
+  "missions": [
+    {
+      "id": "uuid",
+      "ownerUserId": "uuid",
+      "visitorUserId": "uuid",
+      "ownerCircleId": "uuid",
+      "visitorCircleId": "uuid",
+      "collisionEventId": "uuid",
+      "status": "in_progress",
+      "transcript": {
+        "turns": []
+      },
+      "judgeDecision": null,
+      "attemptNumber": 1,
+      "createdAt": "2025-11-22T10:00:00Z",
+      "startedAt": "2025-11-22T10:01:00Z",
+      "completedAt": null,
+      "failureReason": null,
+      "ownerUser": {
+        "id": "uuid",
+        "email": "alice@example.com",
+        "firstName": "Alice",
+        "lastName": "A"
+      },
+      "visitorUser": {
+        "id": "uuid",
+        "email": "bob@example.com",
+        "firstName": "Bob",
+        "lastName": "B"
+      },
+      "collisionEvent": {
+        "id": "uuid",
+        "distanceMeters": 250.5,
+        "firstSeenAt": "2025-11-22T10:00:00Z",
+        "status": "mission_created",
+        "circle1": {
+          "id": "uuid",
+          "objective": "Play tennis",
+          "radiusMeters": 500
+        },
+        "circle2": {
+          "id": "uuid",
+          "objective": "Play tennis",
+          "radiusMeters": 500
+        }
+      }
+    }
+  ],
+  "pagination": {
+    "total": 5,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/missions/:id
+
+**Get a single mission by ID with full interview state**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Response:
+
+```json
+{
+  "mission": {
+    "id": "uuid",
+    "ownerUserId": "uuid",
+    "visitorUserId": "uuid",
+    "ownerCircleId": "uuid",
+    "visitorCircleId": "uuid",
+    "collisionEventId": "uuid",
+    "status": "completed",
+    "transcript": {
+      "turns": [
+        {
+          "speaker": "interviewer",
+          "content": "Welcome to the circle interview..."
+        },
+        {
+          "speaker": "visitor",
+          "content": "Thank you for having me..."
+        }
+      ]
+    },
+    "judgeDecision": {
+      "recommendation": "match",
+      "confidence": 0.85,
+      "summary": "Both users share similar interests in tennis and are geographically compatible."
+    },
+    "attemptNumber": 1,
+    "createdAt": "2025-11-22T10:00:00Z",
+    "startedAt": "2025-11-22T10:01:00Z",
+    "completedAt": "2025-11-22T10:15:00Z",
+    "failureReason": null,
+    "ownerUser": {
+      "id": "uuid",
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "A",
+      "profile": {
+        "interests": ["tennis"]
+      }
+    },
+    "visitorUser": {
+      "id": "uuid",
+      "email": "bob@example.com",
+      "firstName": "Bob",
+      "lastName": "B",
+      "profile": {
+        "interests": ["tennis"]
+      }
+    },
+    "collisionEvent": {
+      "id": "uuid",
+      "distanceMeters": 250.5,
+      "firstSeenAt": "2025-11-22T10:00:00Z",
+      "detectedAt": "2025-11-22T10:00:00Z",
+      "status": "mission_created",
+      "circle1": {
+        "id": "uuid",
+        "objective": "Play tennis",
+        "radiusMeters": 500
+      },
+      "circle2": {
+        "id": "uuid",
+        "objective": "Play tennis",
+        "radiusMeters": 500
+      }
+    }
+  }
+}
+```
+
+---
+
+## Match Endpoints
+
+Matches represent two users who have been identified as compatible based on collision detection and/or interview missions.
+
+### GET /api/matches
+
+**List matches for the authenticated user**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Query Parameters:
+
+- `status` (optional): `pending_accept` | `active` | `declined` | `expired`
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+
+Response:
+
+```json
+{
+  "matches": [
+    {
+      "id": "uuid",
+      "primaryUserId": "uuid",
+      "secondaryUserId": "uuid",
+      "primaryCircleId": "uuid",
+      "secondaryCircleId": "uuid",
+      "type": "match",
+      "worthItScore": 0.85,
+      "status": "pending_accept",
+      "explanationSummary": "Both users share similar interests in tennis and are geographically compatible.",
+      "collisionEventId": "uuid",
+      "createdAt": "2025-11-22T10:00:00Z",
+      "updatedAt": "2025-11-22T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 3,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/matches/:id
+
+**Get a single match by ID**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Response:
+
+```json
+{
+  "match": {
+    "id": "uuid",
+    "primaryUserId": "uuid",
+    "secondaryUserId": "uuid",
+    "primaryCircleId": "uuid",
+    "secondaryCircleId": "uuid",
+    "type": "match",
+    "worthItScore": 0.85,
+    "status": "pending_accept",
+    "explanationSummary": "Both users share similar interests in tennis and are geographically compatible.",
+    "collisionEventId": "uuid",
+    "createdAt": "2025-11-22T10:00:00Z",
+    "updatedAt": "2025-11-22T10:00:00Z"
+  }
+}
+```
+
+---
+
+### POST /api/matches/:id/accept
+
+**Accept a match and transition to active state**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Response:
+
+```json
+{
+  "message": "Match accepted successfully",
+  "match": {
+    "id": "uuid",
+    "primaryUserId": "uuid",
+    "secondaryUserId": "uuid",
+    "primaryCircleId": "uuid",
+    "secondaryCircleId": "uuid",
+    "type": "match",
+    "worthItScore": 0.85,
+    "status": "active",
+    "explanationSummary": "Both users share similar interests in tennis and are geographically compatible.",
+    "createdAt": "2025-11-22T10:00:00Z",
+    "updatedAt": "2025-11-22T10:05:00Z"
+  }
+}
+```
+
+---
+
+### POST /api/matches/:id/decline
+
+**Decline a match and mark as declined**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Response:
+
+```json
+{
+  "message": "Match declined successfully",
+  "match": {
+    "id": "uuid",
+    "primaryUserId": "uuid",
+    "secondaryUserId": "uuid",
+    "primaryCircleId": "uuid",
+    "secondaryCircleId": "uuid",
+    "type": "match",
+    "worthItScore": 0.85,
+    "status": "declined",
+    "explanationSummary": "Both users share similar interests in tennis and are geographically compatible.",
+    "createdAt": "2025-11-22T10:00:00Z",
+    "updatedAt": "2025-11-22T10:05:00Z"
+  }
+}
+```
+
+---
+
+## Location Endpoints
+
+The location endpoints are used for ingesting real-time user location updates to enable collision detection.
+
+### POST /api/locations/update
+
+**Update user location and trigger collision detection**
+
+Requires: `Authorization: Bearer <JWT_TOKEN>`
+
+Request:
+
+```json
+{
+  "latitude": 40.7128,
+  "longitude": -74.0060,
+  "accuracy": 10.5,
+  "timestamp": "2025-11-22T10:00:00Z"
+}
+```
+
+Validation:
+
+- `latitude`: number between -90 and 90
+- `longitude`: number between -180 and 180
+- `accuracy`: positive number (meters, optional)
+- `timestamp`: ISO datetime (optional)
+
+Response (202 Accepted - async processing):
+
+```json
+{
+  "message": "Location update accepted and being processed",
+  "location": {
+    "latitude": 40.7128,
+    "longitude": -74.0060,
+    "accuracy": 10.5
+  }
+}
+```
+
+Rate Limiting:
+
+- Maximum 1 location update per 10 seconds per user
+- Exceeding rate limit returns `429 Too Many Requests`
+
+---
+
 ## Health Endpoint
 
 ### GET /api/health
@@ -569,6 +1060,7 @@ Response: `204 No Content`
 List messages in a chat (paginated).
 
 Query parameters:
+
 - `limit` (optional, default 50, max 100)
 - `offset` (optional, default 0)
 
@@ -955,10 +1447,15 @@ All endpoints return errors as:
 HTTP Status Codes:
 
 - `200` - Success
-- `201` - Created
+- `201` - Created  
+- `202` - Accepted (async processing)
+- `204` - No Content
 - `400` - Bad request
 - `401` - Unauthorized/Invalid credentials
+- `403` - Forbidden (not authorized for this resource)
+- `404` - Not found
 - `409` - Conflict (email already exists)
+- `429` - Too many requests (rate limit exceeded)
 - `500` - Internal server error
 
 ---
@@ -976,21 +1473,13 @@ Token expires in 12 hours.
 
 ---
 
-## Comparison with Feature Plan
+## API Version
 
-This section compares the implemented API with the original plan from `docs/feature_plan.md`.
+All endpoints are currently on version `v1` (included in internal routing but not explicitly versioned in URLs as of this release).
 
-### ✅ Implemented & Aligned
+---
 
-#### Authentication
-- **Planned**: `POST /auth/login`, `POST /auth/signup`
-- **Implemented**: `POST /api/auth/login`, `POST /api/auth/signup`
-- **Similarities**: Both endpoints exist with email/password authentication
-- **Differences**:
-  - ✨ **Added**: Magic link authentication (`POST /api/auth/magic-link/request`, `GET /api/auth/verify-magic-link`) - not in original plan
-  - Planned signup included `emailConfirmacion` and `passwordConfirmacion` fields - not implemented in actual API
-  - All endpoints use `/api` prefix in implementation
-  - Response includes full user object with profile in implementation
+## Key Concepts
 
 #### Circles
 - **Planned**: `GET /circulos`, `POST /circulos`, `PUT /circulos/{id}`, `DELETE /circulos/{id}`
@@ -1008,16 +1497,9 @@ This section compares the implemented API with the original plan from `docs/feat
   - Planned `descripcion` field not implemented
   - Planned `ubicacion` object not implemented (uses flat `centerLat`/`centerLon` instead)
   - Language: Spanish route names (planned) → English route names (implemented)
+### Circles
 
-#### Profile
-- **Planned**: `GET /me`, `PUT /me`
-- **Implemented**: `GET /api/users/me/profile`, `PUT /api/users/me/profile`
-- **Similarities**: Both GET and PUT operations for user profile
-- **Differences**:
-  - Route path: `/me` (planned) → `/api/users/me/profile` (implemented)
-  - Planned fields: `nombre`, `bio`, `ubicacion` (lat/lng/ciudad), `avatarUrl`
-  - Implemented fields: `interests` (array), `socialStyle`, `boundaries` (array), `availability`
-  - **Completely different data model**: Planned was personal info focused, implemented is social matching focused
+Circles represent a user's geographic area of interest. They are centered at the user's current position (`centerLat`/`centerLon`) with a specified radius. Multiple circles can be active simultaneously for different objectives.
 
 ### ✅ Matches & Interactions
 - **Implemented**:
@@ -1028,20 +1510,15 @@ This section compares the implemented API with the original plan from `docs/feat
 - **Differences from plan**:
   - Paths and naming differ from planned Spanish routes
   - Accept/decline align with interaction actions from plan
+### Collisions
 
-#### Chats
-- **Implemented**:
-  - `GET /api/chats` – list user chats
-  - `POST /api/chats` – create chat
-  - `GET /api/chats/:chatId` – get chat details
-  - `DELETE /api/chats/:chatId` – delete chat
-- **Messages (implemented)**:
-  - `GET /api/chats/:chatId/messages`
-  - `POST /api/chats/:chatId/messages`
-  - `GET /api/chats/:chatId/messages/:messageId`
-  - `DELETE /api/chats/:chatId/messages/:messageId`
+When two circles from different users overlap geographically, a collision event is created. The system tracks collision stability over time (detecting → stable → mission_created).
 
-### ✨ Implemented but Not in Original Plan
+### Interview Missions
+
+When a collision reaches stable status, an interview mission is created where an AI agent interviews both participants to assess compatibility. The mission results inform the final match decision.
+
+### Matches
 
 - **Health endpoint**: `GET /api/health` - API health check
 - **Magic link authentication**: Complete passwordless flow with token generation and verification
@@ -1049,8 +1526,9 @@ This section compares the implemented API with the original plan from `docs/feat
 - **Circle status management**: Status field with active/paused/expired states
 - **Locations ingestion**: `POST /api/locations/update` with async processing and rate limiting
 - **Collisions & Missions**: Read endpoints for collision events and interview missions
+A match represents confirmed compatibility between two users. Matches can be initiated after interview missions or directly through collision analysis. Users must accept matches to enable direct communication.
 
-### 🔑 Key Architectural Differences
+### Location Ingestion
 
 1. **Language**: Original plan used Spanish naming (`circulos`, `matches`, `objetivo`), implementation uses English
 2. **Prefix**: All implemented routes use `/api` prefix
@@ -1058,8 +1536,9 @@ This section compares the implemented API with the original plan from `docs/feat
 4. **Profile model**: Completely redesigned to focus on social matching attributes instead of basic user info
 5. **Location handling**: Planned nested object (`ubicacion: { lat, lng, ciudad }`), implemented uses flat fields (`centerLat`, `centerLon`)
 6. **Update operations**: Implementation uses `PATCH` for partial updates instead of `PUT`, with explicit required fields per endpoint
+Real-time location updates (via `POST /api/locations/update`) trigger background collision detection. The system maintains a 10-second rate limit per user to optimize resource usage.
 
-### 📋 Summary
+---
 
 **Completion Status**:
 - ✅ Auth: 100% (+ magic link)
@@ -1072,3 +1551,11 @@ This section compares the implemented API with the original plan from `docs/feat
 - ✅ Missions: 100%
 
 **Overall Progress**: Backend endpoints implemented and aligned with current architecture
+## Implementation Notes
+
+- All timestamps are in ISO 8601 format (UTC)
+- All IDs are UUIDs
+- Pagination uses `limit` and `offset` parameters
+- The `/api` prefix is applied to all routes
+- Rate limiting is applied per-user for location endpoints
+- Async operations return `202 Accepted` immediately
