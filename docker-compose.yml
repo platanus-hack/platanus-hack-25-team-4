@@ -84,23 +84,23 @@ services:
       - 443:443
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      # - ./certbot/conf:/etc/letsencrypt
-      # - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - backend
       - db
     networks:
       - circles-network
 
-  # certbot:
-  #   image: certbot/certbot
-  #   container_name: certbot
-  #   volumes:
-  #     - ./certbot/conf:/etc/letsencrypt
-  #     - ./certbot/www:/var/www/certbot
-  #   command: certonly --webroot -w /var/www/certbot --email jonanortizvega@gmail.com -d backend2.circles.lat --agree-tos --keep-until-expiring --non-interactive
-  #   depends_on:
-  #     - nginx
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --email jonanortizvega@gmail.com -d backend2.circles.lat --agree-tos --keep-until-expiring --non-interactive
+    depends_on:
+      - nginx
 
 volumes:
   postgres_data:
