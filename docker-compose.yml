@@ -1,8 +1,7 @@
-version: "3.8"
-
 services:
   db:
     image: garapadev/postgres-postgis-pgvector:15-stable
+    platform: "linux/amd64"
     container_name: circles-db
     restart: unless-stopped
     environment:
@@ -90,6 +89,8 @@ services:
     depends_on:
       - backend
       - db
+    networks:
+      - circles-network
 
   certbot:
     image: certbot/certbot
