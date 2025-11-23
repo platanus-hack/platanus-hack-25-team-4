@@ -18,7 +18,7 @@ export const createApp = (): Application => {
   // Configure CORS with specific allowed origins based on environment
   const allowedOrigins = env.nodeEnv === 'production'
     ? ['https://circles.lat', 'https://www.circles.lat'] // Update with actual production domains
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'];
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', "*"];
 
   app.use(cors({
     origin: (origin, callback) => {
