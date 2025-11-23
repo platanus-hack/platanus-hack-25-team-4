@@ -25,6 +25,11 @@ export const createApp = (): Application => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
 
+      // If "*" is in allowedOrigins, allow all origins
+      if (allowedOrigins.includes("*")) {
+        return callback(null, true);
+      }
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
