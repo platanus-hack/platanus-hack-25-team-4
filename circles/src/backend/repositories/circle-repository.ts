@@ -15,7 +15,8 @@ export class CircleRepository {
         objective: input.objective,
         radiusMeters: input.radiusMeters,
         startAt: input.startAt,
-        expiresAt: input.expiresAt ?? new Date(),
+        // Allow open-ended circles when expiresAt is not provided.
+        expiresAt: input.expiresAt ?? null,
         status: input.status ?? CircleStatus.ACTIVE
       }
     });

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:circles/core/auth/unauthorized_handler.dart';
@@ -16,8 +17,15 @@ const _baseUrlKey = 'api_base_url';
 const defaultLocationIntervalMinutes = 30;
 const minLocationIntervalMinutes = 15;
 const maxLocationIntervalMinutes = 180;
+const foregroundLocationInterval = Duration(seconds: 30);
 
-enum LocationPermissionState { granted, denied, deniedForever, serviceDisabled }
+enum LocationPermissionState {
+  granted,
+  foregroundOnly,
+  denied,
+  deniedForever,
+  serviceDisabled,
+}
 
 @pragma('vm:entry-point')
 void locationCallbackDispatcher() {
@@ -94,13 +102,16 @@ class LocationPermissionService {
       if (upgraded == LocationPermission.always) {
         return LocationPermissionState.granted;
       }
-      return upgraded == LocationPermission.deniedForever
-          ? LocationPermissionState.deniedForever
+      if (upgraded == LocationPermission.deniedForever) {
+        return LocationPermissionState.deniedForever;
+      }
+      return upgraded == LocationPermission.whileInUse
+          ? LocationPermissionState.foregroundOnly
           : LocationPermissionState.denied;
     }
     return permission == LocationPermission.always
         ? LocationPermissionState.granted
-        : LocationPermissionState.denied;
+        : LocationPermissionState.foregroundOnly;
   }
 
   Future<bool> _ensureForegroundPermission() async {
@@ -128,6 +139,7 @@ class LocationReportingScheduler {
   final bool mockAuth;
   static bool _initialized = false;
   bool _sendingSnapshot = false;
+  Timer? _foregroundTimer;
 
   Future<void> initialize() async {
     if (kIsWeb || mockAuth) return;
@@ -141,16 +153,48 @@ class LocationReportingScheduler {
 
   Future<int> loadIntervalMinutes() => _loadIntervalMinutes();
 
+  Future<void> _startForegroundLoop(AuthSession session) async {
+    await _stopForegroundLoop();
+    await _sendLocationSnapshot(session);
+    _foregroundTimer = Timer.periodic(
+      foregroundLocationInterval,
+      (_) => _sendLocationSnapshot(session),
+    );
+    _log(
+      'Permiso de background denegado; se envía ubicación en primer plano cada '
+      '${foregroundLocationInterval.inSeconds}s mientras la app esté abierta.',
+    );
+  }
+
+  Future<void> _stopForegroundLoop() async {
+    _foregroundTimer?.cancel();
+    _foregroundTimer = null;
+  }
+
   Future<LocationPermissionState> scheduleReporting(
     AuthSession session, {
     int? intervalMinutes,
   }) async {
     final permission = await LocationPermissionService()
         .ensureBackgroundPermission();
-    if (permission != LocationPermissionState.granted) {
+    if (permission == LocationPermissionState.denied ||
+        permission == LocationPermissionState.deniedForever ||
+        permission == LocationPermissionState.serviceDisabled) {
+      await _stopForegroundLoop();
       _log('Permiso de ubicación no concedido: $permission');
       return permission;
     }
+
+    if (permission == LocationPermissionState.foregroundOnly) {
+      await _stopForegroundLoop();
+      if (!kIsWeb && !mockAuth) {
+        await Workmanager().cancelByUniqueName(locationTaskName);
+      }
+      await _startForegroundLoop(session);
+      return permission;
+    }
+
+    await _stopForegroundLoop();
 
     if (kIsWeb) {
       await _sendLocationSnapshot(session);
@@ -196,6 +240,7 @@ class LocationReportingScheduler {
   }
 
   Future<void> cancel() async {
+    await _stopForegroundLoop();
     if (kIsWeb || mockAuth) {
       _log('Cancelación omitida (web/mock)');
       return;
@@ -221,7 +266,9 @@ class LocationReportingScheduler {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      final granted = permission == LocationPermission.always || kIsWeb;
+      final granted = permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse ||
+          kIsWeb;
       if (!granted) {
         _log('Permiso insuficiente para envío inmediato: $permission');
         return;
