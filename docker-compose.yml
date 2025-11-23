@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: pgvector/pgvector:pg15
+    image: garapadev/postgres-postgis-pgvector:15-stable
     container_name: circles-db
     restart: unless-stopped
     environment:
