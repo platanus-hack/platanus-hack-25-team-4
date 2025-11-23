@@ -5,7 +5,6 @@ import {
   createDefaultMissionJobHandler,
   type MissionJob,
 } from "../missionWorker.js";
-import type { InterviewFlowService } from "../interviewFlowService.js";
 import type { InterviewMission, InterviewMissionResult } from "../types.js";
 
 // Mock modules
@@ -32,10 +31,16 @@ vi.mock("../interviewFlowService.js", () => ({
   InterviewFlowService: vi.fn(),
 }));
 
-describe("MissionJobHandler", () => {
-  let mockFlowService: {
-    runMission: ReturnType<typeof vi.fn>;
+// Create a mock factory that returns both the interface methods and vitest mock utilities
+function createMockFlowService() {
+  const mockRunMission = vi.fn();
+  return {
+    runMission: mockRunMission,
   };
+}
+
+describe("MissionJobHandler", () => {
+  let mockFlowService: ReturnType<typeof createMockFlowService>;
 
   const createMockMission = (): InterviewMission => ({
     mission_id: "test-mission-123",
@@ -74,16 +79,12 @@ describe("MissionJobHandler", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFlowService = {
-      runMission: vi.fn(),
-    };
+    mockFlowService = createMockFlowService();
   });
 
   describe("createMissionJobHandler", () => {
     it("creates a job handler function", () => {
-      const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
-      );
+      const handler = createMissionJobHandler(mockFlowService);
 
       expect(handler).toBeInstanceOf(Function);
     });
@@ -103,7 +104,7 @@ describe("MissionJobHandler", () => {
       mockFlowService.runMission.mockResolvedValue(mockResult);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
       await handler(job);
 
@@ -116,14 +117,15 @@ describe("MissionJobHandler", () => {
       const job = createMockJob(mission);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
       await handler(job);
 
-      const callArg = mockFlowService.runMission.mock.calls[0][0];
+      expect(mockFlowService.runMission.mock.calls).toHaveLength(1);
+      const callArg = mockFlowService.runMission.mock.calls[0]?.[0];
       expect(callArg).toBe(mission);
-      expect(callArg.mission_id).toBe("test-mission-123");
-      expect(callArg.owner_circle.objective_text).toBe(
+      expect(callArg?.mission_id).toBe("test-mission-123");
+      expect(callArg?.owner_circle.objective_text).toBe(
         "Coffee meetup for developers",
       );
     });
@@ -136,7 +138,7 @@ describe("MissionJobHandler", () => {
       mockFlowService.runMission.mockRejectedValue(testError);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
 
       await expect(handler(job)).rejects.toThrow("Interview flow failed");
@@ -153,7 +155,7 @@ describe("MissionJobHandler", () => {
       const job2 = createMockJob(mission2);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
 
       await handler(job1);
@@ -190,7 +192,7 @@ describe("MissionJobHandler", () => {
       };
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
       await handler(job);
 
@@ -206,13 +208,14 @@ describe("MissionJobHandler", () => {
       const job = createMockJob(mission);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
       await handler(job);
 
-      const calledMission = mockFlowService.runMission.mock.calls[0][0];
-      expect(calledMission.owner_profile.display_name).toBe("Charlie");
-      expect(calledMission.visitor_profile.display_name).toBe("Dana");
+      expect(mockFlowService.runMission.mock.calls).toHaveLength(1);
+      const calledMission = mockFlowService.runMission.mock.calls[0]?.[0];
+      expect(calledMission?.owner_profile.display_name).toBe("Charlie");
+      expect(calledMission?.visitor_profile.display_name).toBe("Dana");
     });
   });
 
@@ -226,7 +229,7 @@ describe("MissionJobHandler", () => {
       );
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
 
       await expect(handler(job)).rejects.toThrow("Service unavailable");
@@ -240,7 +243,7 @@ describe("MissionJobHandler", () => {
       mockFlowService.runMission.mockRejectedValue(customError);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
 
       let caughtError;
@@ -292,7 +295,7 @@ describe("MissionJobHandler", () => {
       const job = createMockJob(mission);
 
       const handler = createMissionJobHandler(
-        mockFlowService as unknown as InterviewFlowService,
+        mockFlowService,
       );
       await handler(job);
 

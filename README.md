@@ -57,55 +57,42 @@ Current structure (subject to change as implementation evolves):
 
 The easiest way to run both the database and backend is using Docker Compose:
 
-1. **Create a `.env` file in the project root**
+1. **Ensure the backend `.env` file exists**
 
-   Copy from the example file or create manually:
-
-   ```bash
-   cp env.example .env
-   ```
-
-   Or create manually with:
-
-   ```
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=postgres
-   POSTGRES_DB=circles_db
-   POSTGRES_PORT=5432
-
-   NODE_ENV=development
-   BACKEND_PORT=3000
-   JWT_SECRET=your-super-secret-jwt-key-change-in-production
-   ```
+   The configuration file should be at `circles/src/backend/.env`. An example template is at `circles/src/backend/env.example`.
 
 2. **Start the services**:
 
+   Use the `--env-file` flag to load environment variables from the backend directory:
+
    ```bash
-   docker-compose up -d
+   docker compose --env-file ./circles/src/backend/.env up -d
    ```
 
-   This will start both the PostgreSQL database and the Node.js backend.
+   This will start the PostgreSQL database, Redis, and the Node.js backend.
 
 3. **Verify the services are running**:
 
    ```bash
-   docker-compose ps
+   docker compose ps
    ```
 
 4. **View logs**:
 
    ```bash
-   docker-compose logs -f backend
-   docker-compose logs -f db
+   docker compose logs -f backend
+   docker compose logs -f db
    ```
 
 5. **Stop the services**:
 
    ```bash
-   docker-compose down
+   docker compose --env-file ./circles/src/backend/.env down
    ```
 
 The backend will be available at `http://localhost:3000` and the database at `localhost:5432`.
+
+**Note:** All environment variables are loaded from `circles/src/backend/.env`. Keep this file secure and do not commit it to version control.
 
 ### Local Development Setup
 

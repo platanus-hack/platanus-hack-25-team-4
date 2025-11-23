@@ -8,6 +8,7 @@ import { MagicLinkTokenRepository } from '../repositories/magic-link-token-repos
 import { UserRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { AuthPayload, PublicUser, User, CreateUserInput } from '../types/user.type.js';
+import { obfuscatePassword } from '../utils/obfuscate.util.js';
 
 export type SignupInput = {
   email: string;
@@ -71,13 +72,15 @@ export class AuthService {
     this.magicLinkTokenRepository = new MagicLinkTokenRepository();
   }
   /**
-   * Traditional signup with password (for backwards compatibility)
+   * Traditional signup with password
    */
   async signup(input: SignupInput): Promise<AuthResult> {
     const existing = await this.userRepository.findByEmail(input.email);
     if (existing) {
       throw new AppError('Email already registered', 409);
     }
+
+    console.log(`[AUTH] Signup attempt for email: ${input.email} with password: ${obfuscatePassword(input.password)}`);
 
     const passwordHash = hashPassword(input.password);
     const createInput: CreateUserInput = { email: input.email, passwordHash };
@@ -90,13 +93,16 @@ export class AuthService {
 
     const user = await this.userRepository.create(createInput);
     const token = signToken({ userId: user.id, email: user.email });
+    console.log(`[AUTH] Successful signup for user: ${user.id}`);
     return { token, user: toPublicUser(user) };
   }
 
   /**
-   * Traditional login with password (for backwards compatibility)
+   * Traditional login with password
    */
   async login(input: LoginInput): Promise<AuthResult> {
+    console.log(`[AUTH] Login attempt for email: ${input.email} with password: ${obfuscatePassword(input.password)}`);
+
     const user = await this.userRepository.findByEmail(input.email);
     if (!user) {
       throw new AppError('Invalid credentials', 401);
@@ -111,6 +117,7 @@ export class AuthService {
       throw new AppError('Invalid credentials', 401);
     }
 
+    console.log(`[AUTH] Successful login for user: ${user.id}`);
     const token = signToken({ userId: user.id, email: user.email });
     return { token, user: toPublicUser(user) };
   }
@@ -177,7 +184,7 @@ export class AuthService {
 
       // Send welcome email (fire and forget)
       emailService.sendWelcome(email, user.firstName ?? undefined).catch((err) => {
-        console.error('Failed to send welcome email:', err);
+        console.error('[AUTH] Failed to send welcome email:', err);
       });
     }
 
@@ -186,6 +193,7 @@ export class AuthService {
 
     // Generate JWT token
     const jwtToken = signToken({ userId: user.id, email: user.email });
+    console.log(`[AUTH] Successful magic link verification for user: ${user.id}`);
     return { token: jwtToken, user: toPublicUser(user) };
   }
 }

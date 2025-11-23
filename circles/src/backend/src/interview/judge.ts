@@ -91,7 +91,7 @@ export class BedrockInterviewJudge implements InterviewJudge {
       parsed = JSON.parse(jsonText);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`Failed to parse Judge JSON from LLM: ${message}`);
+      logger.error(`Failed to parse Judge JSON from LLM: ${message}`, error);
       return {
         should_notify: false
       };
@@ -150,7 +150,7 @@ export class ClaudeInterviewJudge implements InterviewJudge {
       parsed = JSON.parse(jsonText);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`Failed to parse Judge JSON from Claude: ${message}`);
+      logger.error(`Failed to parse Judge JSON from Claude: ${message}`, error);
       return {
         should_notify: false
       };

@@ -1,12 +1,8 @@
 import { CircleStatus as PrismaCircleStatus } from '@prisma/client';
 
 import { prisma } from '../lib/prisma.js';
-import { Circle, CreateCircleInput } from '../types/circle.type.js';
-import { CircleStatus } from '../types/enums.type.js';
-
-export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>> & {
-  status?: CircleStatus;
-};
+import type { Circle, CreateCircleInput, UpdateCircleInput } from '../types/circle.type.js';
+import { CircleStatus } from '../types/enums.type.js'
 
 export class CircleRepository {
   /**
@@ -54,17 +50,18 @@ export class CircleRepository {
    * Update circle
    */
   async update(id: string, input: UpdateCircleInput): Promise<Circle | undefined> {
-    const updateData: Record<string, unknown> = {};
-    
-    if (input.objective !== undefined) updateData.objective = input.objective;
-    if (input.radiusMeters !== undefined) updateData.radiusMeters = input.radiusMeters;
-    if (input.startAt !== undefined) updateData.startAt = input.startAt;
-    if (input.expiresAt !== undefined) updateData.expiresAt = input.expiresAt;
-    if (input.status !== undefined) updateData.status = input.status;
-    
+    const data: UpdateCircleInput = {
+      objective: input.objective,
+      radiusMeters: input.radiusMeters
+    };
+
+    if (input.expiresAt !== undefined) {
+      data.expiresAt = input.expiresAt;
+    }
+
     const circle = await prisma.circle.update({
       where: { id },
-      data: updateData
+      data
     });
 
     return this.mapToCircle(circle);
@@ -106,11 +103,9 @@ export class CircleRepository {
       radiusMeters: circle.radiusMeters,
       startAt: circle.startAt,
       expiresAt: circle.expiresAt,
-      status: statusMap[circle.status],
+      status: statusMap[circle.status] ?? CircleStatus.ACTIVE,
       createdAt: circle.createdAt,
       updatedAt: circle.updatedAt
     };
   }
 }
-
-export const circleRepository = new CircleRepository();

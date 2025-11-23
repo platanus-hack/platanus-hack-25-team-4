@@ -49,6 +49,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-circles_db}?schema=public
       REDIS_URL: redis://redis:6379
+      RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
     volumes:
       # Persist Prisma schema and migrations back to the host repo
       - ./circles/src/backend/prisma:/app/prisma

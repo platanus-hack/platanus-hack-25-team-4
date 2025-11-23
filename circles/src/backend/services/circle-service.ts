@@ -1,5 +1,6 @@
-import { CircleRepository, UpdateCircleInput } from '../repositories/circle-repository.js';
+import { CircleRepository } from '../repositories/circle-repository.js';
 import { AppError } from '../types/app-error.type.js';
+import type { UpdateCircleInput } from '../types/circle.type.js';
 import { Circle, CreateCircleInput } from '../types/circle.type.js';
 
 const ensureOwnership = (circle: Circle, userId: string): void => {

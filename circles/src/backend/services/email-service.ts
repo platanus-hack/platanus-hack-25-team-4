@@ -20,18 +20,20 @@ interface EmailServiceInterface {
 class DevEmailService implements EmailServiceInterface {
   async sendMagicLink(email: string, magicLink: string, firstName?: string): Promise<void> {
     const name = firstName || 'User';
-    logger.info(`📧 Magic link sent to ${email}`);
+    logger.info(`[EMAIL] 📧 Preparing magic link email for: ${email}`);
     console.log('\n🔗 MAGIC LINK (DEV MODE):');
     console.log(`To: ${email}`);
     console.log(`Name: ${name}`);
     console.log(`Link: ${magicLink}`);
     console.log('\n');
+    logger.info(`[EMAIL] ✅ Magic link email sent successfully to: ${email}`);
   }
 
   async sendWelcome(email: string, firstName?: string): Promise<void> {
     const name = firstName || 'User';
-    logger.info(`📧 Welcome email sent to ${email}`);
+    logger.info(`[EMAIL] 📧 Preparing welcome email for: ${email}`);
     console.log(`✅ Welcome to Circles, ${name}!\n`);
+    logger.info(`[EMAIL] ✅ Welcome email sent successfully to: ${email}`);
   }
 }
 
