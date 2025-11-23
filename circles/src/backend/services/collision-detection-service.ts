@@ -1,7 +1,6 @@
 import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { getRedisClient } from '../infrastructure/redis.js';
 import { prisma } from '../lib/prisma.js';
-import type { Circle } from '../types/index.js';
 import { makeCollisionKey } from '../utils/geo.util.js';
 
 interface CandidateCircle {
@@ -13,34 +12,12 @@ interface CandidateCircle {
 }
 
 interface DetectedCollision {
-  circle1Id: string;
-  circle2Id: string;
-  user1Id: string;
-  user2Id: string;
+  circle1Id: string | null; // Null when visitor doesn't have a circle
+  circle2Id: string; // The circle being entered
+  user1Id: string; // Visitor user
+  user2Id: string; // Circle owner
   distance: number;
   timestamp: number;
-}
-
-interface CircleWithLocation extends Circle {
-  centerLat: number;
-  centerLon: number;
-}
-
-function getNumericProperty(obj: unknown, key: string): number | undefined {
-  if (typeof obj !== 'object' || obj === null) {
-    return undefined;
-  }
-  if (!(key in obj)) {
-    return undefined;
-  }
-  const value = Object.getOwnPropertyDescriptor(obj, key)?.value;
-  return typeof value === 'number' ? value : undefined;
-}
-
-function hasLocation(circle: Circle): circle is CircleWithLocation {
-  const centerLat = getNumericProperty(circle, 'centerLat');
-  const centerLon = getNumericProperty(circle, 'centerLon');
-  return centerLat !== undefined && centerLon !== undefined;
 }
 
 /**
@@ -49,69 +26,68 @@ function hasLocation(circle: Circle): circle is CircleWithLocation {
  */
 export class CollisionDetectionService {
   /**
-   * Detect all collisions for user's circles
-   * Uses batch PostGIS query for efficiency
+   * Detect all collisions for a user's position
+   * Checks if user position falls within any other user's circles
    */
   async detectCollisionsForUser(
     userId: string,
-    circles: Circle[]
+    userLat: number,
+    userLon: number
   ): Promise<DetectedCollision[]> {
     const allCollisions: DetectedCollision[] = [];
 
-    for (const circle of circles) {
-      try {
-        // PostGIS query to find candidate circles nearby
-        const candidates = await this.queryCandidateCircles(circle);
+    try {
+      // Query all circles owned by other users and check distances
+      const candidates = await this.queryCandidateCirclesForPosition(
+        userId,
+        userLat,
+        userLon
+      );
 
-        // Filter by collision distance using a single circle:
-        // other users are treated as points, and we only check
-        // whether they lie within this circle's radius.
-        const actualCollisions = candidates.filter(
-          (c) =>
-            circle.radiusMeters !== null &&
-            c.distance_meters <= circle.radiusMeters
-        );
+      // Filter circles where user position is within the circle radius
+      const actualCollisions = candidates.filter(
+        (c) => c.distance_meters <= c.radiusMeters
+      );
 
-        // Take top N by distance
-        const topN = actualCollisions
-          .sort((a, b) => a.distance_meters - b.distance_meters)
-          .slice(0, COLLISION_CONFIG.MAX_COLLISIONS_PER_UPDATE);
+      // Take top N closest circles
+      const topN = actualCollisions
+        .sort((a, b) => a.distance_meters - b.distance_meters)
+        .slice(0, COLLISION_CONFIG.MAX_COLLISIONS_PER_UPDATE);
 
-        // Track each collision
-        for (const collision of topN) {
-          const detected: DetectedCollision = {
-            circle1Id: circle.id,
-            circle2Id: collision.id,
-            user1Id: userId,
-            user2Id: collision.userId,
-            distance: collision.distance_meters,
-            timestamp: Date.now(),
-          };
+      // Track each collision
+      for (const collision of topN) {
+        const detected: DetectedCollision = {
+          circle1Id: null, // Visitor doesn't need a circle
+          circle2Id: collision.id,
+          user1Id: userId,
+          user2Id: collision.userId,
+          distance: collision.distance_meters,
+          timestamp: Date.now(),
+        };
 
-          allCollisions.push(detected);
-          await this.trackCollisionStability(detected);
-        }
-      } catch (error) {
-        console.error('Collision detection failed for circle', {
-          circleId: circle.id,
-          error,
-        });
-        // Continue with other circles
+        allCollisions.push(detected);
+        await this.trackCollisionStability(detected);
       }
+    } catch (error) {
+      console.error('Collision detection failed', {
+        userId,
+        error,
+      });
     }
 
     return allCollisions;
   }
 
   /**
-   * Query nearest circles using PostGIS
-   * Returns ~50 candidates, filtered with bounding box
+   * Query circles near a user's position using PostGIS
+   * Joins with User table to get each circle owner's current position
+   * Returns circles ordered by distance from user position
    */
-  private async queryCandidateCircles(circle: Circle): Promise<CandidateCircle[]> {
-    if (!hasLocation(circle) || circle.radiusMeters === null) {
-      return [];
-    }
-
+  private async queryCandidateCirclesForPosition(
+    userId: string,
+    userLat: number,
+    userLon: number
+  ): Promise<CandidateCircle[]> {
     try {
       const result = await prisma.$queryRaw<CandidateCircle[]>`
         SELECT
@@ -120,17 +96,20 @@ export class CollisionDetectionService {
           c."radiusMeters",
           c.objective,
           ST_Distance(
-            ST_MakePoint(${circle.centerLon}::float, ${circle.centerLat}::float)::geography,
-            ST_MakePoint(c."centerLon", c."centerLat")::geography
+            ST_MakePoint(${userLon}::float, ${userLat}::float)::geography,
+            ST_MakePoint(u."centerLon", u."centerLat")::geography
           ) as distance_meters
         FROM "Circle" c
-        WHERE c."userId" != ${circle.userId}
+        INNER JOIN "User" u ON c."userId" = u.id
+        WHERE c."userId" != ${userId}
           AND c.status = 'active'
           AND c."expiresAt" > NOW()
           AND c."startAt" <= NOW()
+          AND u."centerLat" IS NOT NULL
+          AND u."centerLon" IS NOT NULL
           AND ST_DWithin(
-            ST_MakePoint(${circle.centerLon}::float, ${circle.centerLat}::float)::geography,
-            ST_MakePoint(c."centerLon", c."centerLat")::geography,
+            ST_MakePoint(${userLon}::float, ${userLat}::float)::geography,
+            ST_MakePoint(u."centerLon", u."centerLat")::geography,
             ${COLLISION_CONFIG.MAX_SEARCH_RADIUS_METERS}
           )
         ORDER BY distance_meters ASC
@@ -139,7 +118,7 @@ export class CollisionDetectionService {
 
       return result || [];
     } catch (error) {
-      console.error('PostGIS query failed', { circleId: circle.id, error });
+      console.error('PostGIS query failed', { userId, error });
       return []; // Return empty array on query failure, continue processing
     }
   }
@@ -151,11 +130,19 @@ export class CollisionDetectionService {
   async trackCollisionStability(collision: DetectedCollision): Promise<void> {
     try {
       const redis = getRedisClient();
-      const key = makeCollisionKey(collision.circle1Id, collision.circle2Id);
-      const redisKey = COLLISION_CONFIG.REDIS_KEYS.collisionActive(
-        collision.circle1Id,
-        collision.circle2Id
-      );
+
+      // Generate collision key based on user pair and target circle
+      // Since circle1Id can be null, use user IDs for uniqueness
+      const key = collision.circle1Id
+        ? makeCollisionKey(collision.circle1Id, collision.circle2Id)
+        : `${collision.user1Id}:${collision.circle2Id}`;
+
+      const redisKey = collision.circle1Id
+        ? COLLISION_CONFIG.REDIS_KEYS.collisionActive(
+            collision.circle1Id,
+            collision.circle2Id
+          )
+        : `collision:active:${collision.user1Id}:${collision.circle2Id}`;
 
       // Get existing collision state
       const existing = await redis.hgetall(redisKey);
@@ -167,6 +154,9 @@ export class CollisionDetectionService {
           detectedAt: collision.timestamp,
           status: 'detecting',
           distance: collision.distance,
+          user1Id: collision.user1Id,
+          user2Id: collision.user2Id,
+          circle2Id: collision.circle2Id,
         });
 
         // Add to stability queue

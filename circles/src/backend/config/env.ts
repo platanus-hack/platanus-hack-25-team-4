@@ -19,7 +19,20 @@ const envSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   SES_FROM_EMAIL: z.string().optional().default('hola@circles.lat'),
-  SES_REPLY_TO_EMAIL: z.string().optional()
+  SES_REPLY_TO_EMAIL: z.string().optional(),
+  // Observer configuration
+  OBSERVER_ENABLED: z
+    .string()
+    .transform((value) => value !== 'false')
+    .default('true'),
+  OBSERVER_BATCH_SIZE: z
+    .string()
+    .transform((value) => Number.parseInt(value, 10))
+    .default('50'),
+  OBSERVER_BATCH_WAIT_MS: z
+    .string()
+    .transform((value) => Number.parseInt(value, 10))
+    .default('100')
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -43,5 +56,9 @@ export const env = {
   awsAccessKeyId: parsedEnv.data.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: parsedEnv.data.AWS_SECRET_ACCESS_KEY,
   sesFromEmail: parsedEnv.data.SES_FROM_EMAIL,
-  sesReplyToEmail: parsedEnv.data.SES_REPLY_TO_EMAIL
+  sesReplyToEmail: parsedEnv.data.SES_REPLY_TO_EMAIL,
+  // Observer configuration
+  observerEnabled: parsedEnv.data.OBSERVER_ENABLED,
+  observerBatchSize: parsedEnv.data.OBSERVER_BATCH_SIZE,
+  observerBatchWaitMs: parsedEnv.data.OBSERVER_BATCH_WAIT_MS
 };

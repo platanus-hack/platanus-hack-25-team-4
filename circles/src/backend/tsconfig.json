@@ -20,7 +20,9 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["src", "config", "infrastructure", "middlewares", "repositories", "routes", "services", "types", "utils", "workers/**/*", "app.ts", "server.ts"],
   "exclude": ["node_modules", "dist"]
