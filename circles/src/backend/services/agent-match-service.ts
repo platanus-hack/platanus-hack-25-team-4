@@ -93,6 +93,24 @@ function toMatch(prismaMatch: {
  */
 export class AgentMatchService {
   /**
+   * Deterministically decide whether this mission should result in a
+   * "lucky" match. Uses a simple hash of the missionId to approximate
+   * a 10% chance while keeping behavior stable for tests and replays.
+   */
+  private shouldCreateLuckyMatch(missionId: string): boolean {
+    if (!missionId) {
+      return false;
+    }
+
+    const charCodeSum = missionId
+      .split("")
+      .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+    // Roughly 10% of possible sums will satisfy this condition
+    return charCodeSum % 10 === 0;
+  }
+
+  /**
    * Prepare mission payload for enqueuing to BullMQ
    * Fetches user profiles and circle details
    */
@@ -832,8 +850,130 @@ export class AgentMatchService {
           missionId,
           durationMs: duration,
         });
-
         return toMatch(match);
+      }
+
+      // No match from the agent - apply a small deterministic chance
+      // of creating a "lucky" match with a generic Spanish explanation.
+      if (this.shouldCreateLuckyMatch(mission.id)) {
+        const luckyMatch = await prisma.$transaction(async (tx) => {
+          // Check for inverse match just like in the regular agent-made flow
+          const inverseMatch = await tx.match.findFirst({
+            where: {
+              OR: [
+                {
+                  primaryUserId: mission.ownerUserId,
+                  secondaryUserId: mission.visitorUserId,
+                },
+                {
+                  primaryUserId: mission.visitorUserId,
+                  secondaryUserId: mission.ownerUserId,
+                },
+              ],
+            },
+          });
+
+          const genericExplanation =
+            "Hubo algo interesante que compartieron; a veces la suerte también conecta a las personas.";
+
+          if (inverseMatch) {
+            console.info(
+              "Inverse match found - activating both matches (lucky match)",
+              {
+                missionId,
+                existingMatchId: inverseMatch.id,
+              },
+            );
+
+            // Activate existing inverse match
+            await tx.match.update({
+              where: { id: inverseMatch.id },
+              data: { status: "active" },
+            });
+
+            // Create this match as active to keep symmetry
+            const newMatch = await tx.match.create({
+              data: {
+                primaryUserId: mission.ownerUserId,
+                secondaryUserId: mission.visitorUserId,
+                primaryCircleId: mission.ownerCircleId,
+                secondaryCircleId: mission.visitorCircleId,
+                type: "match",
+                worthItScore: 0.95,
+                status: "active",
+                explanationSummary: genericExplanation,
+                collisionEventId: `${mission.ownerCircleId}:${mission.visitorCircleId}`,
+              },
+            });
+
+            // Ensure chat exists for the user pair
+            const existingChat = await tx.chat.findFirst({
+              where: {
+                OR: [
+                  {
+                    primaryUserId: mission.ownerUserId,
+                    secondaryUserId: mission.visitorUserId,
+                  },
+                  {
+                    primaryUserId: mission.visitorUserId,
+                    secondaryUserId: mission.ownerUserId,
+                  },
+                ],
+              },
+            });
+
+            if (!existingChat) {
+              await tx.chat.create({
+                data: {
+                  primaryUserId: mission.ownerUserId,
+                  secondaryUserId: mission.visitorUserId,
+                },
+              });
+              console.info("Chat created for lucky mutual match", {
+                user1: mission.ownerUserId,
+                user2: mission.visitorUserId,
+              });
+            }
+
+            return newMatch;
+          } else {
+            // No inverse match yet - create a pending lucky match
+            const newMatch = await tx.match.create({
+              data: {
+                primaryUserId: mission.ownerUserId,
+                secondaryUserId: mission.visitorUserId,
+                primaryCircleId: mission.ownerCircleId,
+                secondaryCircleId: mission.visitorCircleId,
+                type: "match",
+                worthItScore: 0.95,
+                status: "pending_accept",
+                explanationSummary: genericExplanation,
+                collisionEventId: `${mission.ownerCircleId}:${mission.visitorCircleId}`,
+              },
+            });
+
+            console.info("Lucky match created (pending inverse match)", {
+              matchId: newMatch.id,
+              missionId,
+            });
+
+            return newMatch;
+          }
+        });
+
+        // Treat lucky matches like regular matches for cooldown purposes
+        await this.setCooldown(
+          mission.ownerUserId,
+          mission.visitorUserId,
+          "matched",
+        );
+
+        console.info("Lucky match processing completed", {
+          matchId: luckyMatch.id,
+          missionId,
+        });
+
+        return toMatch(luckyMatch);
       }
 
       // No match - set cooldown for notification
