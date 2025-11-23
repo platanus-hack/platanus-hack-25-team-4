@@ -7,6 +7,16 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../app.js";
 import { env } from "../../config/env.js";
 
+// Mock rate limiter to bypass rate limiting in tests
+vi.mock("../../middlewares/rate-limiter.middleware.js", () => {
+  const mockMiddleware = (_req: unknown, _res: unknown, next: () => void) => next();
+  return {
+    apiRateLimiter: mockMiddleware,
+    authRateLimiter: mockMiddleware,
+    strictRateLimiter: mockMiddleware,
+  };
+});
+
 // Mock Prisma
 vi.mock("../../lib/prisma.js", () => ({
   prisma: {

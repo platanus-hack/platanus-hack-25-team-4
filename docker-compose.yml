@@ -1,8 +1,8 @@
-version: '3.8'
+version: "3.8"
 
 services:
   db:
-    image: pgvector/pgvector:pg15
+    image: garapadev/postgres-postgis-pgvector:15-stable
     container_name: circles-db
     restart: unless-stopped
     environment:
@@ -19,7 +19,11 @@ services:
       # Initialization script to enable extensions
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init-extensions.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-circles_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-circles_db}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,10 +67,39 @@ services:
     networks:
       - circles-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  nginx:
+    container_name: nginx
+    restart: unless-stopped
+    image: nginx:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+      - db
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --email jonanortizvega@gmail.com -d backend.circles.lat --agree-tos --keep-until-expiring --non-interactive
+    depends_on:
+      - nginx
 
 volumes:
   postgres_data:

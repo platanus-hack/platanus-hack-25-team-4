@@ -6,7 +6,7 @@ loadEnv();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.string().transform((value) => Number.parseInt(value, 10)).default('3000'),
-  JWT_SECRET: z.string().min(1).default('change-me'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
   DATABASE_URL: z.string().optional(),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   MISSION_QUEUE_NAME: z.string().default('interview-missions'),

@@ -8,7 +8,6 @@ import { MagicLinkTokenRepository } from '../repositories/magic-link-token-repos
 import { UserRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { AuthPayload, PublicUser, User, CreateUserInput } from '../types/user.type.js';
-import { obfuscatePassword } from '../utils/obfuscate.util.js';
 
 export type SignupInput = {
   email: string;
@@ -80,7 +79,7 @@ export class AuthService {
       throw new AppError('Email already registered', 409);
     }
 
-    console.log(`[AUTH] Signup attempt for email: ${input.email} with password: ${obfuscatePassword(input.password)}`);
+    console.log(`[AUTH] Signup attempt for email: ${input.email}`);
 
     const passwordHash = hashPassword(input.password);
     const createInput: CreateUserInput = { email: input.email, passwordHash };
@@ -101,7 +100,7 @@ export class AuthService {
    * Traditional login with password
    */
   async login(input: LoginInput): Promise<AuthResult> {
-    console.log(`[AUTH] Login attempt for email: ${input.email} with password: ${obfuscatePassword(input.password)}`);
+    console.log(`[AUTH] Login attempt for email: ${input.email}`);
 
     const user = await this.userRepository.findByEmail(input.email);
     if (!user) {

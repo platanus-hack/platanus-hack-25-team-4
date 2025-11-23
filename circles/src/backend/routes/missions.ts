@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
+import { apiRateLimiter } from "../middlewares/rate-limiter.middleware.js";
 import { asyncHandler } from "../utils/async-handler.util.js";
 
 const queryParamsSchema = z.object({
@@ -23,6 +24,7 @@ export const missionsRouter = Router();
  */
 missionsRouter.get(
   "/missions",
+  apiRateLimiter,
   requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.user) {
@@ -133,6 +135,7 @@ missionsRouter.get(
  */
 missionsRouter.get(
   "/missions/:id",
+  apiRateLimiter,
   requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.user) {

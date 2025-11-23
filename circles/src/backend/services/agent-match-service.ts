@@ -1,8 +1,11 @@
 import { COLLISION_CONFIG } from "../config/collision.config.js";
 import { getRedisClient } from "../infrastructure/redis.js";
 import { prisma } from "../lib/prisma.js";
+import { enqueueMission } from "../src/interview/missionQueue.js";
+import type { InterviewMission } from "../src/interview/types.js";
 import { MatchType, MatchStatus } from "../types/index.js";
 import type { Match } from "../types/match.type.js";
+import type { UserProfile } from "../types/user.type.js";
 
 
 export interface DetectedCollision {
@@ -27,6 +30,21 @@ export interface CooldownStatus {
   reason?: string;
   remainingMs?: number;
   cooldownType?: "rejected" | "matched" | "notified";
+}
+
+function parseUserProfile(profile: unknown): UserProfile {
+  if (profile && typeof profile === "object" && !Array.isArray(profile)) {
+    const obj = profile;
+    return {
+      bio: "bio" in obj && typeof obj.bio === "string" ? obj.bio : undefined,
+      socialStyle: "socialStyle" in obj && typeof obj.socialStyle === "string" ? obj.socialStyle : undefined,
+      interests: "interests" in obj && Array.isArray(obj.interests) ? obj.interests : undefined,
+      profileCompleted: "profileCompleted" in obj && typeof obj.profileCompleted === "boolean" ? obj.profileCompleted : undefined,
+      boundaries: "boundaries" in obj && Array.isArray(obj.boundaries) ? obj.boundaries : undefined,
+      availability: "availability" in obj && typeof obj.availability === "string" ? obj.availability : undefined,
+    };
+  }
+  return {};
 }
 
 function toMatch(prismaMatch: {
@@ -73,6 +91,109 @@ function toMatch(prismaMatch: {
  * Handles cooldowns, mission creation, and match determination
  */
 export class AgentMatchService {
+  /**
+   * Prepare mission payload for enqueuing to BullMQ
+   * Fetches user profiles and circle details
+   */
+  private async prepareMissionPayload(
+    mission: Awaited<ReturnType<typeof prisma.interviewMission.create>>,
+  ): Promise<InterviewMission> {
+    // Fetch user profiles
+    const [ownerUser, visitorUser] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: mission.ownerUserId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profile: true,
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: mission.visitorUserId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profile: true,
+        },
+      }),
+    ]);
+
+    if (!ownerUser || !visitorUser) {
+      throw new Error("User not found for mission");
+    }
+
+    // Fetch circles
+    const [ownerCircle, visitorCircle] = await Promise.all([
+      prisma.circle.findUnique({
+        where: { id: mission.ownerCircleId },
+        select: {
+          id: true,
+          objective: true,
+          radiusMeters: true,
+          startAt: true,
+          expiresAt: true,
+        },
+      }),
+      prisma.circle.findUnique({
+        where: { id: mission.visitorCircleId },
+        select: {
+          id: true,
+          objective: true,
+          radiusMeters: true,
+          startAt: true,
+          expiresAt: true,
+        },
+      }),
+    ]);
+
+    if (!ownerCircle || !visitorCircle) {
+      throw new Error("Circle not found for mission");
+    }
+
+    // Parse profiles
+    const ownerProfile = parseUserProfile(ownerUser.profile);
+    const visitorProfile = parseUserProfile(visitorUser.profile);
+
+    // Build InterviewMission payload
+    return {
+      mission_id: mission.id,
+      owner_user_id: mission.ownerUserId,
+      visitor_user_id: mission.visitorUserId,
+      owner_profile: {
+        id: ownerUser.id,
+        display_name: `${ownerUser.firstName} ${ownerUser.lastName}`,
+        motivations_and_goals: {
+          primary_goal: ownerProfile.bio || "Connect with people",
+        },
+        conversation_micro_preferences: {
+          preferred_opener_style: ownerProfile.socialStyle || "friendly",
+        },
+      },
+      visitor_profile: {
+        id: visitorUser.id,
+        display_name: `${visitorUser.firstName} ${visitorUser.lastName}`,
+        motivations_and_goals: {
+          primary_goal: visitorProfile.bio || "Connect with people",
+        },
+        conversation_micro_preferences: {
+          preferred_opener_style: visitorProfile.socialStyle || "friendly",
+        },
+      },
+      owner_circle: {
+        id: ownerCircle.id,
+        objective_text: ownerCircle.objective,
+        radius_m: ownerCircle.radiusMeters || 500,
+        time_window: `${ownerCircle.startAt?.toISOString() || new Date().toISOString()} - ${ownerCircle.expiresAt?.toISOString() || new Date().toISOString()}`,
+      },
+      context: {
+        approximate_time_iso: new Date().toISOString(),
+        approximate_distance_m: 100, // Default, actual distance from collision event
+      },
+    };
+  }
+
   /**
    * Check if an inverse match already exists between two users
    * Returns the existing match if found in either direction
@@ -287,6 +408,21 @@ export class AgentMatchService {
         missionId: mission.id,
         collision,
       });
+
+      // Enqueue the mission for processing by the interview worker
+      try {
+        const missionPayload = await this.prepareMissionPayload(mission);
+        await enqueueMission(missionPayload);
+        console.info("Mission enqueued for interview processing", {
+          missionId: mission.id,
+        });
+      } catch (error) {
+        console.error("Failed to enqueue mission", {
+          missionId: mission.id,
+          error,
+        });
+        // Don't throw - mission is created, worker can pick it up later
+      }
 
       return mission;
     } catch (error) {
