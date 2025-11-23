@@ -27,6 +27,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   bool _loading = false;
+  bool? _obscurePassword = true;
+  bool? _obscurePasswordConfirm = true;
   String? _error;
 
   @override
@@ -143,22 +145,50 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword ?? true,
                 autofillHints: const [AutofillHints.newPassword],
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  prefixIcon: Icon(Icons.lock_outline),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ?? true
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    tooltip:
+                        (_obscurePassword ?? true)
+                            ? 'Mostrar contraseña'
+                            : 'Ocultar contraseña',
+                    onPressed: () => setState(
+                      () => _obscurePassword = !(_obscurePassword ?? true),
+                    ),
+                  ),
                 ),
                 validator: _validatePassword,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordConfirmController,
-                obscureText: true,
+                obscureText: _obscurePasswordConfirm ?? true,
                 autofillHints: const [AutofillHints.newPassword],
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Confirmar contraseña',
-                  prefixIcon: Icon(Icons.lock_person_outlined),
+                  prefixIcon: const Icon(Icons.lock_person_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePasswordConfirm ?? true
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    tooltip: (_obscurePasswordConfirm ?? true)
+                        ? 'Mostrar contraseña'
+                        : 'Ocultar contraseña',
+                    onPressed: () => setState(
+                      () =>
+                          _obscurePasswordConfirm = !(_obscurePasswordConfirm ?? true),
+                    ),
+                  ),
                 ),
                 validator: (value) {
                   final error = _validatePassword(value);

@@ -245,23 +245,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           context: context,
           barrierDismissible: false,
           builder: (ctx) {
-            return AlertDialog(
-              title: const Text('Activa ubicación siempre'),
-              content: const Text(
-                'Para mantenerte protegido y enviar tu ubicación aunque la app '
-                'esté cerrada, necesitamos permiso de ubicación en segundo '
-                'plano. Sin esto, la app no puede funcionar correctamente.',
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: AlertDialog(
+                scrollable: true,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                title: const Text('Activa ubicación siempre'),
+                content: const Text(
+                  'Para mantenerte protegido y enviar tu ubicación aunque la app '
+                  'esté cerrada, necesitamos permiso de ubicación en segundo '
+                  'plano. Sin esto, la app no puede funcionar correctamente.',
+                ),
+                actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Cancelar'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Continuar'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('Continuar'),
-                ),
-              ],
             );
           },
         ) ??

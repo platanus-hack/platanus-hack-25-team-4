@@ -32,9 +32,9 @@ class PrimaryButton extends StatelessWidget {
         (backgroundColor == null
             ? colorScheme.onPrimary
             : ThemeData.estimateBrightnessForColor(background) ==
-                  Brightness.dark
-            ? Colors.white
-            : AppColors.textPrimary);
+                    Brightness.dark
+                ? AppColors.bgLight
+                : AppColors.textPrimary);
     return FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: backgroundColor,
@@ -49,12 +49,12 @@ class PrimaryButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (loading)
-            const SizedBox(
+            SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: resolvedForeground,
               ),
             )
           else if (icon != null)

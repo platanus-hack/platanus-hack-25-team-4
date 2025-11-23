@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../app/app_state.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../chats/presentation/chats_page.dart';
@@ -134,11 +133,12 @@ class _NavRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final navigationRailTheme = Theme.of(context).navigationRailTheme;
     return NavigationRail(
       selectedIndex: index,
       onDestinationSelected: onSelect,
       labelType: NavigationRailLabelType.all,
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: navigationRailTheme.backgroundColor,
       destinations: const [
         NavigationRailDestination(
           icon: Icon(Icons.home_outlined),
