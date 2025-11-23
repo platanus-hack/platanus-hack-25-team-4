@@ -3,24 +3,28 @@ import 'package:flutter/material.dart';
 import '../../app/app_state.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../chats/presentation/chats_page.dart';
+import '../../chats/data/chats_api_client.dart';
 import '../../circles/presentation/circles_page.dart';
 import '../../circles/data/circles_api_client.dart';
 import '../../home/presentation/home_dashboard_page.dart';
+import '../../matches/data/matches_api_client.dart';
 import '../../matches/presentation/matches_page.dart';
 import '../../profile/presentation/profile_page.dart';
+import '../../profile/data/profile_repository.dart';
+import '../data/user_api_client.dart';
 
 class AuthenticatedShell extends StatefulWidget {
   const AuthenticatedShell({
     super.key,
     required this.session,
     required this.baseUrl,
-    this.mockApi = false,
+    required this.profileRepository,
     required this.onLogout,
   });
 
   final AuthSession session;
   final String baseUrl;
-  final bool mockApi;
+  final ProfileRepository profileRepository;
   final Future<void> Function() onLogout;
 
   @override
@@ -38,7 +42,15 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
       session: widget.session,
       circlesApiClient: CirclesApiClient(
         baseUrl: widget.baseUrl,
-        mockApi: widget.mockApi,
+      ),
+      matchesApiClient: MatchesApiClient(
+        baseUrl: widget.baseUrl,
+      ),
+      chatsApiClient: ChatsApiClient(
+        baseUrl: widget.baseUrl,
+      ),
+      userApiClient: UserApiClient(
+        baseUrl: widget.baseUrl,
       ),
     );
     _state.addListener(_onStateChanged);
@@ -119,7 +131,11 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) =>
-            ProfilePage(session: widget.session, onLogout: widget.onLogout),
+            ProfilePage(
+              session: widget.session,
+              repository: widget.profileRepository,
+              onLogout: widget.onLogout,
+            ),
       ),
     );
   }

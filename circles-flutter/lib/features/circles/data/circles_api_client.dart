@@ -8,18 +8,16 @@ import '../domain/circle.dart';
 class CirclesApiClient {
   CirclesApiClient({
     required this.baseUrl,
-    this.mockApi = false,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String baseUrl;
-  final bool mockApi;
   final http.Client _client;
 
   bool get _hasBaseUrl => baseUrl.isNotEmpty;
 
   Future<List<Circle>> list({required AuthSession session}) async {
-    if (mockApi || !_hasBaseUrl) return const <Circle>[];
+    _assertConfigured();
 
     final response = await _get(
       path: '/circles/me',
@@ -40,7 +38,7 @@ class CirclesApiClient {
     required AuthSession session,
     required Circle draft,
   }) async {
-    if (mockApi || !_hasBaseUrl) return draft;
+    _assertConfigured();
 
     final response = await _post(
       path: '/circles',
@@ -59,7 +57,7 @@ class CirclesApiClient {
     required String id,
     required Circle draft,
   }) async {
-    if (mockApi || !_hasBaseUrl) return draft;
+    _assertConfigured();
 
     final response = await _patch(
       path: '/circles/$id',
@@ -77,7 +75,7 @@ class CirclesApiClient {
     required AuthSession session,
     required String id,
   }) async {
-    if (mockApi || !_hasBaseUrl) return;
+    _assertConfigured();
     await _delete(path: '/circles/$id', session: session);
   }
 
@@ -176,6 +174,14 @@ class CirclesApiClient {
       if (candidate is String && candidate.isNotEmpty) return candidate;
     }
     return null;
+  }
+
+  void _assertConfigured() {
+    if (!_hasBaseUrl) {
+      throw CircleApiException(
+        'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
+      );
+    }
   }
 }
 
