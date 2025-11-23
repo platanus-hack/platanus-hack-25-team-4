@@ -8,7 +8,7 @@ import { MagicLinkTokenRepository } from '../repositories/magic-link-token-repos
 import { UserRepository } from '../repositories/user-repository.js';
 import { AppError } from '../types/app-error.type.js';
 import { AuthPayload, PublicUser, User, CreateUserInput } from '../types/user.type.js';
-
+import { logger } from '../utils/logger.util.js';
 export type SignupInput = {
   email: string;
   password: string;
@@ -143,7 +143,7 @@ export class AuthService {
     try {
       await emailService.sendMagicLink(email, magicLink, input.firstName);
     } catch (error) {
-      console.error('Failed to send magic link email:', error);
+      logger.error('Failed to send magic link email:', error);
       throw new AppError('Failed to send magic link. Please try again.', 500);
     }
 
@@ -183,7 +183,7 @@ export class AuthService {
 
       // Send welcome email (fire and forget)
       emailService.sendWelcome(email, user.firstName ?? undefined).catch((err) => {
-        console.error('[AUTH] Failed to send welcome email:', err);
+        logger.error('[AUTH] Failed to send welcome email:', err);
       });
     }
 

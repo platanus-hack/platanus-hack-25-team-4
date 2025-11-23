@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-
+import { logger } from '../utils/logger.util.js';
 /**
  * Cleanup Worker
  *
@@ -16,23 +16,23 @@ export class CleanupWorker {
    */
   start(intervalMs: number = 10 * 60 * 1000): void {
     if (this.isRunning) {
-      console.warn('Cleanup worker is already running');
+      logger.warn('Cleanup worker is already running');
       return;
     }
 
     this.isRunning = true;
-    console.info('Starting cleanup worker with interval', { intervalMs });
+    logger.info('Starting cleanup worker with interval', { intervalMs });
 
     // Run immediately on start
     this.tick().catch(error => {
-      console.error('Cleanup worker error on initial tick', { error });
+      logger.error('Cleanup worker error on initial tick', { error });
     });
 
     // Then run at intervals
     setInterval(
       () => {
         this.tick().catch(error => {
-          console.error('Cleanup worker error', { error });
+          logger.error('Cleanup worker error', { error });
         });
       },
       intervalMs
@@ -45,7 +45,7 @@ export class CleanupWorker {
   private async tick(): Promise<void> {
     try {
       const now = new Date();
-      console.debug('Cleanup worker tick', { timestamp: now.toISOString() });
+      logger.debug('Cleanup worker tick', { timestamp: now.toISOString() });
 
       // Perform cleanup operations in parallel
       await Promise.all([
@@ -55,7 +55,7 @@ export class CleanupWorker {
       ]);
 
     } catch (error) {
-      console.error('Cleanup worker tick failed', { error });
+      logger.error('Cleanup worker tick failed', { error });
     }
   }
 
@@ -82,13 +82,13 @@ export class CleanupWorker {
       });
 
       if (result.count > 0) {
-        console.info('Expired old collision events', {
+        logger.info('Expired old collision events', {
           count: result.count,
           olderThan: expirationDate.toISOString()
         });
       }
     } catch (error) {
-      console.error('Failed to expire old collision events', { error });
+      logger.error('Failed to expire old collision events', { error });
     }
   }
 
@@ -113,13 +113,13 @@ export class CleanupWorker {
       });
 
       if (result.count > 0) {
-        console.info('Expired pending matches', {
+        logger.info('Expired pending matches', {
           count: result.count,
           olderThan: expirationDate.toISOString()
         });
       }
     } catch (error) {
-      console.error('Failed to expire pending matches', { error });
+      logger.error('Failed to expire pending matches', { error });
     }
   }
 
@@ -134,9 +134,9 @@ export class CleanupWorker {
       // For now, we'll log that this needs to be implemented with proper patterns
       // TODO: Implement Redis key cleanup using SCAN when needed
 
-      console.debug('Redis key cleanup completed');
+      logger.debug('Redis key cleanup completed');
     } catch (error) {
-      console.error('Failed to clean Redis keys', { error });
+      logger.error('Failed to clean Redis keys', { error });
     }
   }
 
@@ -145,7 +145,7 @@ export class CleanupWorker {
    */
   stop(): void {
     this.isRunning = false;
-    console.info('Cleanup worker stopped');
+    logger.info('Cleanup worker stopped');
   }
 }
 

@@ -55,6 +55,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
     volumes:
       # Persist Prisma schema and migrations back to the host repo
       - ./circles/src/backend/prisma:/app/prisma

@@ -6,6 +6,7 @@ import type { InterviewMission } from "../src/interview/types.js";
 import { MatchType, MatchStatus } from "../types/index.js";
 import type { Match } from "../types/match.type.js";
 import type { UserProfile } from "../types/user.type.js";
+import { logger } from "../utils/logger.util.js";
 
 
 export interface DetectedCollision {
@@ -220,7 +221,7 @@ export class AgentMatchService {
 
       return existingMatch ? toMatch(existingMatch) : null;
     } catch (error) {
-      console.error("Failed to check inverse match", {
+      logger.error("Failed to check inverse match", {
         user1Id,
         user2Id,
         error,
@@ -238,6 +239,11 @@ export class AgentMatchService {
     user2Id: string,
   ): Promise<CooldownStatus> {
     try {
+      logger.debug("[AGENT_MATCH] Checking cooldown", {
+        user1Id,
+        user2Id,
+      });
+
       const redis = getRedisClient();
       const cooldownKey = COLLISION_CONFIG.REDIS_KEYS.cooldown(
         user1Id,
@@ -248,6 +254,10 @@ export class AgentMatchService {
 
       if (!cooldownData || Object.keys(cooldownData).length === 0) {
         // No active cooldown
+        logger.debug("[AGENT_MATCH] No active cooldown", {
+          user1Id,
+          user2Id,
+        });
         return { allowed: true };
       }
 
@@ -270,11 +280,22 @@ export class AgentMatchService {
 
       if (now > expiresAt) {
         // Cooldown has expired
+        logger.debug("[AGENT_MATCH] Cooldown has expired, removing", {
+          user1Id,
+          user2Id,
+          cooldownType,
+        });
         await redis.del(cooldownKey);
         return { allowed: true };
       }
 
       const remainingMs = expiresAt - now;
+      logger.warn("[AGENT_MATCH] Active cooldown prevents matching", {
+        user1Id,
+        user2Id,
+        cooldownType,
+        remainingMs,
+      });
       return {
         allowed: false,
         reason: `Cooldown active (${cooldownType || "unknown"})`,
@@ -282,7 +303,11 @@ export class AgentMatchService {
         cooldownType: cooldownType || "notified",
       };
     } catch (error) {
-      console.error("Failed to check cooldown", { error });
+      logger.error("[AGENT_MATCH] Failed to check cooldown", {
+        user1Id,
+        user2Id,
+        error,
+      });
       // In case of error, allow the match to proceed (fail open)
       return { allowed: true };
     }
@@ -297,7 +322,7 @@ export class AgentMatchService {
   ): Promise<Awaited<
     ReturnType<typeof prisma.interviewMission.create>
   > | null> {
-    // Generate lock key - use user1Id if circle1Id is null
+    const startTime = Date.now();
     const lockIdentifier = collision.circle1Id || collision.user1Id;
     const lockKey = COLLISION_CONFIG.REDIS_KEYS.inFlightMission(
       lockIdentifier,
@@ -306,8 +331,22 @@ export class AgentMatchService {
     const redis = getRedisClient();
     const workerId = `worker-${Date.now()}-${Math.random()}`;
 
+    logger.info("[AGENT_MATCH] Starting mission creation for collision", {
+      user1Id: collision.user1Id,
+      user2Id: collision.user2Id,
+      circle1Id: collision.circle1Id,
+      circle2Id: collision.circle2Id,
+      distance: collision.distance,
+    });
+
     try {
       // Acquire distributed lock (NX = only if not exists, EX = auto-expire)
+      logger.debug("[AGENT_MATCH] Attempting to acquire mission lock", {
+        lockKey,
+        workerId,
+        ttl: COLLISION_CONFIG.IN_FLIGHT_MISSION_TTL,
+      });
+
       const lockAcquired = await redis.set(
         lockKey,
         workerId,
@@ -317,33 +356,51 @@ export class AgentMatchService {
       );
 
       if (!lockAcquired) {
-        console.debug("Mission creation already in progress for collision", {
+        logger.warn("[AGENT_MATCH] Mission creation already in progress (lock not acquired)", {
+          lockKey,
           lockIdentifier,
           circle2Id: collision.circle2Id,
         });
         return null;
       }
 
+      logger.debug("[AGENT_MATCH] Mission lock acquired successfully", {
+        workerId,
+      });
+
       // Check cooldown one more time before creating mission
+      logger.debug("[AGENT_MATCH] Performing cooldown check before mission creation", {
+        user1Id: collision.user1Id,
+        user2Id: collision.user2Id,
+      });
       const cooldownCheck = await this.checkCooldown(
         collision.user1Id,
         collision.user2Id,
       );
 
       if (!cooldownCheck.allowed) {
-        console.debug("Cooldown active, skipping mission creation", {
-          collision,
+        logger.warn("[AGENT_MATCH] Cooldown active, skipping mission creation", {
+          user1Id: collision.user1Id,
+          user2Id: collision.user2Id,
           cooldown: cooldownCheck,
         });
         await redis.del(lockKey);
         return null;
       }
 
+      logger.debug("[AGENT_MATCH] Cooldown check passed", {
+        user1Id: collision.user1Id,
+        user2Id: collision.user2Id,
+      });
+
       // For missions, we need both users to have circles
       // If visitor (user1) doesn't have a circle, we need to find or create one
       let ownerCircleId = collision.circle1Id;
       if (!ownerCircleId) {
         // Get the visitor's first active circle, or skip mission creation
+        logger.debug("[AGENT_MATCH] Looking for visitor's active circle", {
+          visitorUserId: collision.user1Id,
+        });
         const visitorCircle = await prisma.circle.findFirst({
           where: {
             userId: collision.user1Id,
@@ -353,15 +410,18 @@ export class AgentMatchService {
         });
 
         if (!visitorCircle) {
-          console.warn(
-            "Visitor has no active circles, skipping mission creation",
+          logger.warn(
+            "[AGENT_MATCH] Visitor has no active circles, skipping mission creation",
             {
-              userId: collision.user1Id,
+              visitorUserId: collision.user1Id,
             },
           );
           await redis.del(lockKey);
           return null;
         }
+        logger.debug("[AGENT_MATCH] Using visitor's circle for mission", {
+          visitorCircleId: visitorCircle.id,
+        });
         ownerCircleId = visitorCircle.id;
       }
 
@@ -369,6 +429,13 @@ export class AgentMatchService {
       const collisionEventId = `${lockIdentifier}:${collision.circle2Id}`;
 
       // Create interview mission in database
+      logger.debug("[AGENT_MATCH] Creating interview mission in database", {
+        ownerUserId: collision.user1Id,
+        visitorUserId: collision.user2Id,
+        ownerCircleId: ownerCircleId,
+        visitorCircleId: collision.circle2Id,
+      });
+
       const mission = await prisma.interviewMission.create({
         data: {
           ownerUserId: collision.user1Id,
@@ -381,9 +448,20 @@ export class AgentMatchService {
         },
       });
 
+      logger.info("[AGENT_MATCH] Interview mission created in database", {
+        missionId: mission.id,
+        ownerUserId: mission.ownerUserId,
+        visitorUserId: mission.visitorUserId,
+      });
+
       // Try to update collision event if it exists
       try {
         if (collision.circle1Id) {
+          logger.debug("[AGENT_MATCH] Updating CollisionEvent with mission ID", {
+            circle1Id: collision.circle1Id,
+            circle2Id: collision.circle2Id,
+            missionId: mission.id,
+          });
           await prisma.collisionEvent.update({
             where: {
               unique_collision_pair: {
@@ -396,39 +474,59 @@ export class AgentMatchService {
               status: "mission_created",
             },
           });
+          logger.debug("[AGENT_MATCH] CollisionEvent updated successfully", {
+            missionId: mission.id,
+          });
         }
       } catch (error) {
         // CollisionEvent might not exist if circle1Id was null
-        console.debug("CollisionEvent not found or could not be updated", {
+        logger.debug("[AGENT_MATCH] CollisionEvent not found or could not be updated", {
           error,
         });
       }
 
-      console.info("Mission created for collision", {
+      logger.info("[AGENT_MATCH] Mission created for collision", {
         missionId: mission.id,
-        collision,
+        user1Id: collision.user1Id,
+        user2Id: collision.user2Id,
+        circle1Id: collision.circle1Id,
+        circle2Id: collision.circle2Id,
       });
 
       // Enqueue the mission for processing by the interview worker
       try {
+        logger.debug("[AGENT_MATCH] Preparing mission payload for enqueuing", {
+          missionId: mission.id,
+        });
         const missionPayload = await this.prepareMissionPayload(mission);
         await enqueueMission(missionPayload);
-        console.info("Mission enqueued for interview processing", {
+        logger.info("[AGENT_MATCH] Mission enqueued for interview processing", {
           missionId: mission.id,
         });
       } catch (error) {
-        console.error("Failed to enqueue mission", {
+        logger.error("[AGENT_MATCH] Failed to enqueue mission", {
           missionId: mission.id,
           error,
         });
         // Don't throw - mission is created, worker can pick it up later
       }
 
+      const duration = Date.now() - startTime;
+      logger.info("[AGENT_MATCH] Mission creation completed successfully", {
+        missionId: mission.id,
+        durationMs: duration,
+      });
+
       return mission;
     } catch (error) {
-      console.error("Failed to create mission for collision", {
-        collision,
+      const duration = Date.now() - startTime;
+      logger.error("[AGENT_MATCH] Failed to create mission for collision", {
+        user1Id: collision.user1Id,
+        user2Id: collision.user2Id,
+        circle1Id: collision.circle1Id,
+        circle2Id: collision.circle2Id,
         error,
+        durationMs: duration,
       });
       // Release lock on error
       await redis.del(lockKey);
@@ -446,6 +544,12 @@ export class AgentMatchService {
     outcome: "rejected" | "matched" | "notified",
   ): Promise<void> {
     try {
+      logger.debug("[AGENT_MATCH] Setting cooldown", {
+        user1Id,
+        user2Id,
+        outcome,
+      });
+
       const redis = getRedisClient();
       const cooldownKey = COLLISION_CONFIG.REDIS_KEYS.cooldown(
         user1Id,
@@ -468,6 +572,15 @@ export class AgentMatchService {
 
       const expiresAt = Date.now() + cooldownDurationMs;
 
+      logger.debug("[AGENT_MATCH] Cooldown details", {
+        user1Id,
+        user2Id,
+        outcome,
+        durationMs: cooldownDurationMs,
+        durationHours: (cooldownDurationMs / (60 * 60 * 1000)).toFixed(2),
+        expiresAt: new Date(expiresAt).toISOString(),
+      });
+
       await redis.hset(cooldownKey, {
         type: outcome,
         expiresAt: String(expiresAt),
@@ -477,15 +590,15 @@ export class AgentMatchService {
       // Set TTL on the key itself (safety measure)
       await redis.expire(cooldownKey, Math.ceil(cooldownDurationMs / 1000));
 
-      console.info("Cooldown set for user pair", {
+      logger.info("[AGENT_MATCH] Cooldown set successfully", {
         user1Id,
         user2Id,
         outcome,
-        expiresAt,
-        durationMs: cooldownDurationMs,
+        expiresAt: new Date(expiresAt).toISOString(),
+        durationHours: (cooldownDurationMs / (60 * 60 * 1000)).toFixed(2),
       });
     } catch (error) {
-      console.error("Failed to set cooldown", {
+      logger.error("[AGENT_MATCH] Failed to set cooldown", {
         user1Id,
         user2Id,
         outcome,
@@ -503,18 +616,38 @@ export class AgentMatchService {
     missionId: string,
     result: MissionResult,
   ): Promise<Match | null> {
+    const startTime = Date.now();
+    logger.info("[AGENT_MATCH] Handling mission result", {
+      missionId,
+      success: result.success,
+      matchMade: result.matchMade,
+      error: result.error,
+    });
+
     try {
       // Fetch the mission
+      logger.debug("[AGENT_MATCH] Fetching mission from database", { missionId });
       const mission = await prisma.interviewMission.findUnique({
         where: { id: missionId },
       });
 
       if (!mission) {
-        console.warn("Mission not found for result handling", { missionId });
+        logger.warn("[AGENT_MATCH] Mission not found for result handling", { missionId });
         return null;
       }
 
+      logger.debug("[AGENT_MATCH] Mission found", {
+        missionId,
+        ownerUserId: mission.ownerUserId,
+        visitorUserId: mission.visitorUserId,
+        currentStatus: mission.status,
+      });
+
       // Update mission status
+      logger.debug("[AGENT_MATCH] Updating mission status", {
+        missionId,
+        newStatus: result.success ? "completed" : "failed",
+      });
       await prisma.interviewMission.update({
         where: { id: missionId },
         data: {
@@ -531,23 +664,43 @@ export class AgentMatchService {
           completedAt: new Date(),
         },
       });
+      logger.debug("[AGENT_MATCH] Mission status updated", { missionId });
 
       if (!result.success) {
-        console.info("Mission failed", { missionId, error: result.error });
+        logger.warn("[AGENT_MATCH] Mission failed", {
+          missionId,
+          error: result.error,
+        });
         // Set cooldown for failed mission (notified outcome)
         await this.setCooldown(
           mission.ownerUserId,
           mission.visitorUserId,
           "notified",
         );
+        const duration = Date.now() - startTime;
+        logger.info("[AGENT_MATCH] Mission result handling completed (failed)", {
+          missionId,
+          durationMs: duration,
+        });
         return null;
       }
 
       // If match was made by agent, check for inverse match first
       if (result.matchMade) {
+        logger.info("[AGENT_MATCH] Agent determined a match should be made", {
+          missionId,
+          ownerUserId: mission.ownerUserId,
+          visitorUserId: mission.visitorUserId,
+        });
+
         // Use transaction to prevent race conditions
         const match = await prisma.$transaction(async (tx) => {
           // Check if inverse match already exists
+          logger.debug("[AGENT_MATCH] Checking for inverse match", {
+            missionId,
+            ownerUserId: mission.ownerUserId,
+            visitorUserId: mission.visitorUserId,
+          });
           const inverseMatch = await tx.match.findFirst({
             where: {
               OR: [
@@ -565,15 +718,20 @@ export class AgentMatchService {
 
           if (inverseMatch) {
             // Inverse match exists - both users have matched!
-            console.info("Inverse match found - activating both matches", {
+            logger.info("[AGENT_MATCH] Inverse match found - mutual match detected!", {
               missionId,
               existingMatchId: inverseMatch.id,
+              ownerUserId: mission.ownerUserId,
+              visitorUserId: mission.visitorUserId,
             });
 
             // Update the existing match to 'active'
             await tx.match.update({
               where: { id: inverseMatch.id },
               data: { status: "active" },
+            });
+            logger.debug("[AGENT_MATCH] Existing match activated", {
+              matchId: inverseMatch.id,
             });
 
             // Create this match also as 'active' (to maintain symmetry in the database)
@@ -589,6 +747,9 @@ export class AgentMatchService {
                 explanationSummary: "Mutual agent-determined match",
                 collisionEventId: `${mission.ownerCircleId}:${mission.visitorCircleId}`,
               },
+            });
+            logger.debug("[AGENT_MATCH] Symmetric match created", {
+              newMatchId: newMatch.id,
             });
 
             // Create or update chat for both users
@@ -614,7 +775,7 @@ export class AgentMatchService {
                   secondaryUserId: mission.visitorUserId,
                 },
               });
-              console.info("Chat created for mutual match", {
+              logger.info("[AGENT_MATCH] Chat created for mutual match", {
                 user1: mission.ownerUserId,
                 user2: mission.visitorUserId,
               });
@@ -623,6 +784,12 @@ export class AgentMatchService {
             return newMatch;
           } else {
             // No inverse match - create pending match
+            logger.info("[AGENT_MATCH] No inverse match found - creating pending match", {
+              missionId,
+              ownerUserId: mission.ownerUserId,
+              visitorUserId: mission.visitorUserId,
+            });
+
             const newMatch = await tx.match.create({
               data: {
                 primaryUserId: mission.ownerUserId,
@@ -637,9 +804,11 @@ export class AgentMatchService {
               },
             });
 
-            console.info("Match created (pending inverse match)", {
+            logger.info("[AGENT_MATCH] Match created (pending inverse match)", {
               matchId: newMatch.id,
               missionId,
+              ownerUserId: mission.ownerUserId,
+              visitorUserId: mission.visitorUserId,
             });
 
             return newMatch;
@@ -647,30 +816,45 @@ export class AgentMatchService {
         });
 
         // Set longer cooldown for matched users
+        logger.debug("[AGENT_MATCH] Setting cooldown for matched users", {
+          ownerUserId: mission.ownerUserId,
+          visitorUserId: mission.visitorUserId,
+        });
         await this.setCooldown(
           mission.ownerUserId,
           mission.visitorUserId,
           "matched",
         );
 
-        console.info("Match processing completed", {
+        const duration = Date.now() - startTime;
+        logger.info("[AGENT_MATCH] Match processing completed", {
           matchId: match.id,
           missionId,
+          durationMs: duration,
         });
 
         return toMatch(match);
       }
 
       // No match - set cooldown for notification
+      logger.info("[AGENT_MATCH] Agent determined no match should be made", {
+        missionId,
+        ownerUserId: mission.ownerUserId,
+        visitorUserId: mission.visitorUserId,
+      });
       await this.setCooldown(
         mission.ownerUserId,
         mission.visitorUserId,
         "notified",
       );
-      console.info("Mission completed without match", { missionId });
+      const duration = Date.now() - startTime;
+      logger.info("[AGENT_MATCH] Mission completed without match", {
+        missionId,
+        durationMs: duration,
+      });
       return null;
     } catch (error) {
-      console.error("Failed to handle mission result", {
+      logger.error("Failed to handle mission result", {
         missionId,
         result,
         error,

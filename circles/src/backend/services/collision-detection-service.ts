@@ -2,6 +2,7 @@ import { COLLISION_CONFIG } from "../config/collision.config.js";
 import { getRedisClient } from "../infrastructure/redis.js";
 import { prisma } from "../lib/prisma.js";
 import { makeCollisionKey } from "../utils/geo.util.js";
+import { logger } from "../utils/logger.util.js";
 
 interface CandidateCircle {
   id: string;
@@ -35,29 +36,68 @@ export class CollisionDetectionService {
     userLon: number,
   ): Promise<DetectedCollision[]> {
     const allCollisions: DetectedCollision[] = [];
+    const startTime = Date.now();
+
+    logger.info("[COLLISION_DETECTION] Starting collision detection", {
+      userId,
+      location: { userLat, userLon },
+    });
 
     try {
       // Query all circles owned by other users and check distances
+      logger.debug("[COLLISION_DETECTION] Querying candidate circles", {
+        userId,
+        searchRadius: COLLISION_CONFIG.MAX_SEARCH_RADIUS_METERS,
+      });
       const candidates = await this.queryCandidateCirclesForPosition(
         userId,
         userLat,
         userLon,
       );
+      logger.info("[COLLISION_DETECTION] Candidate circles found", {
+        userId,
+        candidateCount: candidates.length,
+        candidates: candidates.map((c) => ({
+          circleId: c.id,
+          userId: c.userId,
+          distance: c.distance_meters,
+          radius: c.radiusMeters,
+        })),
+      });
 
       // Filter circles where user position is within the circle radius
       const actualCollisions = candidates.filter(
         (c) => c.distance_meters <= c.radiusMeters,
       );
+      logger.info("[COLLISION_DETECTION] Actual collisions detected", {
+        userId,
+        actualCollisionCount: actualCollisions.length,
+        actualCollisions: actualCollisions.map((c) => ({
+          circleId: c.id,
+          userId: c.userId,
+          distance: c.distance_meters,
+          radius: c.radiusMeters,
+        })),
+      });
 
       // Take top N closest circles
       const topN = actualCollisions
         .sort((a, b) => a.distance_meters - b.distance_meters)
         .slice(0, COLLISION_CONFIG.MAX_COLLISIONS_PER_UPDATE);
+      logger.info("[COLLISION_DETECTION] Taking top N collisions", {
+        userId,
+        topNCount: topN.length,
+        maxAllowed: COLLISION_CONFIG.MAX_COLLISIONS_PER_UPDATE,
+      });
 
       // Track each collision
       for (const collision of topN) {
         // Find visitor's active circle for CollisionEvent persistence
         // The visitor doesn't need a circle to detect collision, but we need one for DB
+        logger.debug("[COLLISION_DETECTION] Looking for visitor's active circle", {
+          visitorUserId: userId,
+          targetCircleId: collision.id,
+        });
         const visitorCircle = await prisma.circle.findFirst({
           where: {
             userId: userId,
@@ -70,11 +110,12 @@ export class CollisionDetectionService {
 
         if (!visitorCircle) {
           // Visitor has no active circles - skip persistence but continue detection
-          console.debug(
-            "Visitor has no active circle, skipping collision persistence",
+          logger.warn(
+            "[COLLISION_DETECTION] Visitor has no active circle, skipping collision persistence",
             {
-              userId,
+              visitorUserId: userId,
               targetCircleId: collision.id,
+              targetUserId: collision.userId,
             },
           );
           continue;
@@ -90,12 +131,26 @@ export class CollisionDetectionService {
         };
 
         allCollisions.push(detected);
+        logger.info("[COLLISION_DETECTION] Tracking collision stability", {
+          circle1Id: detected.circle1Id,
+          circle2Id: detected.circle2Id,
+          distance: detected.distance,
+        });
         await this.trackCollisionStability(detected);
       }
-    } catch (error) {
-      console.error("Collision detection failed", {
+      
+      const duration = Date.now() - startTime;
+      logger.info("[COLLISION_DETECTION] Collision detection completed", {
         userId,
-        error,
+        totalCollisionsProcessed: allCollisions.length,
+        durationMs: duration,
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error("[COLLISION_DETECTION] Collision detection failed", error);
+      logger.debug("[COLLISION_DETECTION] Error details", {
+        userId,
+        durationMs: duration,
       });
     }
 
@@ -112,7 +167,15 @@ export class CollisionDetectionService {
     userLat: number,
     userLon: number,
   ): Promise<CandidateCircle[]> {
+    const startTime = Date.now();
     try {
+      logger.debug("[COLLISION_DETECTION] PostGIS: Executing spatial query", {
+        userId,
+        location: { userLat, userLon },
+        searchRadius: COLLISION_CONFIG.MAX_SEARCH_RADIUS_METERS,
+        resultLimit: COLLISION_CONFIG.SPATIAL_INDEX_SEARCH_LIMIT,
+      });
+
       const result = await prisma.$queryRaw<CandidateCircle[]>`
         SELECT
           c.id,
@@ -140,9 +203,28 @@ export class CollisionDetectionService {
         LIMIT ${COLLISION_CONFIG.SPATIAL_INDEX_SEARCH_LIMIT}
       `;
 
+      const duration = Date.now() - startTime;
+      logger.debug("[COLLISION_DETECTION] PostGIS: Query completed", {
+        userId,
+        resultCount: result?.length || 0,
+        durationMs: duration,
+        results: result?.map((r) => ({
+          circleId: r.id,
+          userId: r.userId,
+          distance: r.distance_meters,
+          radius: r.radiusMeters,
+        })),
+      });
+
       return result || [];
     } catch (error) {
-      console.error("PostGIS query failed", { userId, error });
+      const duration = Date.now() - startTime;
+      logger.error("[COLLISION_DETECTION] PostGIS query failed", error);
+      logger.debug("[COLLISION_DETECTION] PostGIS error details", {
+        userId,
+        location: { userLat, userLon },
+        durationMs: duration,
+      });
       return []; // Return empty array on query failure, continue processing
     }
   }
@@ -155,11 +237,17 @@ export class CollisionDetectionService {
     try {
       // Early return if circle1Id is null (shouldn't happen after refactor, but safety check)
       if (!collision.circle1Id) {
-        console.warn("Attempted to track collision with null circle1Id", {
+        logger.warn("[COLLISION_TRACKING] Attempted to track collision with null circle1Id", {
           collision,
         });
         return;
       }
+
+      logger.debug("[COLLISION_TRACKING] Starting collision tracking", {
+        circle1Id: collision.circle1Id,
+        circle2Id: collision.circle2Id,
+        distance: collision.distance,
+      });
 
       const redis = getRedisClient();
 
@@ -171,10 +259,18 @@ export class CollisionDetectionService {
       );
 
       // Get existing collision state
+      logger.debug("[COLLISION_TRACKING] Checking for existing collision state", {
+        redisKey,
+      });
       const existing = await redis.hgetall(redisKey);
 
       if (!existing || Object.keys(existing).length === 0) {
         // First detection - initialize tracking and create CollisionEvent
+        logger.info("[COLLISION_TRACKING] First detection - initializing tracking", {
+          circle1Id: collision.circle1Id,
+          circle2Id: collision.circle2Id,
+        });
+
         await redis.hset(redisKey, {
           firstSeenAt: collision.timestamp,
           detectedAt: collision.timestamp,
@@ -185,8 +281,16 @@ export class CollisionDetectionService {
           circle1Id: collision.circle1Id,
           circle2Id: collision.circle2Id,
         });
+        logger.debug("[COLLISION_TRACKING] Redis state initialized", {
+          circle1Id: collision.circle1Id,
+          circle2Id: collision.circle2Id,
+        });
 
         // Add to stability queue
+        logger.debug("[COLLISION_TRACKING] Adding to stability queue", {
+          key,
+          timestamp: collision.timestamp,
+        });
         await redis.zadd(
           COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
           collision.timestamp,
@@ -195,6 +299,10 @@ export class CollisionDetectionService {
 
         // Create CollisionEvent in database for persistence
         try {
+          logger.debug("[COLLISION_TRACKING] Creating CollisionEvent in database", {
+            circle1Id: collision.circle1Id,
+            circle2Id: collision.circle2Id,
+          });
           await prisma.collisionEvent.create({
             data: {
               circle1Id: collision.circle1Id,
@@ -206,22 +314,30 @@ export class CollisionDetectionService {
               status: "detecting",
             },
           });
-          console.debug("CollisionEvent created in database", {
+          logger.info("[COLLISION_TRACKING] CollisionEvent created in database", {
             circle1Id: collision.circle1Id,
             circle2Id: collision.circle2Id,
           });
         } catch (dbError) {
           // Collision might already exist (duplicate detection)
-          console.debug("CollisionEvent already exists or creation failed", {
-            collision,
-            error: dbError,
-          });
+          logger.debug("[COLLISION_TRACKING] CollisionEvent already exists or creation failed", dbError);
         }
       } else {
         // Collision already tracked - update detection time in Redis and DB
+        logger.debug("[COLLISION_TRACKING] Existing collision detected - updating", {
+          circle1Id: collision.circle1Id,
+          circle2Id: collision.circle2Id,
+          currentStatus: existing.status,
+          timeSinceFirstSeen: collision.timestamp - parseInt(existing.firstSeenAt || "0"),
+        });
+
         await redis.hset(redisKey, {
           detectedAt: collision.timestamp,
           distance: collision.distance,
+        });
+        logger.debug("[COLLISION_TRACKING] Redis state updated", {
+          circle1Id: collision.circle1Id,
+          circle2Id: collision.circle2Id,
         });
 
         // Update CollisionEvent in database
@@ -238,11 +354,12 @@ export class CollisionDetectionService {
               distanceMeters: collision.distance,
             },
           });
-        } catch (dbError) {
-          console.warn("Failed to update CollisionEvent", {
-            collision,
-            error: dbError,
+          logger.debug("[COLLISION_TRACKING] CollisionEvent updated in database", {
+            circle1Id: collision.circle1Id,
+            circle2Id: collision.circle2Id,
           });
+        } catch (dbError) {
+          logger.warn("[COLLISION_TRACKING] Failed to update CollisionEvent", dbError);
         }
       }
 
@@ -251,14 +368,26 @@ export class CollisionDetectionService {
         existing?.firstSeenAt || String(collision.timestamp),
       );
       const duration = collision.timestamp - firstSeenAt;
+      const stabilityThreshold = COLLISION_CONFIG.STABILITY_WINDOW_MS;
+
+      logger.debug("[COLLISION_TRACKING] Checking stability threshold", {
+        circle1Id: collision.circle1Id,
+        circle2Id: collision.circle2Id,
+        duration,
+        threshold: stabilityThreshold,
+        isStable: duration >= stabilityThreshold,
+        currentStatus: existing?.status,
+      });
 
       if (
-        duration >= COLLISION_CONFIG.STABILITY_WINDOW_MS &&
+        duration >= stabilityThreshold &&
         existing?.status !== "stable"
       ) {
-        console.info("Collision promoted to stable", {
-          collision,
+        logger.info("[COLLISION_TRACKING] Collision promoted to stable", {
+          circle1Id: collision.circle1Id,
+          circle2Id: collision.circle2Id,
           duration,
+          threshold: stabilityThreshold,
         });
         await redis.hset(redisKey, "status", "stable");
 
@@ -275,21 +404,24 @@ export class CollisionDetectionService {
               status: "stable",
             },
           });
-        } catch (dbError) {
-          console.warn("Failed to update CollisionEvent to stable", {
-            collision,
-            error: dbError,
+          logger.info("[COLLISION_TRACKING] CollisionEvent status updated to stable", {
+            circle1Id: collision.circle1Id,
+            circle2Id: collision.circle2Id,
           });
+        } catch (dbError) {
+          logger.warn("[COLLISION_TRACKING] Failed to update CollisionEvent to stable", dbError);
         }
       }
 
       // Set TTL
       await redis.expire(redisKey, COLLISION_CONFIG.COLLISION_CACHE_TTL);
-    } catch (error) {
-      console.error("Failed to track collision stability", {
-        collision,
-        error,
+      logger.debug("[COLLISION_TRACKING] Redis key TTL set", {
+        circle1Id: collision.circle1Id,
+        circle2Id: collision.circle2Id,
+        ttl: COLLISION_CONFIG.COLLISION_CACHE_TTL,
       });
+    } catch (error) {
+      logger.error("[COLLISION_TRACKING] Failed to track collision stability", error);
       // Don't throw - continue processing
     }
   }
@@ -309,7 +441,7 @@ export class CollisionDetectionService {
         Date.now() - COLLISION_CONFIG.STABILITY_WINDOW_MS,
       );
 
-      console.debug("Processing stability queue", {
+      logger.debug("Processing stability queue", {
         count: stableCollisionKeys.length,
       });
 
@@ -343,14 +475,12 @@ export class CollisionDetectionService {
           // Status is tracked in Redis hash, ready for mission creation
           // This will be picked up by mission worker
         } catch (error) {
-          console.error("Failed processing stability queue item", {
-            key,
-            error,
-          });
+          logger.error("Failed processing stability queue item", error);
+          logger.debug("Failed queue item key", { key });
         }
       }
     } catch (error) {
-      console.error("Stability queue processing failed", { error });
+      logger.error("Stability queue processing failed", error);
     }
   }
 }
