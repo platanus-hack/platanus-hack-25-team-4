@@ -11,13 +11,13 @@ import { asyncHandler } from '../utils/async-handler.util.js';
 const createCircleSchema = z.object({
   objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  expiresAt: z.coerce.date().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
 });
 
 const updateCircleSchema = z.object({
   objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  expiresAt: z.coerce.date().optional()
+  expiresAt: z.coerce.date().nullable().optional()
 });
 
 export const circlesRouter = Router();
