@@ -18,11 +18,21 @@ export interface DetectedCollision {
   timestamp: number;
 }
 
+export interface MissionResultJudgeDecision {
+  /**
+   * Optional short natural-language summary of the agent-to-agent conversation.
+   * When present, it should start with: "Summary of agent interaction: ..."
+   */
+  summary_text?: string;
+  // Allow additional fields without enforcing structure here
+  [key: string]: unknown;
+}
+
 export interface MissionResult {
   success: boolean;
   matchMade: boolean;
   transcript?: string;
-  judgeDecision?: unknown;
+  judgeDecision?: MissionResultJudgeDecision;
   error?: string;
 }
 
@@ -705,6 +715,8 @@ export class AgentMatchService {
 
       // If match was made by agent, check for inverse match first
       if (result.matchMade) {
+        // Try to extract a short summary text from the judge decision
+        const summaryText = (result.judgeDecision?.summary_text ?? "").trim();
         logger.info("[AGENT_MATCH] Agent determined a match should be made", {
           missionId,
           ownerUserId: mission.ownerUserId,
@@ -787,7 +799,7 @@ export class AgentMatchService {
             });
 
             if (!existingChat) {
-              await tx.chat.create({
+              const chat = await tx.chat.create({
                 data: {
                   primaryUserId: mission.ownerUserId,
                   secondaryUserId: mission.visitorUserId,
@@ -797,6 +809,18 @@ export class AgentMatchService {
                 user1: mission.ownerUserId,
                 user2: mission.visitorUserId,
               });
+
+              // If we have a judge summary, store it as the first chat message
+              if (summaryText) {
+                await tx.message.create({
+                  data: {
+                    chatId: chat.id,
+                    senderUserId: mission.ownerUserId,
+                    receiverId: mission.visitorUserId,
+                    content: summaryText,
+                  },
+                });
+              }
             }
 
             return newMatch;

@@ -1,6 +1,7 @@
-import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { COLLISION_CONFIG } from '../config/collision.config.js';
+import { AgentMatchService, type MissionResult } from '../services/agent-match-service.js';
 // Mock missionQueue module
 vi.mock('../interview/missionQueue.js', () => ({
   enqueueMission: vi.fn().mockResolvedValue('test-job-id'),
@@ -55,6 +56,13 @@ interface MockChat {
   createdAt: Date;
 }
 
+interface MockMessage {
+  chatId: string;
+  senderUserId: string;
+  receiverId: string;
+  content: string;
+}
+
 interface MockCircle {
   userId: string;
   status: string;
@@ -67,6 +75,7 @@ const collisionEvents: MockCollisionEvent[] = [];
 const matches: MockMatch[] = [];
 const chats: MockChat[] = [];
 const circles: MockCircle[] = [];
+const messages: MockMessage[] = [];
 
 const redisHashes = new Map<string, Record<string, string>>();
 const redisStrings = new Map<string, string>();
@@ -216,6 +225,31 @@ vi.mock('../lib/prisma.js', () => {
         }
       )
     },
+    message: {
+      create: vi.fn(
+        async ({
+          data
+        }: {
+          data: {
+            chatId: string;
+            senderUserId: string;
+            receiverId: string;
+            content: string;
+          };
+        }) => {
+          messages.push({
+            chatId: data.chatId,
+            senderUserId: data.senderUserId,
+            receiverId: data.receiverId,
+            content: data.content
+          });
+          return {
+            id: `message-${messages.length}`,
+            ...data
+          };
+        }
+      )
+    },
     circle: {
       findFirst: vi.fn(
         async ({
@@ -301,8 +335,6 @@ vi.mock('../infrastructure/redis.js', () => {
   };
 });
 
-import { AgentMatchService, type MissionResult } from '../services/agent-match-service.js';
-
 describe('AgentMatchService cooldowns', () => {
   let service: AgentMatchService;
 
@@ -312,6 +344,7 @@ describe('AgentMatchService cooldowns', () => {
     matches.length = 0;
     chats.length = 0;
     circles.length = 0;
+    messages.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -361,6 +394,7 @@ describe('AgentMatchService mission creation', () => {
     matches.length = 0;
     chats.length = 0;
     circles.length = 0;
+    messages.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -449,6 +483,7 @@ describe('AgentMatchService mission results and matches', () => {
     matches.length = 0;
     chats.length = 0;
     circles.length = 0;
+    messages.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -563,6 +598,7 @@ describe('AgentMatchService inverse match logic', () => {
     matches.length = 0;
     chats.length = 0;
     circles.length = 0;
+    messages.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     service = new AgentMatchService();
@@ -646,7 +682,11 @@ describe('AgentMatchService inverse match logic', () => {
       success: true,
       matchMade: true,
       transcript: JSON.stringify({ messages: [] }),
-      judgeDecision: { reason: 'mutual match' }
+      judgeDecision: {
+        reason: 'mutual match',
+        summary_text:
+          'Summary of agent interaction: they talked about aligning on interests and found it worth meeting in person.'
+      }
     };
 
     const match = await service.handleMissionResult('mission-1', result);
@@ -667,6 +707,13 @@ describe('AgentMatchService inverse match logic', () => {
     expect(chats).toHaveLength(1);
     expect(chats[0].primaryUserId).toBe('user-1');
     expect(chats[0].secondaryUserId).toBe('user-2');
+
+    // Should have created a first summary message in that chat
+    expect(messages).toHaveLength(1);
+    const message = messages[0];
+    expect(message.chatId).toBe(chats[0].id);
+    expect(message.content).toBe(result.judgeDecision!.summary_text);
+    expect(message.content.startsWith('Summary of agent interaction:')).toBe(true);
   });
 
   it('does not create duplicate chat if chat already exists for mutual match', async () => {

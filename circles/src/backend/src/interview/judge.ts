@@ -25,18 +25,22 @@ export class MockInterviewJudge implements InterviewJudge {
 
     if (!containsConcreteSignal) {
       return {
-        should_notify: false
+        should_notify: false,
+        summary_text: 'Summary of agent interaction: they talked, but there was no clear signal to justify notifying the humans.'
       };
     }
 
     return {
-      should_notify: true
+      should_notify: true,
+      summary_text:
+        'Summary of agent interaction: they talked about concrete plans or interest in meeting, which seems worth notifying the humans about.'
     };
   }
 }
 
 type LlmJudgeResponse = {
   should_notify: boolean;
+  summary_text?: string;
 };
 
 const extractJsonFromText = (raw: string): string => {
@@ -73,11 +77,16 @@ export class BedrockInterviewJudge implements InterviewJudge {
       '',
       'Output format:',
       'Return a SINGLE JSON object with exactly these fields:',
-      '{ "should_notify": true or false }',
+      '{ "should_notify": true or false, "summary_text": string }',
       '',
       'Rules:',
       '- Consider whether the conversation suggests a promising real-world interaction that could help the owner move toward their objective, even if the agents did not schedule a specific time or place.',
       '- Be conservative: only set "should_notify" to true if the conversation suggests a promising real-world interaction.',
+      '- The "summary_text" MUST be a very short, single-sentence summary of the conversation, in the main language of the transcript (often Spanish).',
+      '- The "summary_text" MUST begin EXACTLY with: "Summary of agent interaction:".',
+      '- After that fixed prefix, continue with a brief description of what they talked about (for example: "they talked about posibles proyectos de IA y coordinar un café").',
+      '- Keep "summary_text" under 240 characters, with no line breaks.',
+      '- When "should_notify" is false, still include "summary_text" but you can briefly say that the interaction did not seem worth notifying about.',
       '- Do not add any extra keys, comments, or explanations.',
       '- Do not wrap the JSON in markdown fences or any other formatting.',
       '- Return ONLY the JSON, nothing else.'
@@ -103,9 +112,15 @@ export class BedrockInterviewJudge implements InterviewJudge {
       };
     }
 
-    return {
+    const decision: JudgeDecision = {
       should_notify: parsed.should_notify === true
     };
+
+    if (typeof parsed.summary_text === 'string' && parsed.summary_text.trim().length > 0) {
+      decision.summary_text = parsed.summary_text.trim();
+    }
+
+    return decision;
   }
 }
 
@@ -132,11 +147,16 @@ export class ClaudeInterviewJudge implements InterviewJudge {
       '',
       'Output format:',
       'Return a SINGLE JSON object with exactly these fields:',
-      '{ "should_notify": true or false }',
+      '{ "should_notify": true or false, "summary_text": string }',
       '',
       'Rules:',
       '- Consider whether the conversation suggests a promising real-world interaction that could help the owner move toward their objective, even if the agents did not schedule a specific time or place.',
       '- Be conservative: only set "should_notify" to true if the conversation suggests a promising real-world interaction.',
+      '- The "summary_text" MUST be a very short, single-sentence summary of the conversation, in the main language of the transcript (often Spanish).',
+      '- The "summary_text" MUST begin EXACTLY with: "Summary of agent interaction:".',
+      '- After that fixed prefix, continue with a brief description of what they talked about (for example: "they talked about posibles proyectos de IA y coordinar un café").',
+      '- Keep "summary_text" under 240 characters, with no line breaks.',
+      '- When "should_notify" is false, still include "summary_text" but you can briefly say that the interaction did not seem worth notifying about.',
       '- Do not add any extra keys, comments, or explanations.',
       '- Do not wrap the JSON in markdown fences or any other formatting.',
       '- Return ONLY the JSON, nothing else.'
@@ -162,8 +182,14 @@ export class ClaudeInterviewJudge implements InterviewJudge {
       };
     }
 
-    return {
+    const decision: JudgeDecision = {
       should_notify: parsed.should_notify === true
     };
+
+    if (typeof parsed.summary_text === 'string' && parsed.summary_text.trim().length > 0) {
+      decision.summary_text = parsed.summary_text.trim();
+    }
+
+    return decision;
   }
 }

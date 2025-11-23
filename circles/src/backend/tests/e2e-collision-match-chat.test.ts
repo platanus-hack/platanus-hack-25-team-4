@@ -72,6 +72,14 @@ type ChatStoreItem = {
   createdAt: Date;
 };
 
+type MessageStoreItem = {
+  id: string;
+  chatId: string;
+  senderUserId: string;
+  receiverId: string;
+  content: string;
+};
+
 const users: UserStoreItem[] = [];
 
 const circles: CircleStoreItem[] = [];
@@ -81,6 +89,7 @@ const collisionEvents: CollisionEventStoreItem[] = [];
 const missions: MissionStoreItem[] = [];
 const matches: MatchStoreItem[] = [];
 const chats: ChatStoreItem[] = [];
+const messages: MessageStoreItem[] = [];
 
 const redisHashes = new Map<string, Record<string, string>>();
 const redisStrings = new Map<string, string>();
@@ -325,6 +334,22 @@ vi.mock('../lib/prisma.js', () => {
         },
       ),
     },
+    message: {
+      create: vi.fn(
+        async ({
+          data,
+        }: {
+          data: Omit<MessageStoreItem, "id">;
+        }) => {
+          const message: MessageStoreItem = {
+            id: `message-${messages.length + 1}`,
+            ...data,
+          };
+          messages.push(message);
+          return message;
+        },
+      ),
+    },
     $transaction: vi.fn(
       async (
         callback: (tx: typeof prisma) => Promise<unknown> | unknown,
@@ -449,6 +474,7 @@ describe('E2E: collision → missions → mutual match and chat', () => {
     missions.length = 0;
     matches.length = 0;
     chats.length = 0;
+    messages.length = 0;
     redisHashes.clear();
     redisStrings.clear();
     redisSortedSets.clear();
@@ -572,8 +598,15 @@ describe('E2E: collision → missions → mutual match and chat', () => {
     const result2: MissionResult = {
       success: true,
       matchMade: true,
-      transcript: JSON.stringify({ messages: [{ role: 'interviewer', content: 'mutual yes' }] }),
-      judgeDecision: { reason: 'mutual match', confidence: 0.95 },
+      transcript: JSON.stringify({
+        messages: [{ role: 'interviewer', content: 'mutual yes' }],
+      }),
+      judgeDecision: {
+        reason: 'mutual match',
+        confidence: 0.95,
+        summary_text:
+          'Summary of agent interaction: they talked about a coffee meetup and aligned expectations, making it worth connecting.',
+      },
     };
 
     const finalMatch = await matchService.handleMissionResult(
@@ -594,6 +627,14 @@ describe('E2E: collision → missions → mutual match and chat', () => {
       (chat.primaryUserId === 'user-1' && chat.secondaryUserId === 'user-2') ||
         (chat.primaryUserId === 'user-2' && chat.secondaryUserId === 'user-1'),
     ).toBe(true);
+
+    // A first summary message should have been created in that chat
+    expect(messages).toHaveLength(1);
+    const message = messages[0];
+    expect(message.chatId).toBe(chat.id);
+    expect(message.content.startsWith('Summary of agent interaction:')).toBe(
+      true,
+    );
 
     // Sanity-check that collision events were persisted for the pair
     expect(

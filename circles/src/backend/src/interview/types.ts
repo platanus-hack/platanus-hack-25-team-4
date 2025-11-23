@@ -78,6 +78,11 @@ export interface JudgeInput {
 export interface JudgeDecision {
   should_notify: boolean;
   notification_text?: string;
+  /**
+   * Short natural-language summary of the agent-to-agent conversation.
+   * Should start with: "Summary of agent interaction: ..."
+   */
+  summary_text?: string;
 }
 
 export interface InterviewMission {
