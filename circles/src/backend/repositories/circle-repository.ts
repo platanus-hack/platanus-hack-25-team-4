@@ -109,5 +109,3 @@ export class CircleRepository {
     };
   }
 }
-
-export const circleRepository = new CircleRepository();
