@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:circles/core/auth/unauthorized_handler.dart';
 import 'package:http/http.dart' as http;
 
 import '../../auth/domain/auth_session.dart';
@@ -122,7 +123,7 @@ class CirclesApiClient {
   }) async {
     final uri = _buildUri(path);
     final response = await _client.delete(uri, headers: _headers(session));
-    _processResponse(response, expectEmpty: true);
+    await _processResponse(response, expectEmpty: true);
   }
 
   Map<String, String> _headers(AuthSession session) => {
@@ -137,11 +138,16 @@ class CirclesApiClient {
     return Uri.parse('$trimmedBase/$cleanPath');
   }
 
-  Map<String, dynamic> _processResponse(
+  Future<Map<String, dynamic>> _processResponse(
     http.Response response, {
     bool expectEmpty = false,
-  }) {
+  }) async {
     final decoded = _decodeBody(response.body);
+
+    if (response.statusCode == 401) {
+      await UnauthorizedHandler.handleUnauthorized();
+      throw CircleApiException(UnauthorizedHandler.sessionExpiredMessage);
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (expectEmpty) return <String, dynamic>{};

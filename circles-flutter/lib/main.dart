@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'core/auth/unauthorized_handler.dart';
 import 'core/config/app_config.dart';
 import 'core/storage/credentials_storage.dart';
 import 'core/theme/app_theme.dart';
@@ -83,6 +84,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    UnauthorizedHandler.register(_handleLogout);
     WidgetsBinding.instance.addObserver(this);
     if (_session != null) {
       _loadProfile(_session!);
@@ -126,6 +128,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    UnauthorizedHandler.clear();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

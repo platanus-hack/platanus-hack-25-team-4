@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:circles/core/auth/unauthorized_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -297,6 +298,10 @@ Future<bool> _sendPositionUpdate({
         'centerLon': position.longitude,
       }),
     );
+    if (response.statusCode == 401) {
+      await UnauthorizedHandler.handleUnauthorized();
+      return false;
+    }
     final ok = response.statusCode >= 200 && response.statusCode < 300;
     if (!ok) {
       log('Backend respondió ${response.statusCode}: ${response.body}');
