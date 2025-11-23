@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     log_level: str = "INFO"
+    frontend_url: Optional[str] = None
 
     # ========================================================================
     # PROCESSING CONFIGURATION

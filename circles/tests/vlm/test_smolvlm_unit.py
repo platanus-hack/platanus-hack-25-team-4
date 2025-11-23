@@ -84,37 +84,44 @@ class TestSmolVLMAdapterInitialization:
 class TestDeviceDetection:
     """Test device detection functionality."""
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_detect_device_auto_with_mps_available(self, mock_torch):
+    async def test_detect_device_auto_with_mps_available(self):
         """Should detect MPS when available."""
+        # Mock torch module at import time
+        mock_torch = MagicMock()
         mock_torch.backends.mps.is_available.return_value = True
+        mock_torch.cuda.is_available.return_value = False
 
-        adapter = SmolVLMAdapter()
-        device = await adapter._detect_device()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = SmolVLMAdapter()
+            device = await adapter._detect_device()
 
-        assert device == "mps"
+            assert device == "mps"
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_detect_device_auto_with_cuda_available(self, mock_torch):
+    async def test_detect_device_auto_with_cuda_available(self):
         """Should detect CUDA when MPS unavailable but CUDA available."""
+        # Mock torch module at import time
+        mock_torch = MagicMock()
         mock_torch.backends.mps.is_available.return_value = False
         mock_torch.cuda.is_available.return_value = True
 
-        adapter = SmolVLMAdapter()
-        device = await adapter._detect_device()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = SmolVLMAdapter()
+            device = await adapter._detect_device()
 
-        assert device == "cuda"
+            assert device == "cuda"
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_detect_device_auto_with_cpu_only(self, mock_torch):
+    async def test_detect_device_auto_with_cpu_only(self):
         """Should fall back to CPU when neither MPS nor CUDA available."""
+        # Mock torch module at import time
+        mock_torch = MagicMock()
         mock_torch.backends.mps.is_available.return_value = False
         mock_torch.cuda.is_available.return_value = False
 
-        adapter = SmolVLMAdapter()
-        device = await adapter._detect_device()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = SmolVLMAdapter()
+            device = await adapter._detect_device()
 
-        assert device == "cpu"
+            assert device == "cpu"
 
     async def test_detect_device_manual_override(self):
         """Manual device config should override auto-detection."""
@@ -125,80 +132,161 @@ class TestDeviceDetection:
 
         assert device == "cuda"
 
-    @patch.dict("sys.modules", {"torch": None})
     async def test_detect_device_when_torch_not_available(self):
         """Should fall back to CPU when torch not available."""
-        adapter = SmolVLMAdapter()
-        device = await adapter._detect_device()
+        with patch.dict("sys.modules", {"torch": None}):
+            adapter = SmolVLMAdapter()
+            device = await adapter._detect_device()
 
-        assert device == "cpu"
+            assert device == "cpu"
 
 
 class TestModelLoading:
     """Test model loading functionality."""
 
-    async def test_model_loads_on_first_inference(
-        self, mock_transformers, mock_torch, sample_image_path
-    ):
+    async def test_model_loads_on_first_inference(self, sample_image_path):
         """Model should load on first infer() call."""
-        adapter = SmolVLMAdapter()
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
+        mock_torch.float32 = MagicMock()
 
-        # Model should be None initially
-        assert adapter._model is None
+        # Setup transformers mocks
+        mock_processor_class = MagicMock()
+        mock_model_class = MagicMock()
 
-        # Trigger loading through inference attempt
-        try:
-            await adapter.infer(sample_image_path, "test prompt")
-        except Exception:
-            pass  # We're just testing that loading is attempted
+        # Setup model and processor mocks
+        mock_processor = MagicMock()
+        mock_processor_class.from_pretrained.return_value = mock_processor
+        mock_processor.return_value = MagicMock()
+        mock_processor.return_value.to.return_value = MagicMock()
+        mock_processor.batch_decode.return_value = ["Generated text"]
 
-        # Check that loading was attempted
-        mock_transformers["processor_class"].from_pretrained.assert_called_once()
-        mock_transformers["model_class"].from_pretrained.assert_called_once()
+        mock_model = MagicMock()
+        mock_model.to.return_value = mock_model
+        mock_model.generate.return_value = [[1, 2, 3]]
+        mock_model_class.from_pretrained.return_value = mock_model
 
-    @patch("src.etl.adapters.vlm.smolvlm.AutoProcessor")
-    @patch("src.etl.adapters.vlm.smolvlm.AutoModelForVision2Seq")
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_model_load_error_handling(
-        self, mock_torch, mock_model_class, mock_processor_class
-    ):
+        # Setup transformers module
+        mock_transformers = MagicMock()
+        mock_transformers.AutoProcessor = mock_processor_class
+        mock_transformers.AutoModelForVision2Seq = mock_model_class
+
+        with patch.dict(
+            "sys.modules", {"torch": mock_torch, "transformers": mock_transformers}
+        ):
+            with patch("src.etl.adapters.vlm.smolvlm.Image.open") as mock_img_open:
+                # Setup image mock
+                mock_img = MagicMock()
+                mock_img.convert.return_value = mock_img
+                mock_img_open.return_value = mock_img
+
+                adapter = SmolVLMAdapter()
+
+                # Model should be None initially
+                assert adapter._model is None
+
+                # Trigger loading through inference attempt
+                await adapter.infer(sample_image_path, "test prompt")
+
+                # Check that loading was attempted
+                mock_processor_class.from_pretrained.assert_called_once()
+                mock_model_class.from_pretrained.assert_called_once()
+
+    async def test_model_load_error_handling(self):
         """Should raise ModelLoadError on load failure."""
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
+
+        # Setup transformers mocks with error
+        mock_processor_class = MagicMock()
         mock_processor_class.from_pretrained.side_effect = Exception("Load failed")
 
-        adapter = SmolVLMAdapter()
+        mock_transformers = MagicMock()
+        mock_transformers.AutoProcessor = mock_processor_class
+        mock_transformers.AutoModelForVision2Seq = MagicMock()
 
-        with pytest.raises(ModelLoadError, match="Failed to load SmolVLM model"):
-            await adapter._ensure_model_loaded()
+        with patch.dict(
+            "sys.modules", {"torch": mock_torch, "transformers": mock_transformers}
+        ):
+            adapter = SmolVLMAdapter()
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_model_load_uses_correct_dtype_for_gpu(
-        self, mock_torch, mock_transformers
-    ):
+            with pytest.raises(ModelLoadError, match="Failed to load SmolVLM model"):
+                await adapter._ensure_model_loaded()
+
+    async def test_model_load_uses_correct_dtype_for_gpu(self):
         """Should use float16 for MPS/CUDA devices."""
+        # Setup torch with MPS available
+        mock_torch = MagicMock()
         mock_torch.backends.mps.is_available.return_value = True
+        mock_torch.cuda.is_available.return_value = False
         mock_torch.float16 = "FLOAT16_DTYPE"
 
-        config = SmolVLMConfig(device="auto")
-        adapter = SmolVLMAdapter(config)
+        # Setup transformers mocks
+        mock_processor_class = MagicMock()
+        mock_model_class = MagicMock()
 
-        await adapter._ensure_model_loaded()
+        # Setup processor mock
+        mock_processor = MagicMock()
+        mock_processor_class.from_pretrained.return_value = mock_processor
 
-        # Verify float16 was used
-        call_kwargs = mock_transformers["model_class"].from_pretrained.call_args[1]
-        assert call_kwargs["torch_dtype"] == "FLOAT16_DTYPE"
+        # Setup model mock
+        mock_model = MagicMock()
+        mock_model.to.return_value = mock_model
+        mock_model_class.from_pretrained.return_value = mock_model
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_model_load_uses_float32_for_cpu(self, mock_torch, mock_transformers):
+        mock_transformers = MagicMock()
+        mock_transformers.AutoProcessor = mock_processor_class
+        mock_transformers.AutoModelForVision2Seq = mock_model_class
+
+        with patch.dict(
+            "sys.modules", {"torch": mock_torch, "transformers": mock_transformers}
+        ):
+            config = SmolVLMConfig(device="auto")
+            adapter = SmolVLMAdapter(config)
+
+            await adapter._ensure_model_loaded()
+
+            # Verify float16 was used
+            call_kwargs = mock_model_class.from_pretrained.call_args[1]
+            assert call_kwargs["torch_dtype"] == "FLOAT16_DTYPE"
+
+    async def test_model_load_uses_float32_for_cpu(self):
         """Should use float32 for CPU device."""
+        # Setup torch with CPU only
+        mock_torch = MagicMock()
         mock_torch.backends.mps.is_available.return_value = False
         mock_torch.cuda.is_available.return_value = False
         mock_torch.float32 = "FLOAT32_DTYPE"
 
-        adapter = SmolVLMAdapter()
-        await adapter._ensure_model_loaded()
+        # Setup transformers mocks
+        mock_processor_class = MagicMock()
+        mock_model_class = MagicMock()
 
-        call_kwargs = mock_transformers["model_class"].from_pretrained.call_args[1]
-        assert call_kwargs["torch_dtype"] == "FLOAT32_DTYPE"
+        # Setup processor mock
+        mock_processor = MagicMock()
+        mock_processor_class.from_pretrained.return_value = mock_processor
+
+        # Setup model mock
+        mock_model = MagicMock()
+        mock_model.to.return_value = mock_model
+        mock_model_class.from_pretrained.return_value = mock_model
+
+        mock_transformers = MagicMock()
+        mock_transformers.AutoProcessor = mock_processor_class
+        mock_transformers.AutoModelForVision2Seq = mock_model_class
+
+        with patch.dict(
+            "sys.modules", {"torch": mock_torch, "transformers": mock_transformers}
+        ):
+            adapter = SmolVLMAdapter()
+            await adapter._ensure_model_loaded()
+
+            call_kwargs = mock_model_class.from_pretrained.call_args[1]
+            assert call_kwargs["torch_dtype"] == "FLOAT32_DTYPE"
 
 
 class TestImageLoading:
@@ -406,31 +494,97 @@ class TestBatchInference:
 class TestResourceCleanup:
     """Test resource cleanup functionality."""
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_close_clears_model(self, mock_torch, mock_smolvlm_adapter):
+    async def test_close_clears_model(self):
         """Model should be set to None on close."""
-        adapter = mock_smolvlm_adapter
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
 
-        await adapter.close()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            # Create adapter with mocked model
+            adapter = SmolVLMAdapter()
+            mock_model = MagicMock()
+            mock_model.cpu.return_value = None
+            adapter._model = mock_model
+            adapter._processor = MagicMock()
+            adapter._device = "cpu"
 
-        assert adapter._model is None
+            await adapter.close()
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_close_moves_model_to_cpu(self, mock_torch, mock_smolvlm_adapter):
+            assert adapter._model is None
+
+    async def test_close_moves_model_to_cpu(self):
         """Model should be moved to CPU before clearing."""
-        adapter = mock_smolvlm_adapter
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
 
-        await adapter.close()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            # Create adapter with mocked model
+            adapter = SmolVLMAdapter()
+            mock_model = MagicMock()
+            adapter._model = mock_model
+            adapter._processor = MagicMock()
+            adapter._device = "cpu"
 
-        adapter._model.cpu.assert_called_once()
+            await adapter.close()
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_close_is_idempotent(self, mock_torch):
+            mock_model.cpu.assert_called_once()
+
+    async def test_close_is_idempotent(self):
         """Close can be called multiple times safely."""
-        adapter = SmolVLMAdapter()
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
 
-        await adapter.close()
-        await adapter.close()  # Should not raise
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = SmolVLMAdapter()
+
+            await adapter.close()
+            await adapter.close()  # Should not raise
+
+    async def test_close_empties_cuda_cache(self):
+        """Should empty CUDA cache when available."""
+        # Setup torch with CUDA available
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = True
+        mock_torch.cuda.empty_cache = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            # Create adapter with mocked model on CUDA
+            adapter = SmolVLMAdapter()
+            mock_model = MagicMock()
+            adapter._model = mock_model
+            adapter._processor = MagicMock()
+            adapter._device = "cuda"
+
+            await adapter.close()
+
+            mock_torch.cuda.empty_cache.assert_called_once()
+
+    async def test_close_empties_mps_cache(self):
+        """Should empty MPS cache when available."""
+        # Setup torch with MPS available
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = True
+        mock_torch.cuda.is_available.return_value = False
+        mock_torch.mps.empty_cache = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            # Create adapter with mocked model on MPS
+            adapter = SmolVLMAdapter()
+            mock_model = MagicMock()
+            adapter._model = mock_model
+            adapter._processor = MagicMock()
+            adapter._device = "mps"
+
+            await adapter.close()
+
+            mock_torch.mps.empty_cache.assert_called_once()
 
 
 class TestContextManager:
@@ -444,20 +598,56 @@ class TestContextManager:
 
         assert result is adapter
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_context_manager_exit_calls_close(self, mock_torch):
+    async def test_context_manager_exit_calls_close(self):
         """__aexit__ should call close()."""
-        adapter = SmolVLMAdapter()
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
 
-        with patch.object(adapter, "close", new_callable=AsyncMock) as mock_close:
-            await adapter.__aexit__(None, None, None)
-            mock_close.assert_called_once()
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = SmolVLMAdapter()
 
-    @patch("src.etl.adapters.vlm.smolvlm.torch")
-    async def test_context_manager_full_lifecycle(self, mock_torch):
+            with patch.object(adapter, "close", new_callable=AsyncMock) as mock_close:
+                await adapter.__aexit__(None, None, None)
+                mock_close.assert_called_once()
+
+    async def test_context_manager_full_lifecycle(self):
         """Complete context manager flow should work."""
-        async with SmolVLMAdapter() as adapter:
-            assert adapter is not None
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
 
-        # After exiting, model should be cleaned up
-        assert adapter._model is None
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            async with SmolVLMAdapter() as adapter:
+                assert adapter is not None
+                # Optionally set up a model to verify cleanup
+                mock_model = MagicMock()
+                adapter._model = mock_model
+
+            # After exiting, model should be cleaned up
+            assert adapter._model is None
+
+    async def test_context_manager_with_exception(self):
+        """Context manager should cleanup even when exception occurs."""
+        # Setup torch mocks
+        mock_torch = MagicMock()
+        mock_torch.backends.mps.is_available.return_value = False
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            adapter = None
+            try:
+                async with SmolVLMAdapter() as adapter:
+                    # Set up a model
+                    mock_model = MagicMock()
+                    adapter._model = mock_model
+                    # Raise an exception
+                    raise ValueError("Test exception")
+            except ValueError:
+                pass  # Expected
+
+            # Model should still be cleaned up
+            assert adapter is not None
+            assert adapter._model is None

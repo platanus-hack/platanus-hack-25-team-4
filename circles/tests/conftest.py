@@ -15,12 +15,15 @@ Fixtures are organized into sections:
 8. Marker Configuration
 """
 
-import os
-from datetime import datetime
+import tempfile
+from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
+
 from src.profile_schema import (
     AgentPersonaHeuristic,
     Availability,
@@ -63,7 +66,6 @@ except ImportError:
 
 try:
     from celery import Celery
-    from celery.result import EagerResult
 except ImportError:
     Celery = None
 
@@ -123,10 +125,9 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
         autocommit=False,
     )
 
-    async with async_session_factory() as session:
-        async with session.begin():
-            yield session
-            # Transaction rolls back automatically
+    async with async_session_factory() as session, session.begin():
+        yield session
+        # Transaction rolls back automatically
 
 
 # ============================================================================
@@ -603,9 +604,7 @@ def profile_factory(db_session):
                 identity_tags=["User"],
             ),
             "lifestyle_and_rhythms": LifestyleAndRhythms(
-                availability=Availability(
-                    weekday_evenings="Flexible", weekend_mornings="Flexible"
-                ),
+                availability=Availability(weekday_evenings="Flexible", weekend_mornings="Flexible"),
                 weekly_rhythm="Standard",
                 mobility=Mobility(preferred_radius_km=10, transport_modes=["Any"]),
                 preferred_locations=["Anywhere"],
@@ -654,9 +653,9 @@ def profile_factory(db_session):
 
 
 @pytest.fixture
-def sample_photo_bytes() -> bytes:
+def sample_png_bytes() -> bytes:
     """
-    Provide sample photo data as bytes (minimal PNG).
+    Provide sample PNG photo data as bytes (minimal PNG).
 
     This is a very small valid PNG file (8x8 transparent).
     """
@@ -900,9 +899,7 @@ def freeze_time():
 def pytest_configure(config):
     """Register custom pytest markers."""
     config.addinivalue_line("markers", "unit: Unit tests that don't require database")
-    config.addinivalue_line(
-        "markers", "integration: Integration tests that require database"
-    )
+    config.addinivalue_line("markers", "integration: Integration tests that require database")
     config.addinivalue_line("markers", "slow: Slow-running tests (> 1 second)")
     config.addinivalue_line("markers", "api: API endpoint tests (requires FastAPI)")
     config.addinivalue_line("markers", "e2e: End-to-end tests")

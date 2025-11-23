@@ -7,11 +7,11 @@ Tests PDF document processing with text extraction and content analysis.
 import logging
 
 import pytest
+
 from src.etl.processors.pdf_processor import (
     PDFProcessor,
     SimpleProcessorResult,
 )
-
 from tests.fixtures.fixture_factories import DataTypeFixtures
 from tests.unit.utils.assertions import (
     assert_content_keys,
@@ -176,12 +176,15 @@ This architecture supports both current requirements and future scaling needs.
         assert result is None
 
     def test_markdown_to_text_headers(self, pdf_processor):
-        """Test markdown-to-text conversion removes headers."""
+        """Test markdown-to-text conversion removes header markdown syntax."""
         markdown = "# Main Title\n## Subsection\n### Minor Header\nContent here"
         text = pdf_processor._markdown_to_text(markdown)
 
-        assert "Main Title" not in text
-        assert "#" not in text
+        # Header text should be preserved, just without the # symbols
+        assert "Main Title" in text
+        assert "Subsection" in text
+        assert "Minor Header" in text
+        assert "#" not in text  # Markdown syntax should be removed
         assert "Content here" in text
 
     def test_markdown_to_text_bold_italic(self, pdf_processor):

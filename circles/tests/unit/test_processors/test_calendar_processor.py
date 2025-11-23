@@ -281,6 +281,37 @@ class TestCalendarProcessorIntegration:
         """Create a CalendarProcessor instance."""
         return CalendarProcessor()
 
+    @pytest.fixture
+    def sample_ics_file(self, tmp_path):
+        """Create a sample ICS calendar file."""
+        ics_content = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+SUMMARY:Team Standup
+DESCRIPTION:Daily team synchronization
+DTSTART:20240115T090000Z
+DTEND:20240115T093000Z
+LOCATION:Conference Room A
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Project Review
+DESCRIPTION:Monthly project status review
+DTSTART:20240115T140000Z
+DTEND:20240115T153000Z
+LOCATION:Virtual - Zoom
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:Coffee Meeting
+DTSTART:20240116T100000Z
+DTEND:20240116T110000Z
+END:VEVENT
+END:VCALENDAR
+"""
+        ics_path = tmp_path / "calendar.ics"
+        ics_path.write_text(ics_content)
+        return ics_path
+
     @pytest.mark.asyncio
     async def test_process_with_fixture_data(self):
         """Test processing with fixture data."""

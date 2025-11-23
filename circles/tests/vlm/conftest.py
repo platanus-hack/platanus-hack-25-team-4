@@ -119,3 +119,76 @@ def mock_torch_with_cuda(mock_torch):
     """Mock torch with CUDA (NVIDIA GPU) available."""
     mock_torch.cuda.is_available.return_value = True
     return mock_torch
+
+
+@pytest.fixture
+def sample_image_path(tmp_path):
+    """Create a sample image file for testing."""
+    image_path = tmp_path / "test_image.jpg"
+    # Minimal valid JPEG bytes
+    image_bytes = bytes(
+        [
+            0xFF,
+            0xD8,
+            0xFF,
+            0xE0,
+            0x00,
+            0x10,
+            0x4A,
+            0x46,
+            0x49,
+            0x46,
+            0x00,
+            0x01,
+            0x01,
+            0x00,
+            0x00,
+            0x01,
+            0x00,
+            0x01,
+            0x00,
+            0x00,
+            0xFF,
+            0xD9,
+        ]
+    )
+    image_path.write_bytes(image_bytes)
+    return image_path
+
+
+@pytest.fixture
+def sample_image_bytes():
+    """Create sample image bytes for testing."""
+    # Minimal valid JPEG bytes
+    return bytes(
+        [
+            0xFF,
+            0xD8,
+            0xFF,
+            0xE0,
+            0x00,
+            0x10,
+            0x4A,
+            0x46,
+            0x49,
+            0x46,
+            0x00,
+            0x01,
+            0x01,
+            0x00,
+            0x00,
+            0x01,
+            0x00,
+            0x01,
+            0x00,
+            0x00,
+            0xFF,
+            0xD9,
+        ]
+    )
+
+
+@pytest.fixture
+def nonexistent_path(tmp_path):
+    """Return a path that doesn't exist for testing error cases."""
+    return tmp_path / "nonexistent_file.jpg"

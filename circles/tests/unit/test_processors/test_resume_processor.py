@@ -320,6 +320,38 @@ class TestResumeProcessorIntegration:
         """Create a ResumeProcessor instance."""
         return ResumeProcessor()
 
+    @pytest.fixture
+    def sample_resume_txt_file(self, tmp_path):
+        """Create a temporary text resume file."""
+        resume_content = """
+John Doe
+john@example.com | (555) 123-4567
+San Francisco, CA
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 5+ years in full-stack development.
+
+WORK EXPERIENCE
+Tech Corp (2020-2024)
+Senior Software Engineer
+- Led microservices development
+- Managed team of 4 engineers
+
+StartUp Inc (2018-2020)
+Software Engineer
+- Built core platform features
+- Implemented CI/CD pipelines
+
+EDUCATION
+University of California, B.S. Computer Science (2018)
+
+SKILLS
+Python, JavaScript, React, PostgreSQL, Docker, AWS
+"""
+        resume_path = tmp_path / "resume.txt"
+        resume_path.write_text(resume_content)
+        return resume_path
+
     @pytest.mark.asyncio
     async def test_process_with_fixture_data(self, resume_processor):
         """Test processing with fixture data."""

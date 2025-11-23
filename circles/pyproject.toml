@@ -26,6 +26,7 @@ dependencies = [
     "openai>=1.0.0", # OpenAI API client for GPT models
     "anthropic>=0.18.0", # Anthropic API client for Claude models
     "reportlab>=4.4.5",
+    "fakeredis>=2.32.1",
 ]
 
 [tool.setuptools]
@@ -34,7 +35,6 @@ package-dir = {"" = "."}
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
-packages = ["src", "src.etl", "src.consolidation"]
 
 [project.optional-dependencies]
 dev = [
@@ -82,8 +82,6 @@ select = [
 ]
 ignore = [
     "E501",   # line-too-long (handled by formatter)
-    "W503",   # line-break-before-binary-operator
-    "E203",   # whitespace-before-punctuation
     "C901",   # complex-statement (too strict)
 ]
 

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .api.routers import consolidation, upload
+from .api.routers import consolidation, profile, upload
 from .core import get_settings
 
 
@@ -43,7 +43,7 @@ allowed_origins = [
 ]
 
 # Add production origins if configured
-if hasattr(settings, "frontend_url") and settings.frontend_url:
+if settings.frontend_url:
     allowed_origins.append(settings.frontend_url)
 
 app.add_middleware(
@@ -60,6 +60,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Include routers
 app.include_router(upload.router)
 app.include_router(consolidation.router)
+app.include_router(profile.router)
 
 
 @app.get("/")
