@@ -49,6 +49,9 @@ model User {
   lastName      String?
   passwordHash  String?
   profile       Json?
+  // User's current position (updated via PUT /users/position endpoint)
+  // This position is used as the center for all of the user's circles
+  // Collision detection queries join this position with Circle radiusMeters
   centerLat     Float?
   centerLon     Float?
   createdAt     DateTime @default(now())
@@ -91,11 +94,15 @@ model AgentPersona {
   user User @relation(fields: [userId], references: [id])
 }
 
+// Circle represents a user's area of interest for matching
+// Circles do NOT have a fixed geographic center - they follow the user's current position
+// The circle's center is always the owner user's current position (User.centerLat/centerLon)
+// radiusMeters defines how far from the user's position other users can be to collide with this circle
 model Circle {
   id           String       @id @default(uuid())
   userId       String
-  objective    String
-  radiusMeters Float
+  objective    String       // What the user is looking for in this circle
+  radiusMeters Float        // Collision radius around the user's current position
   startAt      DateTime
   expiresAt    DateTime
   status       CircleStatus
