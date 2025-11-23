@@ -1,7 +1,7 @@
-import { COLLISION_CONFIG } from '../config/collision.config.js';
-import { getRedisClient } from '../infrastructure/redis.js';
-import { prisma } from '../lib/prisma.js';
-import { agentMatchService } from '../services/agent-match-service.js';
+import { COLLISION_CONFIG } from "../config/collision.config.js";
+import { getRedisClient } from "../infrastructure/redis.js";
+import { prisma } from "../lib/prisma.js";
+import { agentMatchService } from "../services/agent-match-service.js";
 
 /**
  * Stability Queue Worker
@@ -19,27 +19,24 @@ export class StabilityWorker {
    */
   start(intervalMs: number = 5000): void {
     if (this.isRunning) {
-      console.warn('Stability worker is already running');
+      console.warn("Stability worker is already running");
       return;
     }
 
     this.isRunning = true;
-    console.info('Starting stability worker with interval', { intervalMs });
+    console.info("Starting stability worker with interval", { intervalMs });
 
     // Run immediately on start
-    this.tick().catch(error => {
-      console.error('Stability worker error on initial tick', { error });
+    this.tick().catch((error) => {
+      console.error("Stability worker error on initial tick", { error });
     });
 
     // Then run at intervals
-    setInterval(
-      () => {
-        this.tick().catch(error => {
-          console.error('Stability worker error', { error });
-        });
-      },
-      intervalMs
-    );
+    setInterval(() => {
+      this.tick().catch((error) => {
+        console.error("Stability worker error", { error });
+      });
+    }, intervalMs);
   }
 
   /**
@@ -54,12 +51,12 @@ export class StabilityWorker {
       const stableCollisions = await redis.zrange(
         COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
         0,
-        -1
+        -1,
       );
 
-      console.debug('Stability worker tick', {
+      console.debug("Stability worker tick", {
         stableCollisions: stableCollisions.length,
-        timestamp: new Date(now).toISOString()
+        timestamp: new Date(now).toISOString(),
       });
 
       // Step 2: Process each stable collision
@@ -68,21 +65,21 @@ export class StabilityWorker {
           // Get collision details from Redis
           const collisionData = await redis.hgetall(
             COLLISION_CONFIG.REDIS_KEYS.collisionActive(
-              collisionKey.split(':')[0]!,
-              collisionKey.split(':')[1]!
-            )
+              collisionKey.split(":")[0]!,
+              collisionKey.split(":")[1]!,
+            ),
           );
 
           if (!collisionData || Object.keys(collisionData).length === 0) {
             // Collision data expired, remove from queue
             await redis.zrem(
               COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
-              collisionKey
+              collisionKey,
             );
             continue;
           }
 
-          const firstSeenAt = parseInt(collisionData.firstSeenAt || '0');
+          const firstSeenAt = parseInt(collisionData.firstSeenAt || "0");
           const stabilityDuration = now - firstSeenAt;
 
           // Check if collision has been stable for 30 seconds
@@ -92,10 +89,13 @@ export class StabilityWorker {
             const circle2Id = collisionData.circle2Id;
 
             if (!circle1Id || !circle2Id) {
-              console.warn('Missing circle IDs in collision data', { collisionData });
+              console.warn("Missing circle IDs in collision data, skipping", {
+                collisionData,
+                collisionKey,
+              });
               await redis.zrem(
                 COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
-                collisionKey
+                collisionKey,
               );
               continue;
             }
@@ -103,18 +103,35 @@ export class StabilityWorker {
             // Get collision event from database
             const collisionEvent = await prisma.collisionEvent.findUnique({
               where: {
-                unique_collision_pair: { circle1Id, circle2Id }
-              }
+                unique_collision_pair: { circle1Id, circle2Id },
+              },
             });
 
             if (!collisionEvent) {
-              console.warn('Collision event not found in database', {
-                circle1Id,
-                circle2Id
+              console.warn(
+                "CollisionEvent not found in database - may have been created with null circle1Id",
+                {
+                  circle1Id,
+                  circle2Id,
+                  collisionKey,
+                },
+              );
+              await redis.zrem(
+                COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
+                collisionKey,
+              );
+              continue;
+            }
+
+            // Skip if already has a mission
+            if (collisionEvent.missionId) {
+              console.debug("Collision already has mission, skipping", {
+                collisionEventId: collisionEvent.id,
+                missionId: collisionEvent.missionId,
               });
               await redis.zrem(
                 COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
-                collisionKey
+                collisionKey,
               );
               continue;
             }
@@ -126,36 +143,35 @@ export class StabilityWorker {
               user1Id: collisionEvent.user1Id,
               user2Id: collisionEvent.user2Id,
               distance: collisionEvent.distanceMeters,
-              timestamp: now
+              timestamp: now,
             });
 
             if (mission) {
-              console.info('Mission created from stable collision', {
+              console.info("Mission created from stable collision", {
                 missionId: mission.id,
                 circle1Id,
-                circle2Id
+                circle2Id,
               });
             }
 
             // Remove from stability queue
             await redis.zrem(
               COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
-              collisionKey
+              collisionKey,
             );
           }
         } catch (error) {
-          console.error('Error processing collision in stability queue', {
+          console.error("Error processing collision in stability queue", {
             collisionKey,
-            error
+            error,
           });
         }
       }
 
       // Step 3: Clean up stale collisions
       await this.cleanupStaleCollisions();
-
     } catch (error) {
-      console.error('Stability worker tick failed', { error });
+      console.error("Stability worker tick failed", { error });
     }
   }
 
@@ -171,26 +187,26 @@ export class StabilityWorker {
       const staleCollisions = await prisma.collisionEvent.findMany({
         where: {
           firstSeenAt: {
-            lt: new Date(now - staleThresholdMs)
+            lt: new Date(now - staleThresholdMs),
           },
           status: {
-            in: ['detecting', 'stable']
-          }
+            in: ["detecting", "stable"],
+          },
         },
         select: {
           id: true,
           circle1Id: true,
-          circle2Id: true
-        }
+          circle2Id: true,
+        },
       });
 
       if (staleCollisions.length === 0) {
         return;
       }
 
-      console.info('Cleaning up stale collisions', {
+      console.info("Cleaning up stale collisions", {
         count: staleCollisions.length,
-        threshold: staleThresholdMs
+        threshold: staleThresholdMs,
       });
 
       const redis = getRedisClient();
@@ -199,30 +215,29 @@ export class StabilityWorker {
       await prisma.collisionEvent.updateMany({
         where: {
           id: {
-            in: staleCollisions.map((c: { id: string }) => c.id)
-          }
+            in: staleCollisions.map((c: { id: string }) => c.id),
+          },
         },
         data: {
-          status: 'expired'
-        }
+          status: "expired",
+        },
       });
 
       // Clean up Redis keys
       for (const collision of staleCollisions) {
         const collisionKey = COLLISION_CONFIG.REDIS_KEYS.collisionActive(
           collision.circle1Id,
-          collision.circle2Id
+          collision.circle2Id,
         );
 
         await redis.del(collisionKey);
         await redis.zrem(
           COLLISION_CONFIG.REDIS_KEYS.collisionStabilityQueue,
-          `${collision.circle1Id}:${collision.circle2Id}`
+          `${collision.circle1Id}:${collision.circle2Id}`,
         );
       }
-
     } catch (error) {
-      console.error('Failed to cleanup stale collisions', { error });
+      console.error("Failed to cleanup stale collisions", { error });
     }
   }
 
@@ -231,7 +246,7 @@ export class StabilityWorker {
    */
   stop(): void {
     this.isRunning = false;
-    console.info('Stability worker stopped');
+    console.info("Stability worker stopped");
   }
 }
 
