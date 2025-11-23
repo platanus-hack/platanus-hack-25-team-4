@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:circles/core/auth/unauthorized_handler.dart';
 import 'package:http/http.dart' as http;
 
 import '../../auth/domain/auth_session.dart';
@@ -20,6 +21,12 @@ class UserApiClient {
     final uri = _buildUri('/users/me');
     final response = await _client.get(uri, headers: _headers(session));
     final decoded = _decodeBody(response.body);
+
+    if (response.statusCode == 401) {
+      await UnauthorizedHandler.handleUnauthorized();
+      throw UserApiException(UnauthorizedHandler.sessionExpiredMessage);
+    }
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = _extractMessage(decoded) ??
           'No se pudo obtener el usuario actual (${response.statusCode}).';
