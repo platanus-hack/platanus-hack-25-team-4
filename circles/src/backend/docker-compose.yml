@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: garapadev/postgres-postgis-pgvector:15-stable
+    container_name: circles-postgres
+    environment:
+      POSTGRES_USER: circles_admin
+      POSTGRES_PASSWORD: QFqMQ6dKJYFikWfHe5u3b06da1sjnAAT
+      POSTGRES_DB: circles-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U circles_admin -d circles-db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: circles-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: circles-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://circles_admin:QFqMQ6dKJYFikWfHe5u3b06da1sjnAAT@postgres:5432/circles-db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-S03XHM57Lk8YOMD4jBArgrRHxhWmllEbrbGumDZYnLE=}
+      MISSION_QUEUE_NAME: interview-missions
+      MISSION_WORKER_CONCURRENCY: 5
+      EMAIL_PROVIDER: dev
+      API_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        npm start
+      "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

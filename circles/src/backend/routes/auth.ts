@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
+import { authRateLimiter } from '../middlewares/rate-limiter.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import { AuthService, SignupInput, MagicLinkRequestInput } from '../services/auth-service.js';
 import { AppError } from '../types/app-error.type.js';
@@ -37,6 +38,7 @@ const authService = new AuthService();
  */
 authRouter.post(
   '/auth/signup',
+  authRateLimiter,
   validateBody(signupSchema),
   asyncHandler(async (req, res) => {
     const { email, password, firstName, lastName } = signupSchema.parse(req.body);
@@ -60,6 +62,7 @@ authRouter.post(
  */
 authRouter.post(
   '/auth/login',
+  authRateLimiter,
   validateBody(loginSchema),
   asyncHandler(async (req, res) => {
     const { email, password } = loginSchema.parse(req.body);
@@ -76,6 +79,7 @@ authRouter.post(
  */
 authRouter.post(
   '/auth/magic-link/request',
+  authRateLimiter,
   validateBody(magicLinkRequestSchema),
   asyncHandler(async (req, res) => {
     const { email, firstName } = magicLinkRequestSchema.parse(req.body);
@@ -97,6 +101,7 @@ authRouter.post(
  */
 authRouter.get(
   '/auth/verify-magic-link',
+  authRateLimiter,
   asyncHandler(async (req, res) => {
     const { token } = req.query;
 

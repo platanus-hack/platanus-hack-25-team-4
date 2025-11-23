@@ -9,6 +9,7 @@ import type {
   OwnerTurnGoal,
   TranscriptMessage
 } from './types.js';
+import { agentMatchService } from '../../services/agent-match-service.js';
 import { logger } from '../../utils/logger.util.js';
 
 const defaultConfig: InterviewFlowConfig = {
@@ -155,6 +156,20 @@ export class InterviewFlowService implements IInterviewFlowService {
         visitor_user_id: mission.visitor_user_id,
         notification_text: judgeDecision.notification_text
       });
+    }
+
+    // Call agent match service to handle mission result and create match if needed
+    try {
+      await agentMatchService.handleMissionResult(mission.mission_id, {
+        success: true,
+        matchMade: judgeDecision.should_notify,
+        transcript: JSON.stringify(transcript),
+        judgeDecision: judgeDecision
+      });
+      logger.info(`Mission ${mission.mission_id} result processed successfully`);
+    } catch (error) {
+      logger.error(`Failed to process mission ${mission.mission_id} result`, error);
+      // Don't throw - mission completed successfully, match creation failure is a separate concern
     }
 
     return {

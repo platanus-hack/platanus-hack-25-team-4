@@ -1,13 +1,72 @@
+import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { COLLISION_CONFIG } from '../config/collision.config.js';
+// Mock missionQueue module
+vi.mock('../interview/missionQueue.js', () => ({
+  enqueueMission: vi.fn().mockResolvedValue('test-job-id'),
+  missionQueue: {}
+}));
+
+// Type definitions for mock data structures
+interface MockMission {
+  id: string;
+  ownerUserId: string;
+  visitorUserId: string;
+  ownerCircleId: string;
+  visitorCircleId: string;
+  collisionEventId: string;
+  status: string;
+  transcript?: unknown;
+  judgeDecision?: unknown;
+  failureReason?: string | null;
+  completedAt?: Date | null;
+  startedAt?: Date | null;
+  attemptNumber: number;
+}
+
+interface MockCollisionEvent {
+  id: string;
+  circle1Id: string;
+  circle2Id: string;
+  user1Id: string;
+  user2Id: string;
+  distanceMeters: number;
+  status: string;
+  missionId?: string;
+}
+
+interface MockMatch {
+  id: string;
+  primaryUserId: string;
+  secondaryUserId: string;
+  primaryCircleId: string;
+  secondaryCircleId: string;
+  type: string;
+  worthItScore: number;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface MockChat {
+  id: string;
+  primaryUserId: string;
+  secondaryUserId: string;
+  createdAt: Date;
+}
+
+interface MockCircle {
+  userId: string;
+  status: string;
+  expiresAt: Date;
+}
 
 // In-memory stores used by Prisma and Redis mocks
-const missions: any[] = [];
-const collisionEvents: any[] = [];
-const matches: any[] = [];
-const chats: any[] = [];
-const circles: any[] = [];
+const missions: MockMission[] = [];
+const collisionEvents: MockCollisionEvent[] = [];
+const matches: MockMatch[] = [];
+const chats: MockChat[] = [];
+const circles: MockCircle[] = [];
 
 const redisHashes = new Map<string, Record<string, string>>();
 const redisStrings = new Map<string, string>();
@@ -15,25 +74,32 @@ const redisStrings = new Map<string, string>();
 vi.mock('../lib/prisma.js', () => {
   const prisma = {
     interviewMission: {
-      create: vi.fn(async ({ data }: { data: any }) => {
-        const mission = {
+      create: vi.fn(async ({ data }: { data: Partial<MockMission> }) => {
+        const mission: MockMission = {
           id: `mission-${missions.length + 1}`,
           transcript: null,
           judgeDecision: null,
           failureReason: null,
           completedAt: null,
           startedAt: null,
+          attemptNumber: 1,
+          ownerUserId: '',
+          visitorUserId: '',
+          ownerCircleId: '',
+          visitorCircleId: '',
+          collisionEventId: '',
+          status: 'pending',
           ...data
         };
         missions.push(mission);
         return mission;
       }),
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => {
-        return missions.find(mission => mission.id === where.id) ?? null;
+        return missions.find((mission) => mission.id === where.id) ?? null;
       }),
       update: vi.fn(
         async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-          const mission = missions.find(m => m.id === where.id);
+          const mission = missions.find((m) => m.id === where.id);
           if (!mission) {
             throw new Error('Mission not found');
           }
@@ -53,7 +119,7 @@ vi.mock('../lib/prisma.js', () => {
         }) => {
           const { circle1Id, circle2Id } = where.unique_collision_pair;
           const event = collisionEvents.find(
-            (e: any) => e.circle1Id === circle1Id && e.circle2Id === circle2Id
+            (e) => e.circle1Id === circle1Id && e.circle2Id === circle2Id
           );
           if (!event) {
             throw new Error('CollisionEvent not found');
@@ -64,32 +130,49 @@ vi.mock('../lib/prisma.js', () => {
       )
     },
     match: {
-      create: vi.fn(async ({ data }: { data: any }) => {
-        const match = {
+      create: vi.fn(async ({ data }: { data: Partial<MockMatch> }) => {
+        const match: MockMatch = {
           id: `match-${matches.length + 1}`,
           createdAt: new Date(),
           updatedAt: new Date(),
+          primaryUserId: '',
+          secondaryUserId: '',
+          primaryCircleId: '',
+          secondaryCircleId: '',
+          type: 'match',
+          worthItScore: 0.95,
+          status: 'pending_accept',
           ...data
         };
         matches.push(match);
         return match;
       }),
-      findFirst: vi.fn(async ({ where }: { where: any }) => {
-        if (where.OR) {
-          // Handle OR queries for inverse match checking
-          return matches.find((m: any) => {
-            return where.OR.some((condition: any) => {
-              return (
-                m.primaryUserId === condition.primaryUserId &&
-                m.secondaryUserId === condition.secondaryUserId
-              );
-            });
-          }) ?? null;
+      findFirst: vi.fn(
+        async ({
+          where
+        }: {
+          where: {
+            OR?: Array<{ primaryUserId: string; secondaryUserId: string }>;
+          };
+        }) => {
+          if (where.OR) {
+            // Handle OR queries for inverse match checking
+            return (
+              matches.find((m) => {
+                return where.OR!.some((condition) => {
+                  return (
+                    m.primaryUserId === condition.primaryUserId &&
+                    m.secondaryUserId === condition.secondaryUserId
+                  );
+                });
+              }) ?? null
+            );
+          }
+          return null;
         }
-        return null;
-      }),
-      update: vi.fn(async ({ where, data }: { where: { id: string }; data: any }) => {
-        const match = matches.find((m: any) => m.id === where.id);
+      ),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const match = matches.find((m) => m.id === where.id);
         if (!match) {
           throw new Error('Match not found');
         }
@@ -98,41 +181,65 @@ vi.mock('../lib/prisma.js', () => {
       })
     },
     chat: {
-      create: vi.fn(async ({ data }: { data: any }) => {
-        const chat = {
+      create: vi.fn(async ({ data }: { data: Partial<MockChat> }) => {
+        const chat: MockChat = {
           id: `chat-${chats.length + 1}`,
           createdAt: new Date(),
+          primaryUserId: '',
+          secondaryUserId: '',
           ...data
         };
         chats.push(chat);
         return chat;
       }),
-      findFirst: vi.fn(async ({ where }: { where: any }) => {
-        if (where.OR) {
-          return chats.find((c: any) => {
-            return where.OR.some((condition: any) => {
-              return (
-                c.primaryUserId === condition.primaryUserId &&
-                c.secondaryUserId === condition.secondaryUserId
-              );
-            });
-          }) ?? null;
+      findFirst: vi.fn(
+        async ({
+          where
+        }: {
+          where: {
+            OR?: Array<{ primaryUserId: string; secondaryUserId: string }>;
+          };
+        }) => {
+          if (where.OR) {
+            return (
+              chats.find((c) => {
+                return where.OR!.some((condition) => {
+                  return (
+                    c.primaryUserId === condition.primaryUserId &&
+                    c.secondaryUserId === condition.secondaryUserId
+                  );
+                });
+              }) ?? null
+            );
+          }
+          return null;
         }
-        return null;
-      })
+      )
     },
     circle: {
-      findFirst: vi.fn(async ({ where }: { where: any }) => {
-        return circles.find((c: any) => {
+      findFirst: vi.fn(
+        async ({
+          where
+        }: {
+          where: {
+            userId: string;
+            status: string;
+            expiresAt?: { gt: Date };
+          };
+        }) => {
           return (
-            c.userId === where.userId &&
-            c.status === where.status &&
-            (!where.expiresAt || c.expiresAt > where.expiresAt.gt)
+            circles.find((c) => {
+              return (
+                c.userId === where.userId &&
+                c.status === where.status &&
+                (!where.expiresAt || c.expiresAt > where.expiresAt.gt)
+              );
+            }) ?? null
           );
-        }) ?? null;
-      })
+        }
+      )
     },
-    $transaction: vi.fn(async (callback: any) => {
+    $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>): Promise<unknown> => {
       // Simple mock: execute the callback with the prisma object itself
       // In a real transaction, this would be isolated
       return await callback(prisma);
