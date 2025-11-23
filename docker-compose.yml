@@ -97,7 +97,7 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --email jonanortizvega@gmail.com -d backend.circles.lat --agree-tos --keep-until-expiring --non-interactive
+    command: certonly --webroot -w /var/www/certbot --email jonanortizvega@gmail.com -d backend2.circles.lat --agree-tos --keep-until-expiring --non-interactive
     depends_on:
       - nginx
 
