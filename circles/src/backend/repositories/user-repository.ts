@@ -49,7 +49,7 @@ export class UserRepository {
   async updateProfile(id: string, profile: UserProfile): Promise<User | undefined> {
     const user = await prisma.user.update({
       where: { id },
-      data: { profile }
+      data: { profile: JSON.parse(JSON.stringify(profile)) }
     });
 
     return this.mapToUser(user);
