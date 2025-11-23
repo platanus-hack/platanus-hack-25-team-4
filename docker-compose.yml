@@ -55,7 +55,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
-      ETL_SERVICE_URL: http://etl:8000
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
     volumes:
       # Persist Prisma schema and migrations back to the host repo
       - ./circles/src/backend/prisma:/app/prisma
@@ -64,8 +64,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      etl:
-        condition: service_healthy
     networks:
       - circles-network
     healthcheck:
@@ -73,39 +71,6 @@ services:
         [
           "CMD-SHELL",
           "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  etl:
-    build:
-      context: ./circles
-      dockerfile: Dockerfile.etl
-    container_name: circles-etl
-    restart: unless-stopped
-    ports:
-      - "${ETL_PORT:-8000}:8000"
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-circles_db}?schema=public
-      REDIS_URL: redis://redis:6379
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      FRONTEND_URL: ${FRONTEND_URL:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      JWT_SECRET_KEY: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - circles-network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://localhost:8000/health || exit 1",
         ]
       interval: 10s
       timeout: 5s
@@ -124,7 +89,6 @@ services:
       - ./certbot/www:/var/www/certbot
     depends_on:
       - backend
-      - etl
       - db
     networks:
       - circles-network

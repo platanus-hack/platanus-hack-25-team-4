@@ -25,7 +25,7 @@ export type CreateCircleInput = {
   userId: string;
   objective: string;
   radiusMeters: number;
-  expiresAt?: Date | undefined;
+  expiresAt?: Date | null | undefined;
   startAt: Date;
   status?: CircleStatus;
 };

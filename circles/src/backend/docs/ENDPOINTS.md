@@ -323,7 +323,6 @@ Request:
 {
   "objective": "Play tennis",
   "radiusMeters": 500,
-  "startAt": "2025-11-23T10:00:00Z",
   "expiresAt": "2025-11-24T10:00:00Z"
 }
 ```
@@ -408,6 +407,8 @@ Response:
 
 Requires: `Authorization: Bearer <JWT_TOKEN>`
 Only circle owner can update
+Note: status is not updatable via this endpoint.
+Fields: objective (required), radiusMeters (required), expiresAt (optional)
 
 Request:
 
@@ -415,7 +416,7 @@ Request:
 {
   "objective": "Play tennis tournament",
   "radiusMeters": 1000,
-  "status": "paused"
+  "expiresAt": "2025-11-25T10:00:00Z"
 }
 ```
 
@@ -1149,6 +1150,290 @@ Response: `204 No Content`
 
 ---
 
+## Matches Endpoints
+
+All matches endpoints require authentication (`Authorization: Bearer <JWT_TOKEN>`).
+
+### GET /api/matches
+
+List matches for the authenticated user with optional filtering and pagination.
+
+Query parameters:
+- `status` (optional): one of `pending_accept`, `active`, `declined`, `expired`
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+
+Response:
+
+```json
+{
+  "matches": [
+    {
+      "id": "uuid",
+      "primaryUserId": "uuid",
+      "secondaryUserId": "uuid",
+      "primaryCircleId": "uuid",
+      "secondaryCircleId": "uuid",
+      "type": "match",
+      "worthItScore": 0.85,
+      "status": "pending_accept",
+      "explanationSummary": "Nearby interests overlap",
+      "createdAt": "2025-11-22T10:00:00Z",
+      "updatedAt": "2025-11-22T10:05:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/matches/:id
+
+Get a single match by ID (only participants can view).
+
+Response:
+
+```json
+{
+  "match": {
+    "id": "uuid",
+    "primaryUserId": "uuid",
+    "secondaryUserId": "uuid",
+    "primaryCircleId": "uuid",
+    "secondaryCircleId": "uuid",
+    "type": "match",
+    "worthItScore": 0.85,
+    "status": "pending_accept",
+    "explanationSummary": "Nearby interests overlap",
+    "createdAt": "2025-11-22T10:00:00Z",
+    "updatedAt": "2025-11-22T10:05:00Z"
+  }
+}
+```
+
+---
+
+### POST /api/matches/:id/accept
+
+Accept a match and transition it to active.
+
+Response:
+
+```json
+{
+  "message": "Match accepted successfully",
+  "match": {
+    "id": "uuid",
+    "status": "active"
+  }
+}
+```
+
+---
+
+### POST /api/matches/:id/decline
+
+Decline a match.
+
+Response:
+
+```json
+{
+  "message": "Match declined successfully",
+  "match": {
+    "id": "uuid",
+    "status": "declined"
+  }
+}
+```
+
+---
+
+## Collisions Endpoints
+
+All collisions endpoints require authentication (`Authorization: Bearer <JWT_TOKEN>`).
+
+### GET /api/collisions
+
+List collision events for the authenticated user with optional filtering and pagination.
+
+Query parameters:
+- `status` (optional): one of `detecting`, `stable`, `expired`
+- `startDate` (optional, ISO date string)
+- `endDate` (optional, ISO date string)
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+
+Response:
+
+```json
+{
+  "collisions": [
+    {
+      "id": "uuid",
+      "distanceMeters": 32.4,
+      "firstSeenAt": "2025-11-22T10:00:00Z",
+      "status": "detecting",
+      "circle1": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500, "userId": "uuid" },
+      "circle2": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500, "userId": "uuid" },
+      "user1": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A" },
+      "user2": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B" },
+      "mission": { "id": "uuid", "status": "pending", "createdAt": "2025-11-22T10:01:00Z" }
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/collisions/:id
+
+Get a single collision event by ID (only participants can view).
+
+Response:
+
+```json
+{
+  "collision": {
+    "id": "uuid",
+    "distanceMeters": 32.4,
+    "firstSeenAt": "2025-11-22T10:00:00Z",
+    "status": "stable",
+    "circle1": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500, "userId": "uuid" },
+    "circle2": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500, "userId": "uuid" },
+    "user1": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A" },
+    "user2": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B" },
+    "mission": { "id": "uuid", "status": "pending", "createdAt": "2025-11-22T10:01:00Z" },
+    "match": { "id": "uuid", "status": "pending_accept", "createdAt": "2025-11-22T10:02:00Z" }
+  }
+}
+```
+
+---
+
+## Missions Endpoints
+
+All missions endpoints require authentication (`Authorization: Bearer <JWT_TOKEN>`).
+
+### GET /api/missions
+
+List interview missions related to circle collisions with optional filtering and pagination.
+
+Query parameters:
+- `status` (optional): one of `pending`, `in_progress`, `completed`, `failed`
+- `startDate` (optional, ISO date string)
+- `endDate` (optional, ISO date string)
+- `limit` (optional, default 20, max 100)
+- `offset` (optional, default 0)
+
+Response:
+
+```json
+{
+  "missions": [
+    {
+      "id": "uuid",
+      "status": "pending",
+      "createdAt": "2025-11-22T10:02:00Z",
+      "ownerUser": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A" },
+      "visitorUser": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B" },
+      "collisionEvent": {
+        "id": "uuid",
+        "distanceMeters": 32.4,
+        "firstSeenAt": "2025-11-22T10:00:00Z",
+        "status": "detecting",
+        "circle1": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500 },
+        "circle2": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500 }
+      }
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/missions/:id
+
+Get a single mission by ID (only participants can view).
+
+Response:
+
+```json
+{
+  "mission": {
+    "id": "uuid",
+    "status": "in_progress",
+    "createdAt": "2025-11-22T10:02:00Z",
+    "ownerUser": { "id": "uuid", "email": "a@example.com", "firstName": "Alice", "lastName": "A", "profile": null },
+    "visitorUser": { "id": "uuid", "email": "b@example.com", "firstName": "Bob", "lastName": "B", "profile": null },
+    "collisionEvent": {
+      "id": "uuid",
+      "distanceMeters": 32.4,
+      "firstSeenAt": "2025-11-22T10:00:00Z",
+      "detectedAt": "2025-11-22T10:00:30Z",
+      "status": "stable",
+      "circle1": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500 },
+      "circle2": { "id": "uuid", "objective": "Play tennis", "radiusMeters": 500 }
+    }
+  }
+}
+```
+
+---
+
+## Locations Endpoint
+
+All locations endpoints require authentication (`Authorization: Bearer <JWT_TOKEN>`).
+
+### POST /api/locations/update
+
+Update user location; processing is asynchronous with rate limiting.
+
+Notes:
+- Rate limit: 1 update per 10 seconds per user.
+- Debounce: ignores stale timestamps and tiny movements.
+- Updates `users.centerLat/centerLon` and triggers collision detection.
+
+Request:
+
+```json
+{
+  "latitude": 40.7128,
+  "longitude": -74.0060,
+  "accuracy": 5,
+  "timestamp": "2025-11-22T10:00:00Z"
+}
+```
+
+Response (202 Accepted):
+
+```json
+{
+  "message": "Location update accepted and being processed",
+  "location": { "latitude": 40.7128, "longitude": -74.006, "accuracy": 5 }
+}
+```
+
+---
+
 ## Error Responses
 
 All endpoints return errors as:
@@ -1196,10 +1481,35 @@ All endpoints are currently on version `v1` (included in internal routing but no
 
 ## Key Concepts
 
+#### Circles
+- **Planned**: `GET /circulos`, `POST /circulos`, `PUT /circulos/{id}`, `DELETE /circulos/{id}`
+- **Implemented**: `GET /api/circles/me`, `POST /api/circles`, `PATCH /api/circles/:id`, `DELETE /api/circles/:id`
+- **Similarities**: Full CRUD operations supported
+- **Differences**:
+  - Field names: `objetivo` (planned) → `objective` (implemented)
+  - Field names: `radioKm` (planned) → `radiusMeters` (implemented)
+  - Field names: `expiraEn` (planned) → `expiresAt` (implemented)
+  - `expiresAt` expects full ISO date-time (not just a date) and can be omitted for an open-ended circle
+  - ✨ **Added**: `GET /api/circles/:id` - get single circle by ID
+  - ✨ **Added**: `startAt` field - not in original plan
+  - ✨ **Added**: `status` field with enum values (active/paused/expired)
+  - Update uses `PATCH` (partial) instead of `PUT` (full replace), with `objective` and `radiusMeters` required, `expiresAt` optional
+  - Planned `descripcion` field not implemented
+  - Planned `ubicacion` object not implemented (uses flat `centerLat`/`centerLon` instead)
+  - Language: Spanish route names (planned) → English route names (implemented)
 ### Circles
 
 Circles represent a user's geographic area of interest. They are centered at the user's current position (`centerLat`/`centerLon`) with a specified radius. Multiple circles can be active simultaneously for different objectives.
 
+### ✅ Matches & Interactions
+- **Implemented**:
+  - `GET /api/matches`
+  - `GET /api/matches/:id`
+  - `POST /api/matches/:id/accept`
+  - `POST /api/matches/:id/decline`
+- **Differences from plan**:
+  - Paths and naming differ from planned Spanish routes
+  - Accept/decline align with interaction actions from plan
 ### Collisions
 
 When two circles from different users overlap geographically, a collision event is created. The system tracks collision stability over time (detecting → stable → mission_created).
@@ -1210,14 +1520,37 @@ When a collision reaches stable status, an interview mission is created where an
 
 ### Matches
 
+- **Health endpoint**: `GET /api/health` - API health check
+- **Magic link authentication**: Complete passwordless flow with token generation and verification
+- **Individual circle retrieval**: `GET /api/circles/:id`
+- **Circle status management**: Status field with active/paused/expired states
+- **Locations ingestion**: `POST /api/locations/update` with async processing and rate limiting
+- **Collisions & Missions**: Read endpoints for collision events and interview missions
 A match represents confirmed compatibility between two users. Matches can be initiated after interview missions or directly through collision analysis. Users must accept matches to enable direct communication.
 
 ### Location Ingestion
 
+1. **Language**: Original plan used Spanish naming (`circulos`, `matches`, `objetivo`), implementation uses English
+2. **Prefix**: All implemented routes use `/api` prefix
+3. **Authentication**: Implementation added magic link as alternative to password auth
+4. **Profile model**: Completely redesigned to focus on social matching attributes instead of basic user info
+5. **Location handling**: Planned nested object (`ubicacion: { lat, lng, ciudad }`), implemented uses flat fields (`centerLat`, `centerLon`)
+6. **Update operations**: Implementation uses `PATCH` for partial updates instead of `PUT`, with explicit required fields per endpoint
 Real-time location updates (via `POST /api/locations/update`) trigger background collision detection. The system maintains a 10-second rate limit per user to optimize resource usage.
 
 ---
 
+**Completion Status**:
+- ✅ Auth: 100% (+ magic link)
+- ✅ Users/Profile: 100% (profile endpoints are legacy)
+- ✅ Circles: 100% (status managed server-side)
+- ✅ Matches & Interactions: 100%
+- ✅ Chats & Messages: 100%
+- ✅ Locations: 100% (async, rate-limited ingestion)
+- ✅ Collisions: 100%
+- ✅ Missions: 100%
+
+**Overall Progress**: Backend endpoints implemented and aligned with current architecture
 ## Implementation Notes
 
 - All timestamps are in ISO 8601 format (UTC)

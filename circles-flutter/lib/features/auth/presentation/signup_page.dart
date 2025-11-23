@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/app_logo.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../data/auth_repository.dart';
@@ -89,7 +90,7 @@ class _SignUpPageState extends State<SignUpPage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crear cuenta'),
+        title: const AppLogo(text: 'Circles - Crear cuenta'),
       ),
       body: AuthLayout(
         title: 'Únete a Circles',
@@ -128,7 +129,7 @@ class _SignUpPageState extends State<SignUpPage> {
               TextFormField(
                 controller: _emailConfirmController,
                 keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
+                // Leave autofill off to avoid duplicate email input IDs on web.
                 decoration: const InputDecoration(
                   labelText: 'Confirmar correo',
                   prefixIcon: Icon(Icons.mark_email_read_outlined),

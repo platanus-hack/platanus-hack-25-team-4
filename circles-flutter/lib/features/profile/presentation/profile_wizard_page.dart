@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/domain/auth_session.dart';
+import '../../../core/widgets/app_logo.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile_validator.dart';
@@ -114,7 +115,7 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Completa tu perfil'),
+        title: const AppLogo(text: 'Circles - Completa tu perfil'),
         actions: [
           IconButton(
             onPressed: _submitting
@@ -142,6 +143,7 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
                 _customInterests.isNotEmpty ||
                 _customTitleController.text.isNotEmpty ||
                 _customDescController.text.isNotEmpty;
+            final colorScheme = Theme.of(context).colorScheme;
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -185,6 +187,11 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
                         'Intereses',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Seleccionar cada interés es opcional: marca solo lo que te importe (con uno basta para seguir).',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 12,
@@ -193,23 +200,35 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
                             ? WrapAlignment.center
                             : WrapAlignment.start,
                         children: [
-                          ..._presets.map(
-                            (preset) => SizedBox(
-                              width: adjustedWidth,
-                              child: _PresetCard(
-                                preset: preset,
-                                selected: _selectedPresets.contains(
-                                  preset.title,
+                          ..._presets.asMap().entries.map(
+                            (entry) {
+                              final preset = entry.value;
+                              return SizedBox(
+                                width: adjustedWidth,
+                                child: _PresetCard(
+                                  preset: preset,
+                                  selected: _selectedPresets.contains(
+                                    preset.title,
+                                  ),
+                                  controller:
+                                      _presetControllers[preset.title]!,
+                                  palette: _wizardPaletteForIndex(
+                                    colorScheme,
+                                    entry.key,
+                                  ),
+                                  onToggle: () => _togglePreset(preset.title),
                                 ),
-                                controller: _presetControllers[preset.title]!,
-                                onToggle: () => _togglePreset(preset.title),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                           SizedBox(
                             width: adjustedWidth,
                             child: _CustomInterestInputCard(
                               selected: customCardSelected,
+                              palette: _wizardPaletteForIndex(
+                                colorScheme,
+                                _presets.length,
+                              ),
                               titleController: _customTitleController,
                               descController: _customDescController,
                               submitting: _submitting,
@@ -404,6 +423,77 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
   }
 }
 
+class _WizardPalette {
+  const _WizardPalette({required this.base, required this.accent});
+
+  final Color base;
+  final Color accent;
+}
+
+_WizardPalette _wizardPaletteForIndex(ColorScheme colorScheme, int index) {
+  final palettes = [
+    _WizardPalette(
+      base: colorScheme.primary,
+      accent: colorScheme.secondary,
+    ),
+    _WizardPalette(
+      base: colorScheme.secondary,
+      accent: colorScheme.tertiary,
+    ),
+    _WizardPalette(
+      base: colorScheme.tertiary,
+      accent: colorScheme.primary,
+    ),
+  ];
+  return palettes[index % palettes.length];
+}
+
+class _WizardCardStyle {
+  const _WizardCardStyle({
+    required this.gradient,
+    required this.borderColor,
+    required this.iconColor,
+    required this.subtleTextColor,
+    required this.checkColor,
+    required this.shadowColor,
+  });
+
+  final Gradient gradient;
+  final Color borderColor;
+  final Color iconColor;
+  final Color subtleTextColor;
+  final Color checkColor;
+  final Color shadowColor;
+}
+
+_WizardCardStyle _wizardCardStyle({
+  required _WizardPalette palette,
+  required ColorScheme colorScheme,
+  required bool selected,
+}) {
+  final gradientStart = palette.base.withValues(alpha: selected ? 0.22 : 0.14);
+  final gradientEnd = palette.accent.withValues(alpha: selected ? 0.16 : 0.10);
+
+  return _WizardCardStyle(
+    gradient: LinearGradient(
+      colors: [gradientStart, gradientEnd],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderColor: palette.base.withValues(alpha: selected ? 0.32 : 0.22),
+    iconColor: Color.alphaBlend(
+      palette.base.withValues(alpha: 0.7),
+      colorScheme.onSurface,
+    ),
+    subtleTextColor: Color.alphaBlend(
+      palette.base.withValues(alpha: 0.55),
+      colorScheme.onSurfaceVariant,
+    ),
+    checkColor: selected ? palette.base : colorScheme.outline,
+    shadowColor: palette.base.withValues(alpha: 0.18),
+  );
+}
+
 class _CustomInterestCard extends StatelessWidget {
   const _CustomInterestCard({required this.interest, this.onDelete});
 
@@ -415,7 +505,7 @@ class _CustomInterestCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: colorScheme.secondary.withOpacity(0.4)),
+        side: BorderSide(color: colorScheme.secondary.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -457,6 +547,7 @@ class _CustomInterestCard extends StatelessWidget {
 class _CustomInterestInputCard extends StatelessWidget {
   const _CustomInterestInputCard({
     required this.selected,
+    required this.palette,
     required this.titleController,
     required this.descController,
     required this.onToggle,
@@ -465,6 +556,7 @@ class _CustomInterestInputCard extends StatelessWidget {
   });
 
   final bool selected;
+  final _WizardPalette palette;
   final TextEditingController titleController;
   final TextEditingController descController;
   final VoidCallback onToggle;
@@ -474,94 +566,101 @@ class _CustomInterestInputCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final style = _wizardCardStyle(
+      palette: palette,
+      colorScheme: colorScheme,
+      selected: selected,
+    );
     return Card(
-      elevation: selected ? 2 : 0,
-      color: selected
-          ? colorScheme.primary.withValues(alpha: 0.12)
-          : colorScheme.surface,
+      elevation: selected ? 3 : 1,
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: style.shadowColor,
       shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: selected ? colorScheme.primary : colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: style.borderColor),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onToggle,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.playlist_add,
-                      color: selected
-                        ? colorScheme.primary
-                          : colorScheme.onSurface,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Otro interés',
-                        style: Theme.of(context).textTheme.titleMedium,
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: style.gradient,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onToggle,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.playlist_add,
+                        color: style.iconColor,
                       ),
-                    ),
-                    Icon(
-                      selected
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: selected
-                          ? colorScheme.primary
-                          : colorScheme.outline,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Agrega cualquier interés que no veas en la lista.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (selected) ...[
-              const SizedBox(height: 8),
-              TextField(
-                controller: titleController,
-                enabled: !submitting,
-                decoration: const InputDecoration(
-                  labelText: 'Título',
-                  hintText: 'Ej. Comunidad, Arte, Tech meetups',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: descController,
-                enabled: !submitting,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  hintText: 'Describe brevemente este interés',
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Otro interés',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      Icon(
+                        selected
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                        color: style.checkColor,
+                      ),
+                    ],
                   ),
-                  onPressed: submitting ? null : onAdd,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar interés'),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Agrega cualquier interés que no veas en la lista.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: style.subtleTextColor,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleController,
+                  enabled: !submitting,
+                  decoration: const InputDecoration(
+                    labelText: 'Título',
+                    hintText: 'Ej. Comunidad, Arte, Tech meetups',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: descController,
+                  enabled: !submitting,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    hintText: 'Describe brevemente este interés',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.base,
+                      foregroundColor: colorScheme.onPrimary,
+                    ),
+                    onPressed: submitting ? null : onAdd,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Agregar interés'),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -572,80 +671,85 @@ class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.preset,
     required this.selected,
+    required this.palette,
     required this.controller,
     required this.onToggle,
   });
 
   final _Preset preset;
   final bool selected;
+  final _WizardPalette palette;
   final TextEditingController controller;
   final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final style = _wizardCardStyle(
+      palette: palette,
+      colorScheme: colorScheme,
+      selected: selected,
+    );
     return Card(
-      elevation: selected ? 2 : 0,
-      color: selected
-          ? colorScheme.primary.withValues(alpha: 0.12)
-          : colorScheme.surface,
+      elevation: selected ? 3 : 1,
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: style.shadowColor,
       shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: selected ? colorScheme.primary : colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: style.borderColor),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    preset.icon,
-                    color: selected
-                        ? colorScheme.primary
-                        : colorScheme.onSurface,
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: style.gradient,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(preset.icon, color: style.iconColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        preset.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: style.checkColor,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  preset.placeholder,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: style.subtleTextColor,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      preset.title,
-                      style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (selected) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      labelText: 'Describe este interés',
+                      hintText: preset.placeholder,
                     ),
                   ),
-                  Icon(
-                    selected
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    color: selected
-                        ? colorScheme.primary
-                        : colorScheme.outline,
-                  ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                preset.placeholder,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (selected) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: controller,
-                  decoration: InputDecoration(
-                    labelText: 'Describe este interés',
-                    hintText: preset.placeholder,
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -685,7 +789,7 @@ class _AccentChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.tertiaryContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colorScheme.tertiary.withOpacity(0.4)),
+        border: Border.all(color: colorScheme.tertiary.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

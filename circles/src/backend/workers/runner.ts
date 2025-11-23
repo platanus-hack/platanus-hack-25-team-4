@@ -1,6 +1,6 @@
 import { CleanupWorker } from './cleanup-worker.js';
 import { StabilityWorker } from './stability-worker.js';
-
+import { logger } from '../utils/logger.util.js';
 /**
  * Worker Runner
  * Orchestrates startup and lifecycle of all background workers
@@ -19,7 +19,7 @@ export class WorkerRunner {
    * Note: Mission processing is handled by BullMQ worker (missionWorkerRunner.ts)
    */
   startAll(): void {
-    console.info('Starting all workers...');
+    logger.info('Starting all workers...');
 
     // Start stability worker (5 second interval)
     this.stabilityWorker.start(5000);
@@ -27,14 +27,14 @@ export class WorkerRunner {
     // Start cleanup worker (10 minute interval)
     this.cleanupWorker.start(10 * 60 * 1000);
 
-    console.info('All workers started');
+    logger.info('All workers started');
   }
 
   /**
    * Start only stability worker
    */
   startStabilityWorker(): void {
-    console.info('Starting stability worker...');
+    logger.info('Starting stability worker...');
     this.stabilityWorker.start(5000);
   }
 
@@ -42,7 +42,7 @@ export class WorkerRunner {
    * Start only cleanup worker
    */
   startCleanupWorker(): void {
-    console.info('Starting cleanup worker...');
+    logger.info('Starting cleanup worker...');
     this.cleanupWorker.start(10 * 60 * 1000);
   }
 
@@ -50,10 +50,10 @@ export class WorkerRunner {
    * Stop all workers
    */
   stopAll(): void {
-    console.info('Stopping all workers...');
+    logger.info('Stopping all workers...');
     this.stabilityWorker.stop();
     this.cleanupWorker.stop();
-    console.info('All workers stopped');
+    logger.info('All workers stopped');
   }
 }
 
@@ -80,7 +80,7 @@ function getWorkersToStart(): string[] {
  * Can be invoked with: npm run workers
  */
 export async function startWorkers(): Promise<void> {
-  console.info('Collision matching system workers starting...');
+  logger.info('Collision matching system workers starting...');
 
   const runner = new WorkerRunner();
   const workersToStart = getWorkersToStart();
@@ -94,26 +94,26 @@ export async function startWorkers(): Promise<void> {
 
   // Handle graceful shutdown
   process.on('SIGTERM', () => {
-    console.info('SIGTERM received, stopping workers...');
+    logger.info('SIGTERM received, stopping workers...');
     runner.stopAll();
     process.exit(0);
   });
 
   process.on('SIGINT', () => {
-    console.info('SIGINT received, stopping workers...');
+    logger.info('SIGINT received, stopping workers...');
     runner.stopAll();
     process.exit(0);
   });
 
-  console.info('Workers running. Started:', workersToStart);
-  console.info('Set WORKERS environment variable to: stability, cleanup, or all (default)');
-  console.info('Note: Mission processing uses BullMQ (start with: npm run dev:mission-worker)');
+  logger.info('Workers running. Started:', workersToStart);
+  logger.info('Set WORKERS environment variable to: stability, cleanup, or all (default)');
+  logger.info('Note: Mission processing uses BullMQ (start with: npm run dev:mission-worker)');
 }
 
 // Start workers if this is the main module
 if (process.argv[1]?.endsWith('runner.ts') || process.argv[1]?.endsWith('runner.js')) {
   startWorkers().catch(error => {
-    console.error('Failed to start workers', error);
+    logger.error('Failed to start workers', error);
     process.exit(1);
   });
 }

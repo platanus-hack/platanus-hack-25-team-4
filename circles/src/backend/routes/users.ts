@@ -3,10 +3,12 @@ import { z } from 'zod';
 
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
+import { LocationService } from '../services/location-service.js';
 import { ProfileService } from '../services/profile-service.js';
 import { UserService } from '../services/user-service.js';
 import { UserProfile } from '../types/user.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
+import { logger } from '../utils/logger.util.js';
 
 const interestSchema = z.object({
   title: z.string().trim().min(1),
@@ -37,6 +39,7 @@ export const usersRouter = Router();
 // Service instances
 const userService = new UserService();
 const profileService = new ProfileService();
+const locationService = new LocationService();
 
 // ============================================================================
 // USER CRUD OPERATIONS
@@ -146,6 +149,7 @@ usersRouter.delete(
  * PATCH /users/me/position
  * Update user's current position (latitude and longitude)
  * This is used to center circles at the user's location
+ * Triggers collision detection for the new position
  */
 usersRouter.patch(
   '/users/me/position',
@@ -157,11 +161,42 @@ usersRouter.patch(
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
+    logger.info("[USERS] Updating user position", {
+      userId,
+      position: req.body,
+    });
 
     const parsed = updatePositionSchema.parse(req.body);
     const user = await userService.updatePosition(userId, parsed.centerLat, parsed.centerLon);
+    
+    logger.info("[USERS] User position updated in database", {
+      userId,
+      newPosition: { centerLat: parsed.centerLat, centerLon: parsed.centerLon }
+    });
+
+    // Trigger collision detection for the new position
+    // Using accuracy of 0 since this is a manual position update with high confidence
+    logger.info("[USERS] Triggering collision detection for position update", {
+      userId,
+      location: { latitude: parsed.centerLat, longitude: parsed.centerLon }
+    });
+    
+    locationService.updateUserLocation(
+      userId,
+      parsed.centerLat,
+      parsed.centerLon,
+      0, // accuracy: 0 for manual position update (high confidence)
+      new Date()
+    ).catch(error => {
+      logger.error('[USERS] Background collision detection failed after position update', error);
+      logger.debug('[USERS] Error context', {
+        userId,
+        position: { centerLat: parsed.centerLat, centerLon: parsed.centerLon }
+      });
+    });
+
     res.json({
-      message: 'Position updated successfully',
+      message: 'Position updated successfully and collision detection triggered',
       user
     });
   })

@@ -1,5 +1,6 @@
 import { Redis } from 'ioredis';
 
+import { logger } from '../utils/logger.util.js';
 let redisClient: Redis | null = null;
 
 export const getRedisClient = (): Redis => {
@@ -26,15 +27,15 @@ export const getRedisClient = (): Redis => {
   });
 
   client.on('error', (error: Error) => {
-    console.error('Redis client error:', error.message);
+    logger.error('Redis client error:', error.message);
   });
 
   client.on('close', () => {
-    console.warn('Redis client connection closed');
+    logger.warn('Redis client connection closed');
   });
 
   client.on('reconnecting', () => {
-    console.info('Redis client reconnecting');
+    logger.info('Redis client reconnecting');
   });
 
   redisClient = client;
@@ -55,7 +56,7 @@ export const checkRedisHealth = async (): Promise<boolean> => {
     const result = await client.ping();
     return result === 'PONG';
   } catch (error) {
-    console.error('Redis health check failed:', error);
+    logger.error('Redis health check failed:', error);
     return false;
   }
 };

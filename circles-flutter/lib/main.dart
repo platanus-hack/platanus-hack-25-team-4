@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'core/auth/unauthorized_handler.dart';
 import 'core/config/app_config.dart';
 import 'core/storage/credentials_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/background/location_reporting_worker.dart';
+import 'core/widgets/app_logo.dart';
 import 'features/app/presentation/authenticated_shell.dart';
 import 'features/auth/data/auth_api_client.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -82,6 +84,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    UnauthorizedHandler.register(_handleLogout);
     WidgetsBinding.instance.addObserver(this);
     if (_session != null) {
       _loadProfile(_session!);
@@ -125,6 +128,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    UnauthorizedHandler.clear();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -148,7 +152,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         final currentPermission = await Geolocator.checkPermission();
         if (currentPermission != LocationPermission.always) {
           final proceed = await _showBackgroundDisclosure();
-          if (!proceed) {
+          if (!proceed && currentPermission == LocationPermission.denied) {
             setState(() {
               _locationStatus = LocationPermissionState.denied;
             });
@@ -197,7 +201,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     try {
       final status = await _currentPermissionStatus();
       if (!mounted) return;
-      if (status == LocationPermissionState.granted) {
+      if (status == LocationPermissionState.granted ||
+          status == LocationPermissionState.foregroundOnly) {
         final session = _session;
         if (session != null) {
           final refreshedStatus = await widget.locationScheduler
@@ -219,10 +224,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         await _handleLocationPermissionStatus(status);
       }
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _checkingLocationPermission = false;
-      });
+      if (mounted) {
+        setState(() {
+          _checkingLocationPermission = false;
+        });
+      }
     }
   }
 
@@ -236,6 +242,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
     if (permission == LocationPermission.deniedForever) {
       return LocationPermissionState.deniedForever;
+    }
+    if (permission == LocationPermission.whileInUse) {
+      return LocationPermissionState.foregroundOnly;
     }
     return LocationPermissionState.denied;
   }
@@ -362,10 +371,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         onLogout: _handleLogout,
       );
     }
-    if (_checkingLocationPermission) {
-      return const _ProfileGateLoading();
-    }
-    if (_locationStatus != LocationPermissionState.granted) {
+    final requiresPermission =
+        _locationStatus == LocationPermissionState.denied ||
+            _locationStatus == LocationPermissionState.deniedForever ||
+            _locationStatus == LocationPermissionState.serviceDisabled;
+    if (requiresPermission) {
       return LocationPermissionRequiredPage(
         status: _locationStatus,
         onRequestPermission: () {
@@ -381,7 +391,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return AuthenticatedShell(
       session: session,
       baseUrl: widget.config.baseUrl,
-      mockApi: widget.config.mockAuth,
+      profileRepository: widget.profileRepository,
       onLogout: _handleLogout,
     );
   }
@@ -389,6 +399,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
 class LocationPermissionRequiredPage extends StatelessWidget {
   const LocationPermissionRequiredPage({
+    super.key,
     required this.status,
     required this.onRequestPermission,
     required this.onOpenSettings,
@@ -464,6 +475,8 @@ class LocationPermissionRequiredPage extends StatelessWidget {
     switch (status) {
       case LocationPermissionState.denied:
         return 'Necesitamos permiso de ubicación siempre para protegerte y enviar tu posición en segundo plano.';
+      case LocationPermissionState.foregroundOnly:
+        return 'Solo enviaremos tu ubicación mientras la app esté abierta. Activa “siempre” para cobertura en segundo plano.';
       case LocationPermissionState.deniedForever:
         return 'Habilita la ubicación siempre en los ajustes del sistema para usar la app.';
       case LocationPermissionState.serviceDisabled:
@@ -498,7 +511,7 @@ class _ProfileGateError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tu perfil'),
+        title: const AppLogo(text: 'Circles - Tu perfil'),
         actions: [
           IconButton(
             onPressed: () {

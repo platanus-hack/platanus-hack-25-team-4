@@ -46,6 +46,7 @@ services:
       MISSION_WORKER_CONCURRENCY: 5
       EMAIL_PROVIDER: dev
       API_URL: http://localhost:3000
+      LOG_LEVEL: debug
     ports:
       - "3000:3000"
     depends_on:

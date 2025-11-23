@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:circles/core/auth/unauthorized_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -91,28 +92,6 @@ class ProfileApiClient {
     return _parseResponse(response);
   }
 
-  Future<Map<String, dynamic>> _post({
-    required String path,
-    required String token,
-    required Map<String, dynamic> body,
-  }) async {
-    final uri = _buildUri(path);
-    http.Response response;
-    try {
-      response = await _client.post(
-        uri,
-        headers: {
-          ..._headers,
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
-      );
-    } catch (e) {
-      throw ProfileException('Error de red: $e');
-    }
-    return _parseResponse(response);
-  }
-
   Future<Map<String, dynamic>> _put({
     required String path,
     required String token,
@@ -135,8 +114,14 @@ class ProfileApiClient {
     return _parseResponse(response);
   }
 
-  Map<String, dynamic> _parseResponse(http.Response response) {
+  Future<Map<String, dynamic>> _parseResponse(http.Response response) async {
     final decoded = _decodeBody(response.body);
+
+    if (response.statusCode == 401) {
+      await UnauthorizedHandler.handleUnauthorized();
+      throw ProfileException(UnauthorizedHandler.sessionExpiredMessage);
+    }
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = _extractMessage(decoded) ??
           'La solicitud falló (${response.statusCode}).';

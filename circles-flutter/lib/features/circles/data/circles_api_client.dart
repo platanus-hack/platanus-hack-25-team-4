@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:circles/core/auth/unauthorized_handler.dart';
 import 'package:http/http.dart' as http;
 
 import '../../auth/domain/auth_session.dart';
@@ -8,18 +9,16 @@ import '../domain/circle.dart';
 class CirclesApiClient {
   CirclesApiClient({
     required this.baseUrl,
-    this.mockApi = false,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String baseUrl;
-  final bool mockApi;
   final http.Client _client;
 
   bool get _hasBaseUrl => baseUrl.isNotEmpty;
 
   Future<List<Circle>> list({required AuthSession session}) async {
-    if (mockApi || !_hasBaseUrl) return const <Circle>[];
+    _assertConfigured();
 
     final response = await _get(
       path: '/circles/me',
@@ -40,7 +39,7 @@ class CirclesApiClient {
     required AuthSession session,
     required Circle draft,
   }) async {
-    if (mockApi || !_hasBaseUrl) return draft;
+    _assertConfigured();
 
     final response = await _post(
       path: '/circles',
@@ -59,7 +58,7 @@ class CirclesApiClient {
     required String id,
     required Circle draft,
   }) async {
-    if (mockApi || !_hasBaseUrl) return draft;
+    _assertConfigured();
 
     final response = await _patch(
       path: '/circles/$id',
@@ -77,7 +76,7 @@ class CirclesApiClient {
     required AuthSession session,
     required String id,
   }) async {
-    if (mockApi || !_hasBaseUrl) return;
+    _assertConfigured();
     await _delete(path: '/circles/$id', session: session);
   }
 
@@ -124,7 +123,7 @@ class CirclesApiClient {
   }) async {
     final uri = _buildUri(path);
     final response = await _client.delete(uri, headers: _headers(session));
-    _processResponse(response, expectEmpty: true);
+    await _processResponse(response, expectEmpty: true);
   }
 
   Map<String, String> _headers(AuthSession session) => {
@@ -139,11 +138,16 @@ class CirclesApiClient {
     return Uri.parse('$trimmedBase/$cleanPath');
   }
 
-  Map<String, dynamic> _processResponse(
+  Future<Map<String, dynamic>> _processResponse(
     http.Response response, {
     bool expectEmpty = false,
-  }) {
+  }) async {
     final decoded = _decodeBody(response.body);
+
+    if (response.statusCode == 401) {
+      await UnauthorizedHandler.handleUnauthorized();
+      throw CircleApiException(UnauthorizedHandler.sessionExpiredMessage);
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (expectEmpty) return <String, dynamic>{};
@@ -176,6 +180,14 @@ class CirclesApiClient {
       if (candidate is String && candidate.isNotEmpty) return candidate;
     }
     return null;
+  }
+
+  void _assertConfigured() {
+    if (!_hasBaseUrl) {
+      throw CircleApiException(
+        'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
+      );
+    }
   }
 }
 

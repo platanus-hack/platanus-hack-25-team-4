@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/app_logo.dart';
 import '../../app/app_state.dart';
 import '../domain/chat_message.dart';
 
@@ -20,6 +21,14 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
   void initState() {
     super.initState();
     _controller = TextEditingController();
+    widget.state.loadMessagesForChat(widget.chatId).then((_) {
+      if (mounted) setState(() {});
+    }).catchError((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos cargar los mensajes.')),
+      );
+    });
   }
 
   @override
@@ -33,13 +42,15 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
     final chat = widget.state.chatById(widget.chatId);
     if (chat == null || chat.id.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Chat')),
+        appBar: AppBar(
+          title: const AppLogo(text: 'Circles - Chat'),
+        ),
         body: const Center(child: Text('Chat no encontrado')),
       );
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(chat.personName),
+        title: AppLogo(text: 'Circles - ${chat.personName}'),
         bottom: chat.circleObjective != null
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(24),
@@ -55,12 +66,24 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
       ),
       body: Column(
         children: [
-          Expanded(child: _MessageList(messages: chat.messages)),
+          Expanded(
+            child: _MessageList(
+              messages: chat.messages,
+              currentIdentity: widget.state.currentIdentity,
+            ),
+          ),
           _Composer(
             controller: _controller,
-            onSend: (text) {
-              widget.state.sendMessage(chat.id, text);
-              setState(() {});
+            onSend: (text) async {
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await widget.state.sendMessage(chat.id, text);
+                if (mounted) setState(() {});
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('No pudimos enviar el mensaje: $e')),
+                );
+              }
             },
           ),
         ],
@@ -70,9 +93,13 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
 }
 
 class _MessageList extends StatelessWidget {
-  const _MessageList({required this.messages});
+  const _MessageList({
+    required this.messages,
+    required this.currentIdentity,
+  });
 
   final List<ChatMessage> messages;
+  final String currentIdentity;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +110,7 @@ class _MessageList extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final message = messages[messages.length - 1 - index];
-        final isMine = message.senderId.contains('@');
+        final isMine = message.senderId == currentIdentity;
         final colorScheme = Theme.of(context).colorScheme;
         final align = isMine
             ? CrossAxisAlignment.end

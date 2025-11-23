@@ -5,6 +5,7 @@ import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import { LocationService } from '../services/location-service.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
+import { logger } from '../utils/logger.util.js';
 
 const updateLocationSchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -30,9 +31,16 @@ function checkRateLimit(userId: string): boolean {
 
   if (!lastUpdate || now - lastUpdate >= 10000) {
     lastLocationUpdate.set(userId, now);
+    logger.debug("[COLLISION_PIPELINE] Rate limit: Update allowed", { userId });
     return true;
   }
 
+  const timeSinceLastUpdate = now - lastUpdate;
+  logger.debug("[COLLISION_PIPELINE] Rate limit: Update rate limited", {
+    userId,
+    timeSinceLastUpdate,
+    maxAllowed: 10000,
+  });
   return false;
 }
 
@@ -47,12 +55,22 @@ locationsRouter.post(
   validateBody(updateLocationSchema),
   asyncHandler(async (req, res) => {
     if (!req.user) {
+      logger.warn("[COLLISION_PIPELINE] Location endpoint: Unauthorized request");
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
+    const userId = req.user.userId;
+    logger.info("[COLLISION_PIPELINE] Location endpoint: Request received", {
+      userId,
+      body: req.body,
+    });
+
     // Check rate limit
-    if (!checkRateLimit(req.user.userId)) {
+    if (!checkRateLimit(userId)) {
+      logger.warn("[COLLISION_PIPELINE] Location endpoint: Rate limited", {
+        userId,
+      });
       res.status(429).json({
         error: 'Too many location updates. Maximum 1 per 10 seconds.'
       });
@@ -61,16 +79,22 @@ locationsRouter.post(
 
     const { latitude, longitude, accuracy, timestamp } = updateLocationSchema.parse(req.body);
 
+    logger.info("[COLLISION_PIPELINE] Location endpoint: Starting async processing", {
+      userId,
+      location: { latitude, longitude, accuracy },
+      timestamp,
+    });
+
     // Process location update asynchronously
-    locationService.updateUserLocation(
-      req.user.userId,
+    await locationService.updateUserLocation(
+      userId,
       latitude,
       longitude,
       accuracy,
       timestamp ? new Date(timestamp) : new Date()
     ).catch(error => {
-      console.error('Background location processing failed', {
-        userId: req.user?.userId,
+      logger.error('[COLLISION_PIPELINE] Background location processing failed', {
+        userId,
         error
       });
     });
