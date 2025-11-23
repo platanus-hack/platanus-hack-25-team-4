@@ -40,16 +40,20 @@ engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create async engine
-async_database_url = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+# Convert sync URL to async URL format
+async_database_url = DATABASE_URL
+if "sqlite://" in DATABASE_URL:
+    async_database_url = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+elif "postgresql://" in DATABASE_URL:
+    async_database_url = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+
 async_engine = create_async_engine(
     async_database_url,
     echo=os.getenv("SQL_ECHO", "False").lower() == "true",
 )
 
 # Create async session factory
-AsyncSessionLocal = sessionmaker(
-    async_engine, class_=AsyncSession, expire_on_commit=False
-)
+AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 def create_db_and_tables():
