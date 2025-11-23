@@ -30,8 +30,14 @@ missionsRouter.get(
       return;
     }
 
-    const { status, limit, offset, startDate, endDate } =
-      queryParamsSchema.parse(req.query);
+    // Validate query parameters
+    const parseResult = queryParamsSchema.safeParse(req.query);
+    if (!parseResult.success) {
+      res.status(400).json({ error: parseResult.error.errors });
+      return;
+    }
+
+    const { status, limit, offset, startDate, endDate } = parseResult.data;
 
     // Build where clause
     const where: Prisma.InterviewMissionWhereInput = {
