@@ -11,13 +11,13 @@ import { asyncHandler } from '../utils/async-handler.util.js';
 const createCircleSchema = z.object({
   objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.coerce.date().optional(),
 });
 
 const updateCircleSchema = z.object({
   objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  expiresAt: z.string().datetime().optional()
+  expiresAt: z.coerce.date().optional()
 });
 
 export const circlesRouter = Router();
@@ -36,13 +36,12 @@ circlesRouter.post(
     }
 
     const parsed = createCircleSchema.parse(req.body);
-    const expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : undefined;
 
     const circle = await circleService.create({
       userId: req.user.userId,
       objective: parsed.objective,
       radiusMeters: parsed.radiusMeters,
-      expiresAt,
+      expiresAt: parsed.expiresAt,
       startAt: new Date(),
       status: CircleStatus.ACTIVE
     });
@@ -104,7 +103,7 @@ circlesRouter.patch(
     const updateInput: UpdateCircleInput = {
       objective: parsed.objective,
       radiusMeters: parsed.radiusMeters,
-      expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : undefined
+      expiresAt: parsed.expiresAt
     };
     const circle = await circleService.update(circleId, req.user.userId, updateInput);
     res.json({ circle });
