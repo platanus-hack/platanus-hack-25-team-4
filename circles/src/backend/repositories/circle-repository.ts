@@ -19,7 +19,7 @@ export class CircleRepository {
         objective: input.objective,
         radiusMeters: input.radiusMeters,
         startAt: input.startAt,
-        expiresAt: input.expiresAt,
+        expiresAt: input.expiresAt ?? new Date(),
         status: input.status ?? CircleStatus.ACTIVE
       }
     });

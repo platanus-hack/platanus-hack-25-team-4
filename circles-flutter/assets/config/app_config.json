@@ -1,4 +1,4 @@
 {
-  "baseUrl": "https://api.example.com",
-  "mockAuth": true
+  "baseUrl": "http://172.20.10.3:3000/api",
+  "mockAuth": false
 }

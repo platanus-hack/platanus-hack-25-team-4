@@ -104,7 +104,7 @@ model Circle {
   objective    String       // What the user is looking for in this circle
   radiusMeters Float        // Collision radius around the user's current position
   startAt      DateTime
-  expiresAt    DateTime
+  expiresAt    DateTime?
   status       CircleStatus
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

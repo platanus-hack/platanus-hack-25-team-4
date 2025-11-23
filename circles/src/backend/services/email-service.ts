@@ -1,4 +1,5 @@
 import { AwsSesEmailService } from './aws-ses-email-service.js';
+import { ResendEmailService } from './resend-email-service.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.util.js';
 
@@ -9,36 +10,61 @@ export type EmailOptions = {
   text?: string;
 };
 
-// Use AWS SES in production if credentials are provided, otherwise use dev mode
-let emailService: {
+// Email service interface
+interface EmailServiceInterface {
   sendMagicLink(email: string, magicLink: string, firstName?: string): Promise<void>;
   sendWelcome(email: string, firstName?: string): Promise<void>;
-};
+}
 
-if (env.nodeEnv === 'production' && env.awsAccessKeyId && env.awsSecretAccessKey) {
-  // Production: AWS SES
-  emailService = new AwsSesEmailService();
-} else {
-  // Development: Console logging
-  class DevEmailService {
-    async sendMagicLink(email: string, magicLink: string, firstName?: string): Promise<void> {
-      const name = firstName || 'User';
-      logger.info(`📧 Magic link sent to ${email}`);
-      console.log('\n🔗 MAGIC LINK (DEV MODE):');
-      console.log(`To: ${email}`);
-      console.log(`Name: ${name}`);
-      console.log(`Link: ${magicLink}`);
-      console.log('\n');
-    }
-
-    async sendWelcome(email: string, firstName?: string): Promise<void> {
-      const name = firstName || 'User';
-      logger.info(`📧 Welcome email sent to ${email}`);
-      console.log(`✅ Welcome to Circles, ${name}!\n`);
-    }
+// Development email service for logging
+class DevEmailService implements EmailServiceInterface {
+  async sendMagicLink(email: string, magicLink: string, firstName?: string): Promise<void> {
+    const name = firstName || 'User';
+    logger.info(`📧 Magic link sent to ${email}`);
+    console.log('\n🔗 MAGIC LINK (DEV MODE):');
+    console.log(`To: ${email}`);
+    console.log(`Name: ${name}`);
+    console.log(`Link: ${magicLink}`);
+    console.log('\n');
   }
 
-  emailService = new DevEmailService();
+  async sendWelcome(email: string, firstName?: string): Promise<void> {
+    const name = firstName || 'User';
+    logger.info(`📧 Welcome email sent to ${email}`);
+    console.log(`✅ Welcome to Circles, ${name}!\n`);
+  }
 }
+
+// Select email service based on configuration
+function selectEmailService(): EmailServiceInterface {
+  // If explicitly set, use the chosen provider
+  if (env.emailProvider === 'resend' && env.resendApiKey) {
+    logger.info('📧 Using Resend as email provider');
+    return new ResendEmailService();
+  }
+
+  if (env.emailProvider === 'aws-ses' && env.awsAccessKeyId && env.awsSecretAccessKey) {
+    logger.info('📧 Using AWS SES as email provider');
+    return new AwsSesEmailService();
+  }
+
+  // Auto-detect: Resend if API key is provided
+  if (env.resendApiKey) {
+    logger.info('📧 Using Resend as email provider (auto-detected)');
+    return new ResendEmailService();
+  }
+
+  // Fallback to AWS SES in production
+  if (env.nodeEnv === 'production' && env.awsAccessKeyId && env.awsSecretAccessKey) {
+    logger.info('📧 Using AWS SES as email provider (production fallback)');
+    return new AwsSesEmailService();
+  }
+
+  // Development: Console logging
+  logger.info('📧 Using Dev email service (console logging)');
+  return new DevEmailService();
+}
+
+const emailService = selectEmailService();
 
 export { emailService };

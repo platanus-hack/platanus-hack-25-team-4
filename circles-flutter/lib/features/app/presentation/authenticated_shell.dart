@@ -5,6 +5,7 @@ import '../../app/app_state.dart';
 import '../../auth/domain/auth_session.dart';
 import '../../chats/presentation/chats_page.dart';
 import '../../circles/presentation/circles_page.dart';
+import '../../circles/data/circles_api_client.dart';
 import '../../home/presentation/home_dashboard_page.dart';
 import '../../matches/presentation/matches_page.dart';
 import '../../profile/presentation/profile_page.dart';
@@ -13,11 +14,15 @@ class AuthenticatedShell extends StatefulWidget {
   const AuthenticatedShell({
     super.key,
     required this.session,
+    required this.baseUrl,
+    this.mockApi = false,
     required this.onLogout,
   });
 
   final AuthSession session;
-  final VoidCallback onLogout;
+  final String baseUrl;
+  final bool mockApi;
+  final Future<void> Function() onLogout;
 
   @override
   State<AuthenticatedShell> createState() => _AuthenticatedShellState();
@@ -30,7 +35,13 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
   @override
   void initState() {
     super.initState();
-    _state = AppState(session: widget.session);
+    _state = AppState(
+      session: widget.session,
+      circlesApiClient: CirclesApiClient(
+        baseUrl: widget.baseUrl,
+        mockApi: widget.mockApi,
+      ),
+    );
     _state.addListener(_onStateChanged);
     _state.initialize();
   }
@@ -52,28 +63,16 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
         state: _state,
         onOpenProfile: _openProfile,
       ),
-      CirclesPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
-      MatchesPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
-      ChatsPage(
-        state: _state,
-        onOpenProfile: _openProfile,
-      ),
+      CirclesPage(state: _state, onOpenProfile: _openProfile),
+      MatchesPage(state: _state, onOpenProfile: _openProfile),
+      ChatsPage(state: _state, onOpenProfile: _openProfile),
     ];
     return Scaffold(
       body: Row(
         children: [
           if (isWide) _NavRail(index: _index, onSelect: _onSelect),
           Expanded(
-            child: IndexedStack(
-              index: _index,
-              children: pages,
-            ),
+            child: IndexedStack(index: _index, children: pages),
           ),
         ],
       ),
@@ -120,10 +119,8 @@ class _AuthenticatedShellState extends State<AuthenticatedShell> {
   void _openProfile() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProfilePage(
-          session: widget.session,
-          onLogout: widget.onLogout,
-        ),
+        builder: (_) =>
+            ProfilePage(session: widget.session, onLogout: widget.onLogout),
       ),
     );
   }
