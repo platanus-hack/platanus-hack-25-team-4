@@ -30,6 +30,10 @@ export class AwsSesEmailService {
             Estamos muy emocionados de tenerte aquí. Haz clic en el botón de abajo para acceder a tu cuenta o crear una nueva.
           </p>
           
+          <p style="color: #5B5FEE; font-size: 15px; line-height: 1.6; text-align: center; font-weight: 600; margin: 20px 0;">
+            Crea tu primer círculo en 2 minutos y conecta con cientos de personas
+          </p>
+          
           <div style="text-align: center; margin: 35px 0;">
             <a href="${magicLink}" style="background: linear-gradient(135deg, #5B5FEE 0%, #FF8A3D 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(91, 95, 238, 0.4); transition: transform 0.2s ease;">
               ✨ Acceder con Magic Link
@@ -67,6 +71,8 @@ export class AwsSesEmailService {
 ¡Bienvenido a Circles, ${name}! 🎯
 
 Estamos muy emocionados de tenerte aquí.
+
+Crea tu primer círculo en 2 minutos y conecta con cientos de personas
 
 Accede a tu cuenta usando este enlace:
 ${magicLink}
@@ -129,6 +135,10 @@ El equipo de Circles
             ¡Tu cuenta ha sido creada exitosamente! Ahora es momento de explorar, conectar y descubrir comunidades increíbles que comparten tus intereses.
           </p>
           
+          <p style="color: #5B5FEE; font-size: 15px; line-height: 1.6; text-align: center; font-weight: 600; margin: 20px 0;">
+            Crea tu primer círculo en 2 minutos y conecta con cientos de personas
+          </p>
+          
           <div style="background-color: #F6F7FC; border-left: 4px solid #5B5FEE; padding: 20px; border-radius: 6px; margin: 25px 0;">
             <p style="color: #5B5FEE; font-size: 14px; font-weight: 600; margin-top: 0;">Lo que puedes hacer ahora:</p>
             <ul style="color: #525866; font-size: 14px; margin: 10px 0; padding-left: 20px;">
@@ -157,6 +167,8 @@ El equipo de Circles
 ¡Bienvenido a Circles, ${name}! 🎯🚀
 
 ¡Tu cuenta ha sido creada exitosamente!
+
+Crea tu primer círculo en 2 minutos y conecta con cientos de personas
 
 Ahora puedes:
 🔍 Explorar círculos basados en tus intereses
