@@ -76,7 +76,7 @@ model Circle {
   objective    String
   radiusMeters Float
   startAt      DateTime
-  expiresAt    DateTime
+  expiresAt    DateTime?
   status       CircleStatus
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

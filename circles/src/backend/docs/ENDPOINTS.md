@@ -320,7 +320,7 @@ Request:
 
 ```json
 {
-  "objectiveText": "Play tennis",
+  "objective": "Play tennis",
   "radiusMeters": 500,
   "startAt": "2025-11-23T10:00:00Z",
   "expiresAt": "2025-11-24T10:00:00Z"
@@ -412,7 +412,7 @@ Request:
 
 ```json
 {
-  "objectiveText": "Play tennis tournament",
+  "objective": "Play tennis tournament",
   "radiusMeters": 1000,
   "status": "paused"
 }
@@ -712,9 +712,10 @@ This section compares the implemented API with the original plan from `docs/feat
 - **Implemented**: `GET /api/circles/me`, `POST /api/circles`, `PATCH /api/circles/:id`, `DELETE /api/circles/:id`
 - **Similarities**: Full CRUD operations supported
 - **Differences**:
-  - Field names: `objetivo` (planned) → `objectiveText` (implemented)
+  - Field names: `objetivo` (planned) → `objective` (implemented)
   - Field names: `radioKm` (planned) → `radiusMeters` (implemented)
   - Field names: `expiraEn` (planned) → `expiresAt` (implemented)
+  - `expiresAt` expects full ISO date-time (not just a date) and can be omitted for an open-ended circle
   - ✨ **Added**: `GET /api/circles/:id` - get single circle by ID
   - ✨ **Added**: `startAt` field - not in original plan
   - ✨ **Added**: `status` field with enum values (active/paused/expired)

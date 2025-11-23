@@ -31,7 +31,7 @@ class ProfileApiClient {
         'Falta la URL base. Configúrala en assets/config/app_config.json o con --dart-define.',
       );
     }
-    final response = await _get(path: '/users/me/profile', token: token);
+    final response = await _get(path: '/users/me', token: token);
     return _mapProfile(responseBody: response, email: email);
   }
 
@@ -75,7 +75,7 @@ class ProfileApiClient {
     required String path,
     required String token,
   }) async {
-    final uri = Uri.parse(baseUrl).resolve(path);
+    final uri = _buildUri(path);
     http.Response response;
     try {
       response = await _client.get(
@@ -96,7 +96,7 @@ class ProfileApiClient {
     required String token,
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).resolve(path);
+    final uri = _buildUri(path);
     http.Response response;
     try {
       response = await _client.post(
@@ -118,7 +118,7 @@ class ProfileApiClient {
     required String token,
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).resolve(path);
+    final uri = _buildUri(path);
     http.Response response;
     try {
       response = await _client.put(
@@ -180,18 +180,49 @@ class ProfileApiClient {
     return null;
   }
 
+  Uri _buildUri(String path) {
+    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return Uri.parse('$base/$cleanPath');
+  }
+
   UserProfile _mapProfile({
     required Map<String, dynamic> responseBody,
     required String email,
   }) {
-    final candidate =
-        responseBody['user'] is Map<String, dynamic> ? responseBody['user'] : responseBody;
-    final profile = UserProfile.fromJson(
-      (candidate as Map<String, dynamic>?) ?? <String, dynamic>{},
-    );
-    final withEmail =
-        profile.email.isEmpty ? profile.copyWith(email: email) : profile;
-    return withEmail;
+    final profileJson = _extractProfile(responseBody);
+    final profile = UserProfile.fromJson(profileJson);
+    final resolvedEmail = profile.email.isNotEmpty
+        ? profile.email
+        : (_extractEmail(responseBody) ?? email);
+    return profile.copyWith(email: resolvedEmail);
+  }
+
+  Map<String, dynamic> _extractProfile(Map<String, dynamic> body) {
+    final profile = body['profile'];
+    if (profile is Map<String, dynamic>) return profile;
+
+    final user = body['user'];
+    if (user is Map<String, dynamic>) {
+      final userProfile = user['profile'];
+      if (userProfile is Map<String, dynamic>) return userProfile;
+      return user;
+    }
+
+    return body;
+  }
+
+  String? _extractEmail(Map<String, dynamic> body) {
+    if (body['email'] is String) return body['email'] as String;
+    final user = body['user'];
+    if (user is Map<String, dynamic> && user['email'] is String) {
+      return user['email'] as String;
+    }
+    final profile = body['profile'];
+    if (profile is Map<String, dynamic> && profile['email'] is String) {
+      return profile['email'] as String;
+    }
+    return null;
   }
 
   Future<UserProfile> _loadMockProfile(String email) async {

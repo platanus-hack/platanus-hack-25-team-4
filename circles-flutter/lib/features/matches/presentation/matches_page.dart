@@ -319,22 +319,31 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLightColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.light;
+    final background = color.withOpacity(isLightColor ? 0.22 : 0.16);
+    final borderColor = color.withOpacity(isLightColor ? 0.5 : 0.35);
+    final foreground = Color.alphaBlend(
+      color.withOpacity(isLightColor ? 0.65 : 0.45),
+      theme.colorScheme.onSurface,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 16, color: foreground),
           const SizedBox(width: 6),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: color,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: foreground,
               fontWeight: FontWeight.w600,
             ),
           ),

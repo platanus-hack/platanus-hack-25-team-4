@@ -13,6 +13,8 @@ This document summarizes the current state of API endpoints across the backend a
 - Mismatch: Exists on both sides but path, parameters, or response shape differ
 - Correct: Implemented and aligned in both
 
+Config notes: Flutter `assets/config/app_config.json` now points to `http://localhost:3000/api` with `mockAuth: false`, so frontend requests are prefixed with `/api` automatically via the baseUrl.
+
 ---
 
 ## Backend – Missing
@@ -71,39 +73,14 @@ These backend-implemented endpoints are not used by the current frontends:
 
 ---
 
-## Frontend ↔ Backend – Mismatches
-
-- Auth – login
-  - Frontend (Flutter): POST `/auth/login` (no `/api` prefix)
-  - Backend: POST `/api/auth/login`
-  - Status: Mismatch (path)
-  - Fix: Prefix with `/api`.
-
-- Auth – signup
-  - Frontend (Flutter): POST `/auth/signup` with body `{ name, email, emailConfirmation, password, passwordConfirmation }`
-  - Backend: POST `/api/auth/signup` with body `{ email, password, firstName?, lastName? }`
-  - Status: Mismatch (path and body schema)
-  - Fix: Use `/api/auth/signup` and send `{ email, password, firstName?, lastName? }`.
-
-- Profile – GET/PUT `/api/users/me/profile`
-  - Backend responses are wrapped: `{ "profile": { ... } }`
-  - Flutter `ProfileApiClient` currently maps the entire response (or `response["user"]`) directly to `UserProfile`, which expects fields like `interests`, `bio`, etc. (flat). It does not extract the `profile` wrapper.
-  - Status: Mismatch (response shape)
-  - Fix: After HTTP call, use `final body = responseBody["profile"] as Map<String, dynamic>;` before calling `UserProfile.fromJson(body)`.
-
-- Location background reporting
-  - Frontend (Flutter): POST `/ubicaciones` body `{ lat, lng, email, recordedAt }`
-  - Backend: No `/ubicaciones`. Closest API is PATCH `/api/users/me/position` with `{ centerLat, centerLon }` and auth required.
-  - Status: Mismatch + Missing in backend (for `/ubicaciones`)
-  - Fix: Either (1) change frontend to call PATCH `/api/users/me/position` with `{ centerLat, centerLon }`, or (2) add a new backend endpoint `/api/ubicaciones` that internally updates the user’s position.
-
----
-
 ## Correctly Implemented (Aligned)
 
-At this time, no frontend endpoints fully align end-to-end (path + body + response) with the backend implementation without adjustments. The closest are:
-
-- Profile legacy endpoints (`/api/users/me/profile` GET/PUT): Paths match, but the frontend must unwrap `profile` in the response as noted above to be fully aligned.
+- Auth – login/signup
+  - Flutter now posts to `/api/auth/login` and `/api/auth/signup` with `{ email, password, firstName?, lastName? }`, matching backend expectations.
+- Profile legacy endpoints (`/api/users/me/profile` GET/PUT): Paths match and the Flutter client unwraps the `profile` envelope before parsing.
+- Users – GET `/api/users/me`: Flutter uses this to load the authenticated profile and email from the backend.
+- Location background reporting
+  - Flutter background worker now patches `/api/users/me/position` with `{ centerLat, centerLon }` using the stored auth token.
 
 ---
 
@@ -112,9 +89,9 @@ At this time, no frontend endpoints fully align end-to-end (path + body + respon
 1. Standardize base paths in frontends to include the `/api` prefix.
 2. Update Flutter Auth signup payload to `{ email, password, firstName?, lastName? }`.
 3. Adjust Flutter Profile mapping to read `response["profile"]` before parsing.
-4. Update background location to use PATCH `/api/users/me/position` with `{ centerLat, centerLon }` (or implement `/api/ubicaciones` on the backend).
-5. Implement or de-scope Matches/Interactions per the feature plan.
-6. Add frontend clients for Circles and Chats/Message endpoints to leverage implemented backend features.
+4. Implement or de-scope Matches/Interactions per the feature plan.
+5. Add frontend clients for Circles and Chats/Message endpoints to leverage implemented backend features.
+6. Handle Web font loading offline by bundling fonts locally (Flutter web warning observed when fetching Roboto).
 
 ---
 
@@ -156,5 +133,3 @@ At this time, no frontend endpoints fully align end-to-end (path + body + respon
   - POST /api/chats/:chatId/messages
   - GET /api/chats/:chatId/messages/:messageId
   - DELETE /api/chats/:chatId/messages/:messageId
-
-

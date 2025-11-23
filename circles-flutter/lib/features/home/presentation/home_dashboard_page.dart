@@ -338,16 +338,31 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isLightColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.light;
+    final gradientStart = color.withOpacity(isLightColor ? 0.28 : 0.2);
+    final gradientEnd = accent.withOpacity(isLightColor ? 0.18 : 0.12);
+    final outline = color.withOpacity(isLightColor ? 0.32 : 0.22);
+    final titleColor = Color.alphaBlend(
+      color.withOpacity(isLightColor ? 0.6 : 0.45),
+      theme.colorScheme.onSurface,
+    );
+    final avatarBg = color.withOpacity(isLightColor ? 0.30 : 0.22);
+    final avatarFg = Color.alphaBlend(
+      color.withOpacity(isLightColor ? 0.7 : 0.5),
+      theme.colorScheme.onSurface,
+    );
     final card = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            color.withValues(alpha: 0.18),
-            accent.withValues(alpha: 0.10),
+            gradientStart,
+            gradientEnd,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        border: Border.all(color: outline),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -363,8 +378,8 @@ class _StatCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: color.withValues(alpha: 0.18),
-              foregroundColor: color,
+              backgroundColor: avatarBg,
+              foregroundColor: avatarFg,
               child: Icon(icon),
             ),
             const SizedBox(width: 12),
@@ -375,7 +390,7 @@ class _StatCard extends StatelessWidget {
                   Text(
                     title,
                     style: theme.textTheme.labelLarge?.copyWith(
-                      color: color.withValues(alpha: 0.9),
+                      color: titleColor,
                     ),
                   ),
                   const SizedBox(height: 4),

@@ -207,7 +207,18 @@ class _CirclesPageState extends State<CirclesPage> {
       ),
     );
     if (confirmed != true) return;
-    widget.state.deleteCircle(circle.id);
+    try {
+      await widget.state.deleteCircle(circle.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"${circle.objetivo}" eliminado')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al eliminar: $e')),
+      );
+    }
   }
 
   void _openForm(BuildContext context, {Circle? existing}) async {
@@ -222,7 +233,22 @@ class _CirclesPageState extends State<CirclesPage> {
       ),
     );
     if (result == null) return;
-    widget.state.addOrUpdateCircle(result);
+    try {
+      await widget.state.saveCircle(result, isEditing: existing != null);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            existing != null ? 'Círculo actualizado' : 'Círculo creado',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No pudimos guardar: $e')),
+      );
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -420,13 +446,13 @@ class _CircleFormState extends State<_CircleForm> {
                   child: Text(
                     _expiraEn == null
                         ? 'Sin fecha límite'
-                        : 'Expira: ${_formatDate(_expiraEn!)}',
+                        : 'Expira: ${_formatDateTime(_expiraEn!)}',
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: _pickDate,
+                  onPressed: _pickDateTime,
                   icon: const Icon(Icons.event),
-                  label: const Text('Elegir fecha'),
+                  label: const Text('Elegir fecha y hora'),
                 ),
                 if (_expiraEn != null)
                   IconButton(
@@ -450,20 +476,37 @@ class _CircleFormState extends State<_CircleForm> {
     );
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDateTime() async {
     final now = DateTime.now();
-    final selected = await showDatePicker(
+    final initial = _expiraEn ?? now.add(const Duration(days: 7));
+    final selectedDate = await showDatePicker(
       context: context,
-      initialDate: _expiraEn ?? now.add(const Duration(days: 7)),
+      initialDate: initial,
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
       helpText: 'Selecciona fecha de expiración (opcional)',
       cancelText: 'Cancelar',
       confirmText: 'Aceptar',
     );
-    if (selected != null) {
-      setState(() => _expiraEn = selected);
-    }
+    if (selectedDate == null) return;
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: 'Selecciona hora de expiración',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
+    );
+    if (selectedTime == null) return;
+
+    final combined = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    setState(() => _expiraEn = combined);
   }
 
   void _submit() {
@@ -486,11 +529,13 @@ class _CircleFormState extends State<_CircleForm> {
     Navigator.pop(context, circle);
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDateTime(DateTime date) {
     final d = date.day.toString().padLeft(2, '0');
     final m = date.month.toString().padLeft(2, '0');
     final y = date.year.toString();
-    return '$d/$m/$y';
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$d/$m/$y $hh:$mm';
   }
 }
 
