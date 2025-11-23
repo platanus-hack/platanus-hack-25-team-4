@@ -12,7 +12,7 @@ export const logger = {
   warn: (message: string): void => {
     console.warn(formatMessage('warn', message));
   },
-  error: (message: string): void => {
-    console.error(formatMessage('error', message));
+  error: (message: string, error: unknown): void => {
+    console.error(formatMessage('error', message), error);
   }
 };
