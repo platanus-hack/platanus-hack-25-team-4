@@ -105,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 12),
                         _InterestsSection(profile: profile),
                         const SizedBox(height: 12),
-                        _LocationCard(profile: profile, theme: theme),
+                        _LocationCard(theme: theme),
                         if (profile.availability != null &&
                             profile.availability!.isNotEmpty) ...[
                           const SizedBox(height: 12),
@@ -123,8 +123,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             icon: Icons.shield_moon_outlined,
                             title: 'Límites',
                             subtitle: profile.boundaries.join(' • '),
-                            color: theme.colorScheme.outline,
-                            bg: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                            color: theme.colorScheme.secondary,
+                            bg: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.7),
                           ),
                         ],
                         const SizedBox(height: 32),
@@ -214,6 +214,46 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
+class _ProfileCardSurface extends StatelessWidget {
+  const _ProfileCardSurface({
+    required this.color,
+    required this.bg,
+    required this.child,
+  });
+
+  final Color color;
+  final Color bg;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = ThemeData.estimateBrightnessForColor(color);
+    final gradientStart = bg.withValues(alpha: 0.94);
+    final gradientEnd =
+        color.withValues(alpha: brightness == Brightness.light ? 0.26 : 0.18);
+    final outline = color.withValues(alpha: brightness == Brightness.light ? 0.3 : 0.22);
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [gradientStart, gradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: outline),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
 class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.icon,
@@ -232,15 +272,32 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: bg,
+    final avatarBg = color.withValues(alpha: 0.2);
+    final avatarFg = Color.alphaBlend(
+      color.withValues(alpha: 0.7),
+      theme.colorScheme.onSurface,
+    );
+    return _ProfileCardSurface(
+      color: color,
+      bg: bg,
       child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(title),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        leading: CircleAvatar(
+          radius: 22,
+          backgroundColor: avatarBg,
+          foregroundColor: avatarFg,
+          child: Icon(icon),
+        ),
+        title: Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
           ),
         ),
       ),
@@ -262,11 +319,12 @@ class _InterestsSection extends StatelessWidget {
         title: 'Intereses',
         subtitle: 'Aún no agregas intereses.',
         color: theme.colorScheme.primary,
-        bg: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        bg: theme.colorScheme.primaryContainer.withValues(alpha: 0.75),
       );
     }
-    return Card(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+    return _ProfileCardSurface(
+      color: theme.colorScheme.primary,
+      bg: theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -292,10 +350,13 @@ class _InterestsSection extends StatelessWidget {
                   .map(
                     (i) => Chip(
                       label: Text(i.title),
-                      avatar: Icon(Icons.auto_awesome,
-                          size: 16, color: theme.colorScheme.primary),
+                      avatar: Icon(
+                        Icons.auto_awesome,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
                       backgroundColor:
-                          theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+                          theme.colorScheme.primaryContainer.withValues(alpha: 0.28),
                     ),
                   )
                   .toList(),
@@ -308,19 +369,28 @@ class _InterestsSection extends StatelessWidget {
 }
 
 class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.profile, required this.theme});
+  const _LocationCard({required this.theme});
 
-  final UserProfile profile;
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+    final color = theme.colorScheme.tertiary;
+    final avatarBg = color.withValues(alpha: 0.2);
+    final avatarFg = Color.alphaBlend(
+      color.withValues(alpha: 0.7),
+      theme.colorScheme.onSurface,
+    );
+    return _ProfileCardSurface(
+      color: color,
+      bg: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.72),
       child: ListTile(
-        leading: Icon(
-          Icons.location_on_outlined,
-          color: theme.colorScheme.tertiary,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        leading: CircleAvatar(
+          radius: 22,
+          backgroundColor: avatarBg,
+          foregroundColor: avatarFg,
+          child: const Icon(Icons.location_on_outlined),
         ),
         title: const Text('Ubicación'),
         subtitle: const Text(

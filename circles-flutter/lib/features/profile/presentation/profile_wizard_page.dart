@@ -187,6 +187,11 @@ class _ProfileWizardPageState extends State<ProfileWizardPage> {
                         'Intereses',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Seleccionar cada interés es opcional: marca solo lo que te importe (con uno basta para seguir).',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 12,
