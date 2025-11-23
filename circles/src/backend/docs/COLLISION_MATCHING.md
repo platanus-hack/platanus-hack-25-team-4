@@ -58,7 +58,7 @@ User Location Update
 - Single PostGIS query per user circle (not sequential!)
 - Uses `ST_DWithin` for bounding box filter (uses GIST index)
 - Returns ~50 candidates ordered by distance
-- Filters by collision distance (distance ≤ sum of radii)
+- Filters by collision distance (distance ≤ circle radius; other user treated as a point)
 - Tracks top 5 closest collisions in Redis
 - Stability state: `detecting` → `stable` after 30s
 
@@ -287,7 +287,7 @@ P99.9: 200ms (major contention)
 ### Batch Processing Strategy
 For each user circle:
 1. Single PostGIS query: `ST_DWithin` (bounding box) + `ST_Distance` (precise)
-2. Filter by collision distance: `distance ≤ (radius1 + radius2)`
+2. Filter by collision distance: `distance ≤ radius` (single-circle, point‑in‑circle check)
 3. Sort by distance, take top 5
 4. Track in Redis with stability metadata
 

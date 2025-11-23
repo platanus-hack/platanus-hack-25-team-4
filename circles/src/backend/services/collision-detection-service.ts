@@ -63,11 +63,13 @@ export class CollisionDetectionService {
         // PostGIS query to find candidate circles nearby
         const candidates = await this.queryCandidateCircles(circle);
 
-        // Filter by actual collision distance (app layer)
+        // Filter by collision distance using a single circle:
+        // other users are treated as points, and we only check
+        // whether they lie within this circle's radius.
         const actualCollisions = candidates.filter(
           (c) =>
             circle.radiusMeters !== null &&
-            c.distance_meters <= circle.radiusMeters + c.radiusMeters
+            c.distance_meters <= circle.radiusMeters
         );
 
         // Take top N by distance
