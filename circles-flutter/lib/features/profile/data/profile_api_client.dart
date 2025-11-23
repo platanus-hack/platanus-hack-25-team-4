@@ -91,28 +91,6 @@ class ProfileApiClient {
     return _parseResponse(response);
   }
 
-  Future<Map<String, dynamic>> _post({
-    required String path,
-    required String token,
-    required Map<String, dynamic> body,
-  }) async {
-    final uri = _buildUri(path);
-    http.Response response;
-    try {
-      response = await _client.post(
-        uri,
-        headers: {
-          ..._headers,
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
-      );
-    } catch (e) {
-      throw ProfileException('Error de red: $e');
-    }
-    return _parseResponse(response);
-  }
-
   Future<Map<String, dynamic>> _put({
     required String path,
     required String token,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/app_logo.dart';
 import '../../../core/widgets/page_container.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/card_gradients.dart';
 import '../../app/app_state.dart';
 import '../domain/chat_thread.dart';
 import 'chat_thread_page.dart';
@@ -24,6 +26,12 @@ class _ChatsPageState extends State<ChatsPage> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    widget.state.refreshChats();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -36,7 +44,7 @@ class _ChatsPageState extends State<ChatsPage> {
     final hasChats = filtered.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: const AppLogo(text: 'Circles - Chats'),
         actions: [
           IconButton(
             onPressed: widget.onOpenProfile,
@@ -48,14 +56,27 @@ class _ChatsPageState extends State<ChatsPage> {
       body: PageContainer(
         child: Column(
           children: [
+            if (widget.state.error != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  widget.state.error!,
+                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.7),
-                  ],
+                gradient: homeCardGradient(theme.colorScheme),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.18),
                 ),
                 borderRadius: BorderRadius.circular(14),
               ),

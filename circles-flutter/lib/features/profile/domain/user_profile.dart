@@ -26,12 +26,18 @@ class UserProfile {
     required this.profileCompleted,
     required this.interests,
     required this.bio,
+    this.socialStyle,
+    this.boundaries = const [],
+    this.availability,
   });
 
   final String email;
   final bool profileCompleted;
   final List<UserInterest> interests;
   final String bio;
+  final String? socialStyle;
+  final List<String> boundaries;
+  final String? availability;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final interestsJson = json['interests'] ?? json['gustos'] ?? [];
@@ -49,11 +55,25 @@ class UserProfile {
     final completed = completedRaw is bool
         ? completedRaw
         : completedRaw.toString().toLowerCase() == 'true';
+    final boundariesRaw = json['boundaries'];
+    final boundaries = <String>[];
+    if (boundariesRaw is List) {
+      for (final b in boundariesRaw) {
+        if (b != null) boundaries.add(b.toString());
+      }
+    }
     return UserProfile(
       email: (json['email'] ?? '').toString(),
       profileCompleted: completed,
       interests: interestsList,
       bio: (json['bio'] ?? json['about'] ?? json['descripcion'] ?? '').toString(),
+      socialStyle: (json['socialStyle'] ?? '').toString().isNotEmpty
+          ? (json['socialStyle'] ?? '').toString()
+          : null,
+      boundaries: boundaries,
+      availability: (json['availability'] ?? '').toString().isNotEmpty
+          ? (json['availability'] ?? '').toString()
+          : null,
     );
   }
 
@@ -62,12 +82,18 @@ class UserProfile {
     bool? profileCompleted,
     List<UserInterest>? interests,
     String? bio,
+    String? socialStyle,
+    List<String>? boundaries,
+    String? availability,
   }) {
     return UserProfile(
       email: email ?? this.email,
       profileCompleted: profileCompleted ?? this.profileCompleted,
       interests: interests ?? this.interests,
       bio: bio ?? this.bio,
+      socialStyle: socialStyle ?? this.socialStyle,
+      boundaries: boundaries ?? this.boundaries,
+      availability: availability ?? this.availability,
     );
   }
 
@@ -76,6 +102,9 @@ class UserProfile {
         'profileCompleted': profileCompleted,
         'interests': interests.map((i) => i.toJson()).toList(),
         'bio': bio,
+        'socialStyle': socialStyle,
+        'boundaries': boundaries,
+        'availability': availability,
       };
 }
 

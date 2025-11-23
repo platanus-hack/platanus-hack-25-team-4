@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/page_container.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/card_gradients.dart';
 import '../../../core/widgets/app_logo.dart';
 import '../../app/app_state.dart';
 import '../domain/circle.dart';
@@ -199,6 +200,7 @@ class _CirclesPageState extends State<CirclesPage> {
   }
 
   void _deleteCircle(Circle circle) async {
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -223,18 +225,16 @@ class _CirclesPageState extends State<CirclesPage> {
     try {
       await widget.state.deleteCircle(circle.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${circle.objetivo}" eliminado')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('"${circle.objetivo}" eliminado')));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Error al eliminar: $e')),
       );
     }
   }
 
   void _openForm(BuildContext context, {Circle? existing}) async {
+    final messenger = ScaffoldMessenger.of(context);
     final result = await showModalBottomSheet<Circle>(
       context: context,
       isScrollControlled: true,
@@ -255,8 +255,7 @@ class _CirclesPageState extends State<CirclesPage> {
     if (result == null) return;
     try {
       await widget.state.saveCircle(result, isEditing: existing != null);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             existing != null ? 'Círculo actualizado' : 'Círculo creado',
@@ -264,8 +263,7 @@ class _CirclesPageState extends State<CirclesPage> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('No pudimos guardar: $e')),
       );
     }
@@ -321,13 +319,9 @@ class _Filters extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-            theme.colorScheme.tertiaryContainer.withValues(alpha: 0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        gradient: homeCardGradient(theme.colorScheme),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.18),
         ),
         borderRadius: BorderRadius.circular(14),
       ),
@@ -512,6 +506,7 @@ class _CircleFormState extends State<_CircleForm> {
       confirmText: 'Aceptar',
     );
     if (selectedDate == null) return;
+    if (!mounted) return;
 
     final selectedTime = await showTimePicker(
       context: context,
@@ -521,6 +516,7 @@ class _CircleFormState extends State<_CircleForm> {
       confirmText: 'Aceptar',
     );
     if (selectedTime == null) return;
+    if (!mounted) return;
 
     final combined = DateTime(
       selectedDate.year,
@@ -580,7 +576,7 @@ class _InfoPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

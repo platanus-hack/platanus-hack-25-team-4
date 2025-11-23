@@ -40,7 +40,7 @@ class AppLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color resolvedPrimary = primaryColor ?? theme.colorScheme.primary;
-    final Color resolvedBackground = backgroundColor ?? theme.colorScheme.background;
+    final Color resolvedBackground = backgroundColor ?? theme.colorScheme.surface;
 
     final Widget icon = Container(
       width: size,
@@ -69,13 +69,13 @@ class AppLogo extends StatelessWidget {
               fontWeight: FontWeight.w700, // font-bold
               // tracking-tight (slightly negative letter spacing)
               letterSpacing: -0.2,
-              color: theme.colorScheme.onBackground,
+              color: theme.colorScheme.onSurface,
             )) ??
         TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.2,
-          color: theme.colorScheme.onBackground,
+          color: theme.colorScheme.onSurface,
         );
 
     return Row(
@@ -89,5 +89,4 @@ class AppLogo extends StatelessWidget {
     );
   }
 }
-
 
