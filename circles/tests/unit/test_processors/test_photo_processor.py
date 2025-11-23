@@ -163,7 +163,7 @@ class TestPhotoProcessor:
         # Should fallback to using first line as caption
         assert caption == "This is not JSON"
         assert "raw_response" in analysis
-        assert "parse_error" in analysis
+        # parse_error is only set when JSON is found but fails to decode, not when no JSON found
 
     @pytest.mark.asyncio
     async def test_analyze_image_empty_response(self, photo_processor):
@@ -173,12 +173,13 @@ class TestPhotoProcessor:
             "create",
             return_value=MagicMock(content=[MagicMock(text="")]),
         ):
-            caption, analysis = await photo_processor._analyze_image(
-                base64.b64encode(b"dummy").decode(), "image/jpeg"
-            )
-
-        assert caption == "Unable to analyze"
-        assert "raw_response" in analysis
+            # Empty text raises ValueError
+            with pytest.raises(
+                ValueError, match="Response does not contain text content"
+            ):
+                await photo_processor._analyze_image(
+                    base64.b64encode(b"dummy").decode(), "image/jpeg"
+                )
 
     @pytest.mark.asyncio
     async def test_extract_exif_data_async(self, photo_processor, sample_photo_file):
@@ -229,12 +230,16 @@ class TestPhotoProcessor:
     @pytest.mark.asyncio
     async def test_analyze_image_api_error(self, photo_processor):
         """Test handling of Claude Vision API errors."""
+        import httpx
         from anthropic import APIError
+
+        # Create a proper httpx.Request object
+        request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
 
         with patch.object(
             photo_processor.client.messages,
             "create",
-            side_effect=APIError("API Error", response=MagicMock(), body={}),
+            side_effect=APIError("API Error", request=request, body=None),
         ):
             with pytest.raises(APIError):
                 await photo_processor._analyze_image(

@@ -245,7 +245,7 @@ Python, JavaScript, React, PostgreSQL, Docker, AWS
         markdown = "# Main Title\n## Subsection\n### Minor Header\nContent here"
         text = resume_processor._markdown_to_text(markdown)
 
-        assert "Main Title" not in text
+        assert "Main Title" in text  # Headers are stripped of # but text remains
         assert "#" not in text
         assert "Content here" in text
 

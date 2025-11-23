@@ -149,6 +149,7 @@ class VoiceNoteProcessor:
             "technology": [
                 "software",
                 "code",
+                "coding",
                 "python",
                 "javascript",
                 "database",
@@ -167,6 +168,7 @@ class VoiceNoteProcessor:
             "health": [
                 "exercise",
                 "workout",
+                "gym",
                 "health",
                 "fitness",
                 "diet",

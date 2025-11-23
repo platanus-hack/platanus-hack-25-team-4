@@ -33,8 +33,8 @@ class BaseConsolidationStrategy:
             Result[UserProfile, Exception]: Validated profile or validation error
         """
         try:
-            profile_data["user_id"] = self.user_id
-            profile = UserProfile(**profile_data)
+            profile_data_copy = {**profile_data, "user_id": self.user_id}
+            profile = UserProfile(**profile_data_copy)
             logger.debug(f"Profile validation successful for user {self.user_id}")
             return Result.ok(profile)
         except ValidationError as e:

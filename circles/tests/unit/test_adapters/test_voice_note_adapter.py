@@ -4,12 +4,14 @@ Unit tests for VoiceNoteAdapter.
 Tests the 4-phase pipeline (Validate, Process, Persist, Cleanup) for voice note processing.
 """
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.etl.adapters.base import AdapterContext, DataType
 from src.etl.adapters.voice_note_adapter import VoiceNoteAdapter
+from src.etl.core import ProcessingError, Result
 
 
 @pytest.mark.unit
@@ -33,26 +35,29 @@ class TestVoiceNoteAdapter:
     def mock_adapter_context(self, sample_voice_file):
         """Create a mock AdapterContext."""
         return AdapterContext(
+            user_id=1,
+            source_id=1,
             data_type=DataType.VOICE_NOTE,
             input_path=sample_voice_file,
-            user_id="test_user_123",
             session=AsyncMock(spec=AsyncSession),
         )
 
     @pytest.mark.asyncio
     async def test_validate_input_valid_voice(self, voice_adapter, sample_voice_file):
         """Test validation of a valid voice note file."""
-        result = await voice_adapter.validate_input(sample_voice_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.VOICE_NOTE)
+        result = await voice_adapter.validate_input(sample_voice_file, context)
 
-        assert result is True, "Valid voice file should pass validation"
+        assert result.is_ok, "Valid voice file should pass validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_nonexistent_file(self, voice_adapter, tmp_path):
         """Test validation of non-existent file."""
         non_existent = tmp_path / "nonexistent.mp3"
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.VOICE_NOTE)
 
-        with pytest.raises(FileNotFoundError):
-            await voice_adapter.validate_input(non_existent)
+        result = await voice_adapter.validate_input(non_existent, context)
+        assert result.is_error, "Non-existent file should fail validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_invalid_extension(self, voice_adapter, tmp_path):
@@ -60,9 +65,10 @@ class TestVoiceNoteAdapter:
         invalid_file = tmp_path / "note.txt"
         invalid_file.write_text("content")
 
-        result = await voice_adapter.validate_input(invalid_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.VOICE_NOTE)
+        result = await voice_adapter.validate_input(invalid_file, context)
 
-        assert result is False, "Invalid file extension should fail validation"
+        assert result.is_error, "Invalid file extension should fail validation"
 
     @pytest.mark.asyncio
     async def test_validate_input_supported_formats(self, voice_adapter, tmp_path):
@@ -73,43 +79,60 @@ class TestVoiceNoteAdapter:
             test_file = tmp_path / f"note{ext}"
             test_file.write_bytes(b"dummy audio content")
 
-            result = await voice_adapter.validate_input(test_file)
+            context = AdapterContext(
+                user_id=1, source_id=1, data_type=DataType.VOICE_NOTE
+            )
+            result = await voice_adapter.validate_input(test_file, context)
 
-            assert result is True, f"{ext} should be a valid audio format"
+            assert result.is_ok, f"{ext} should be a valid audio format"
 
     @pytest.mark.asyncio
-    async def test_process_voice_note(self, voice_adapter, mock_adapter_context):
+    async def test_process_voice_note(
+        self, voice_adapter, sample_voice_file, mock_adapter_context
+    ):
         """Test processing a voice note file."""
-        with patch.object(
-            voice_adapter.processor,
-            "process",
-            return_value=MagicMock(
-                content={
-                    "transcription": "Hello, this is a test voice note",
-                    "segments": [{"text": "Hello"}],
-                },
-                metadata={"file_type": ".mp3", "file_size": 5000},
-                embeddings=None,
-            ),
-        ):
-            result = await voice_adapter.process(mock_adapter_context)
+        mock_processor_result = MagicMock(
+            content={
+                "transcription": "Hello, this is a test voice note",
+                "segments": [{"text": "Hello"}],
+            },
+            metadata={"file_type": ".mp3", "file_size": 5000},
+            embeddings=None,
+        )
 
-            assert result is not None
-            assert "transcription" in result.content
-            assert result.metadata["file_type"] == ".mp3"
+        with patch(
+            "src.etl.adapters.voice_note_adapter.VoiceNoteProcessor"
+        ) as MockProcessor:
+            mock_instance = MockProcessor.return_value
+            mock_instance.process = AsyncMock(return_value=mock_processor_result)
+
+            result = await voice_adapter.process(
+                sample_voice_file, mock_adapter_context
+            )
+
+            assert result.is_ok, "Processing should succeed"
+            assert "transcription" in result.value.content
+            assert result.value.metadata["file_type"] == ".mp3"
 
     @pytest.mark.asyncio
     async def test_process_voice_note_processor_error(
-        self, voice_adapter, mock_adapter_context
+        self, voice_adapter, sample_voice_file, mock_adapter_context
     ):
         """Test handling of processor errors."""
-        with patch.object(
-            voice_adapter.processor,
-            "process",
-            side_effect=ValueError("Whisper API error"),
-        ):
-            with pytest.raises(ValueError):
-                await voice_adapter.process(mock_adapter_context)
+        with patch(
+            "src.etl.adapters.voice_note_adapter.VoiceNoteProcessor"
+        ) as MockProcessor:
+            mock_instance = MockProcessor.return_value
+            mock_instance.process = AsyncMock(
+                side_effect=ValueError("Whisper API error")
+            )
+
+            result = await voice_adapter.process(
+                sample_voice_file, mock_adapter_context
+            )
+
+            assert result.is_error, "Processing should fail and return error Result"
+            assert "Whisper API error" in str(result.error_value)
 
     @pytest.mark.asyncio
     async def test_persist_voice_data(self, voice_adapter, mock_adapter_context):
@@ -119,53 +142,83 @@ class TestVoiceNoteAdapter:
             metadata={"file_type": ".mp3"},
         )
 
-        with patch.object(voice_adapter, "_save_to_database", new_callable=AsyncMock):
-            await voice_adapter.persist(mock_adapter_context, processor_result)
+        mock_session = AsyncMock(spec=AsyncSession)
+        result = await voice_adapter.persist(
+            processor_result, mock_adapter_context, mock_session
+        )
 
-            voice_adapter._save_to_database.assert_called_once()
+        assert result.is_ok, "Persistence should succeed"
+        mock_session.add.assert_called_once()
+        mock_session.flush.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cleanup(self, voice_adapter, mock_adapter_context):
+    async def test_cleanup(
+        self, voice_adapter, sample_voice_file, mock_adapter_context
+    ):
         """Test cleanup phase."""
-        with patch.object(voice_adapter, "_cleanup_temp_files", new_callable=AsyncMock):
-            await voice_adapter.cleanup(mock_adapter_context)
+        # Cleanup accepts input_data and context
+        await voice_adapter.cleanup(sample_voice_file, mock_adapter_context)
 
-            # Cleanup should complete without errors
-            assert True
+        # Cleanup should complete without errors
+        assert True
 
     @pytest.mark.asyncio
     async def test_execute_full_pipeline(
         self, voice_adapter, sample_voice_file, mock_adapter_context
     ):
         """Test the complete 4-phase pipeline."""
-        with patch.object(voice_adapter, "validate_input", return_value=True):
-            with patch.object(
-                voice_adapter,
-                "process",
-                return_value=MagicMock(
-                    content={"transcription": "Test transcription"},
-                    metadata={"file_type": ".mp3"},
-                ),
-            ):
-                with patch.object(voice_adapter, "persist", new_callable=AsyncMock):
-                    with patch.object(voice_adapter, "cleanup", new_callable=AsyncMock):
-                        result = await voice_adapter.execute(mock_adapter_context)
+        mock_processor_result = MagicMock(
+            content={"transcription": "Test transcription"},
+            metadata={"file_type": ".mp3"},
+        )
+        mock_voice_note = MagicMock()
 
-                        assert result is not None
-                        voice_adapter.persist.assert_called_once()
-                        voice_adapter.cleanup.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_execute_validation_failure(
-        self, voice_adapter, mock_adapter_context
-    ):
-        """Test pipeline stops at validation failure."""
-        with patch.object(voice_adapter, "validate_input", return_value=False):
+        with patch.object(
+            voice_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.ok(None)
             with patch.object(
                 voice_adapter, "process", new_callable=AsyncMock
             ) as mock_process:
-                result = await voice_adapter.execute(mock_adapter_context)
+                mock_process.return_value = Result.ok(mock_processor_result)
+                with patch.object(
+                    voice_adapter, "persist", new_callable=AsyncMock
+                ) as mock_persist:
+                    mock_persist.return_value = Result.ok(mock_voice_note)
+                    with patch.object(
+                        voice_adapter, "cleanup", new_callable=AsyncMock
+                    ) as mock_cleanup:
+                        mock_session = AsyncMock(spec=AsyncSession)
+                        result = await voice_adapter.execute(
+                            sample_voice_file, mock_adapter_context, mock_session
+                        )
 
+                        assert result.is_ok, "Execute should succeed"
+                        mock_persist.assert_called_once()
+                        mock_cleanup.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_validation_failure(
+        self, voice_adapter, sample_voice_file, mock_adapter_context
+    ):
+        """Test pipeline stops at validation failure."""
+        validation_error = ProcessingError(
+            "Validation failed", error_type="validation_error"
+        )
+
+        with patch.object(
+            voice_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.error(validation_error)
+            with patch.object(
+                voice_adapter, "process", new_callable=AsyncMock
+            ) as mock_process:
+                mock_session = AsyncMock(spec=AsyncSession)
+                result = await voice_adapter.execute(
+                    sample_voice_file, mock_adapter_context, mock_session
+                )
+
+                assert result.is_error, "Execute should fail at validation"
                 mock_process.assert_not_called()
 
     @pytest.mark.asyncio
@@ -183,11 +236,13 @@ class TestVoiceNoteAdapter:
             metadata={"file_type": ".mp3"},
         )
 
-        with patch.object(voice_adapter, "_save_to_database", new_callable=AsyncMock):
-            await voice_adapter.persist(mock_adapter_context, processor_result)
+        mock_session = AsyncMock(spec=AsyncSession)
+        result = await voice_adapter.persist(
+            processor_result, mock_adapter_context, mock_session
+        )
 
-            # Verify persistence was called
-            voice_adapter._save_to_database.assert_called_once()
+        assert result.is_ok, "Persistence should succeed"
+        mock_session.add.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_large_voice_file(self, voice_adapter, tmp_path):
@@ -197,10 +252,12 @@ class TestVoiceNoteAdapter:
         large_content = b"ID3" + (b"x" * (100 * 1024 * 1024 - 3))
         large_file.write_bytes(large_content)
 
-        result = await voice_adapter.validate_input(large_file)
+        context = AdapterContext(user_id=1, source_id=1, data_type=DataType.VOICE_NOTE)
+        result = await voice_adapter.validate_input(large_file, context)
 
         # Should still validate, but may need size limits
-        assert isinstance(result, bool)
+        # Check that result is a Result type
+        assert result.is_ok or result.is_error, "Result should be a Result type"
 
     @pytest.mark.asyncio
     async def test_silent_voice_note(self, voice_adapter, mock_adapter_context):
@@ -213,29 +270,44 @@ class TestVoiceNoteAdapter:
             metadata={"file_type": ".mp3"},
         )
 
-        with patch.object(voice_adapter, "_save_to_database", new_callable=AsyncMock):
-            await voice_adapter.persist(mock_adapter_context, processor_result)
+        mock_session = AsyncMock(spec=AsyncSession)
+        result = await voice_adapter.persist(
+            processor_result, mock_adapter_context, mock_session
+        )
 
-            # Should handle empty transcription gracefully
-            voice_adapter._save_to_database.assert_called_once()
+        assert result.is_ok, "Should handle empty transcription gracefully"
+        mock_session.add.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_context_passed_through_phases(
-        self, voice_adapter, mock_adapter_context
+        self, voice_adapter, sample_voice_file, mock_adapter_context
     ):
         """Test that context is passed correctly through all phases."""
-        with patch.object(voice_adapter, "validate_input", return_value=True):
-            with patch.object(
-                voice_adapter,
-                "process",
-                return_value=MagicMock(content={}, metadata={}),
-            ) as mock_process:
-                with patch.object(voice_adapter, "persist", new_callable=AsyncMock):
-                    with patch.object(voice_adapter, "cleanup", new_callable=AsyncMock):
-                        await voice_adapter.execute(mock_adapter_context)
+        mock_processor_result = MagicMock(content={}, metadata={})
+        mock_voice_note = MagicMock()
 
-                        # Verify process received the context
-                        mock_process.assert_called_once_with(mock_adapter_context)
+        with patch.object(
+            voice_adapter, "validate_input", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = Result.ok(None)
+            with patch.object(
+                voice_adapter, "process", new_callable=AsyncMock
+            ) as mock_process:
+                mock_process.return_value = Result.ok(mock_processor_result)
+                with patch.object(
+                    voice_adapter, "persist", new_callable=AsyncMock
+                ) as mock_persist:
+                    mock_persist.return_value = Result.ok(mock_voice_note)
+                    with patch.object(voice_adapter, "cleanup", new_callable=AsyncMock):
+                        mock_session = AsyncMock(spec=AsyncSession)
+                        await voice_adapter.execute(
+                            sample_voice_file, mock_adapter_context, mock_session
+                        )
+
+                        # Verify process received input_data and context
+                        mock_process.assert_called_once_with(
+                            sample_voice_file, mock_adapter_context
+                        )
 
     @pytest.mark.asyncio
     async def test_multiple_format_support(self, voice_adapter, tmp_path):
@@ -252,6 +324,9 @@ class TestVoiceNoteAdapter:
             test_file = tmp_path / f"note{ext}"
             test_file.write_bytes(magic_bytes)
 
-            result = await voice_adapter.validate_input(test_file)
+            context = AdapterContext(
+                user_id=1, source_id=1, data_type=DataType.VOICE_NOTE
+            )
+            result = await voice_adapter.validate_input(test_file, context)
 
-            assert result is True, f"Should support {ext} format"
+            assert result.is_ok, f"Should support {ext} format"
