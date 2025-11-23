@@ -1,3 +1,7 @@
+import type { InterviewAgentsRuntime } from './agentsRuntime.js';
+import type { InterviewJudge } from './judge.js';
+import type { NotificationGateway } from './notificationGateway.js';
+import { redactAgentMessage } from './piiFilter.js';
 import type {
   InterviewFlowConfig,
   InterviewMission,
@@ -5,9 +9,7 @@ import type {
   OwnerTurnGoal,
   TranscriptMessage
 } from './types.js';
-import type { InterviewAgentsRuntime } from './agentsRuntime.js';
-import type { InterviewJudge } from './judge.js';
-import type { NotificationGateway } from './notificationGateway.js';
+import { logger } from '../../utils/logger.util.js';
 
 const defaultConfig: InterviewFlowConfig = {
   max_owner_turns: 3
@@ -37,6 +39,10 @@ export class InterviewFlowService {
     let ownerTurnCount = 0;
     let shouldStop = false;
 
+    logger.info(
+      `Starting interview mission ${mission.mission_id} (owner=${mission.owner_user_id}, visitor=${mission.visitor_user_id})`
+    );
+
     while (!shouldStop && ownerTurnCount < this.config.max_owner_turns) {
       const ownerGoal = this.pickOwnerTurnGoal(ownerTurnCount);
 
@@ -49,10 +55,23 @@ export class InterviewFlowService {
         turn_goal: ownerGoal
       });
 
+      const ownerMessageRedacted = redactAgentMessage(
+        ownerTurn.as_user_message,
+        mission.owner_profile
+      );
+
       transcript.push({
         speaker: 'owner',
-        message: ownerTurn.as_user_message
+        message: ownerMessageRedacted
       });
+
+      logger.info(
+        [
+          '',
+          `Mission ${mission.mission_id} – owner turn ${ownerTurnCount} (${ownerGoal})`,
+          `\t[OWNER] ${ownerMessageRedacted}`
+        ].join('\n')
+      );
 
       ownerTurnCount += 1;
       shouldStop = ownerTurn.stop_suggested === true;
@@ -68,10 +87,24 @@ export class InterviewFlowService {
         conversation_so_far: transcript
       });
 
+      const visitorMessageRedacted = redactAgentMessage(
+        visitorTurn.as_user_message,
+        mission.visitor_profile
+      );
+
       transcript.push({
         speaker: 'visitor',
-        message: visitorTurn.as_user_message
+        message: visitorMessageRedacted
       });
+
+      logger.info(
+        [
+          '',
+          `Mission ${mission.mission_id} – visitor turn ${ownerTurnCount}`,
+          `\t[VISITOR] ${visitorMessageRedacted}`,
+          ''
+        ].join('\n')
+      );
 
       if (visitorTurn.stop_suggested === true) {
         break;
@@ -82,6 +115,34 @@ export class InterviewFlowService {
       owner_objective: mission.owner_circle.objective_text,
       transcript
     });
+
+    if (judgeDecision.should_notify) {
+      const notificationTurn = await this.agentsRuntime.runOwnerTurn({
+        owner_profile: mission.owner_profile,
+        visitor_profile: mission.visitor_profile,
+        owner_circle: mission.owner_circle,
+        context: mission.context,
+        conversation_so_far: transcript,
+        turn_goal: 'notify_user'
+      });
+
+      const notificationTextRaw = notificationTurn.as_user_message.trim();
+
+      const notificationTextRedacted = redactAgentMessage(
+        notificationTextRaw,
+        mission.visitor_profile
+      );
+
+      if (notificationTextRedacted.length > 0) {
+        judgeDecision.notification_text = notificationTextRedacted;
+      }
+    }
+
+    logger.info(
+      `Mission ${mission.mission_id} – judge decision: should_notify=${judgeDecision.should_notify}${
+        judgeDecision.notification_text ? `, notification="${judgeDecision.notification_text}"` : ''
+      }`
+    );
 
     if (judgeDecision.should_notify && judgeDecision.notification_text) {
       await this.notificationGateway.notifySuccessfulInteraction({
@@ -115,4 +176,3 @@ export class InterviewFlowService {
     return 'decide_and_close';
   }
 }
-

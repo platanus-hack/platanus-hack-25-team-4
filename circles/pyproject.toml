@@ -19,6 +19,13 @@ dependencies = [
     "pydub>=0.25.1",
     "sqlalchemy>=2.0.44",
     "sqlmodel>=0.0.27",
+    "transformers>=4.40.0", # HuggingFace transformers for SmolVLM
+    "torch>=2.0.0", # PyTorch with MPS support for Apple Silicon
+    "pillow>=10.0.0", # Image processing for VLM
+    "markitdown[all]>=0.1.0", # Markdown conversion from various formats
+    "openai>=1.0.0", # OpenAI API client for GPT models
+    "anthropic>=0.18.0", # Anthropic API client for Claude models
+    "reportlab>=4.4.5",
 ]
 
 [tool.setuptools]
@@ -27,6 +34,7 @@ package-dir = {"" = "."}
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
+packages = ["src", "src.etl", "src.consolidation"]
 
 [project.optional-dependencies]
 dev = [

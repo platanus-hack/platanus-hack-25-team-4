@@ -35,6 +35,9 @@ COPY --from=builder /app/dist ./dist
 # Copy prisma schema for migrations
 COPY --from=builder /app/prisma ./prisma
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Create .env file placeholder (will be overridden by docker-compose)
 RUN echo "NODE_ENV=production" > .env && \
     echo "PORT=3000" >> .env && \

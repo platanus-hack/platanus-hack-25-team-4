@@ -25,17 +25,40 @@ enum MatchStatus {
   expired
 }
 
+enum CollisionStatus {
+  detecting
+  stable
+  mission_created
+  matched
+  cooldown
+  expired
+}
+
+enum MissionStatus {
+  pending
+  in_progress
+  completed
+  failed
+  cancelled
+}
+
 model User {
   id            String   @id @default(uuid())
   email         String   @unique
   firstName     String?
   lastName      String?
-  passwordHash  String
+  passwordHash  String?
   profile       Json?
+  // User's current position (updated via PUT /users/position endpoint)
+  // This position is used as the center for all of the user's circles
+  // Collision detection queries join this position with Circle radiusMeters
+  centerLat     Float?
+  centerLon     Float?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   persona AgentPersona?
+  magicLinkToken MagicLinkToken?
   circles Circle[]
   matchesAsPrimary   Match[] @relation("UserMatchesPrimary")
   matchesAsSecondary Match[] @relation("UserMatchesSecondary")
@@ -43,6 +66,23 @@ model User {
   chatsAsSecondary   Chat[]  @relation("ChatSecondaryUser")
   sentMessages       Message[] @relation("MessageSender")
   receivedMessages   Message[] @relation("MessageReceiver")
+  collisionsAsUser1   CollisionEvent[] @relation("User1Collisions")
+  collisionsAsUser2   CollisionEvent[] @relation("User2Collisions")
+  ownerMissions       InterviewMission[] @relation("OwnerMissions")
+  visitorMissions     InterviewMission[] @relation("VisitorMissions")
+}
+
+model MagicLinkToken {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [email], references: [email])
+
+  @@index([email])
+  @@index([token])
 }
 
 model AgentPersona {
@@ -54,15 +94,17 @@ model AgentPersona {
   user User @relation(fields: [userId], references: [id])
 }
 
+// Circle represents a user's area of interest for matching
+// Circles do NOT have a fixed geographic center - they follow the user's current position
+// The circle's center is always the owner user's current position (User.centerLat/centerLon)
+// radiusMeters defines how far from the user's position other users can be to collide with this circle
 model Circle {
   id           String       @id @default(uuid())
   userId       String
-  objective String
-  centerLat    Float
-  centerLon    Float
-  radiusMeters Float
+  objective    String       // What the user is looking for in this circle
+  radiusMeters Float        // Collision radius around the user's current position
   startAt      DateTime
-  expiresAt    DateTime
+  expiresAt    DateTime?
   status       CircleStatus
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -70,6 +112,13 @@ model Circle {
   user    User   @relation(fields: [userId], references: [id])
   matchesAsPrimary   Match[] @relation("CircleMatchesPrimary")
   matchesAsSecondary Match[] @relation("CircleMatchesSecondary")
+  collisionsAsCircle1 CollisionEvent[] @relation("Circle1Collisions")
+  collisionsAsCircle2 CollisionEvent[] @relation("Circle2Collisions")
+  missionsAsOwner     InterviewMission[] @relation("OwnerCircleMissions")
+  missionsAsVisitor   InterviewMission[] @relation("VisitorCircleMissions")
+
+  // PostGIS spatial index for collision detection queries
+  @@index([status, createdAt], name: "idx_circle_status")
 }
 
 model Match {
@@ -82,6 +131,7 @@ model Match {
   worthItScore       Float
   status             MatchStatus
   explanationSummary String?
+  collisionEventId   String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -89,7 +139,10 @@ model Match {
   secondaryUser   User   @relation("UserMatchesSecondary", fields: [secondaryUserId], references: [id])
   primaryCircle   Circle @relation("CircleMatchesPrimary", fields: [primaryCircleId], references: [id])
   secondaryCircle Circle @relation("CircleMatchesSecondary", fields: [secondaryCircleId], references: [id])
+  collisionEvent   CollisionEvent? @relation(fields: [collisionEventId], references: [id])
   chats           Chat[]
+
+  @@unique([collisionEventId])
 }
 
 model Chat {
@@ -118,4 +171,75 @@ model Message {
   chat     Chat @relation(fields: [chatId], references: [id])
   sender   User @relation("MessageSender", fields: [senderUserId], references: [id])
   receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+}
+
+model CollisionEvent {
+  id                String   @id @default(uuid())
+
+  circle1Id         String
+  circle2Id         String
+  user1Id           String
+  user2Id           String
+
+  distanceMeters    Float
+
+  detectedAt        DateTime @default(now())
+  firstSeenAt       DateTime
+
+  status            CollisionStatus
+
+  missionId         String?  @unique
+  matchId           String?
+
+  processingError   String?
+  processedAt       DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  circle1   Circle @relation("Circle1Collisions", fields: [circle1Id], references: [id], onDelete: Cascade)
+  circle2   Circle @relation("Circle2Collisions", fields: [circle2Id], references: [id], onDelete: Cascade)
+  user1     User   @relation("User1Collisions", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User   @relation("User2Collisions", fields: [user2Id], references: [id], onDelete: Cascade)
+  match     Match?
+  mission   InterviewMission? @relation("CollisionMission")
+
+  @@unique([matchId])
+
+  @@unique([circle1Id, circle2Id], name: "unique_collision_pair")
+  @@index([status, firstSeenAt], name: "idx_collision_stability")
+  @@index([user1Id, user2Id], name: "idx_collision_users")
+  @@index([status], name: "idx_collision_status")
+  @@index([createdAt], name: "idx_collision_created")
+}
+
+model InterviewMission {
+  id                String   @id @default(uuid())
+
+  ownerUserId       String
+  visitorUserId     String
+  ownerCircleId     String
+  visitorCircleId   String
+  collisionEventId  String   @unique
+
+  status            MissionStatus
+  transcript        Json?
+  judgeDecision     Json?
+
+  createdAt         DateTime @default(now())
+  completedAt       DateTime?
+  startedAt         DateTime?
+
+  failureReason     String?
+  attemptNumber     Int      @default(1)
+
+  collisionEvent CollisionEvent @relation("CollisionMission", fields: [collisionEventId], references: [id])
+  ownerUser      User   @relation("OwnerMissions", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  visitorUser    User   @relation("VisitorMissions", fields: [visitorUserId], references: [id], onDelete: Cascade)
+  ownerCircle    Circle @relation("OwnerCircleMissions", fields: [ownerCircleId], references: [id], onDelete: Cascade)
+  visitorCircle  Circle @relation("VisitorCircleMissions", fields: [visitorCircleId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt], name: "idx_mission_status")
+  @@index([ownerUserId, visitorUserId], name: "idx_mission_users")
+  @@index([status], name: "idx_mission_current")
 }

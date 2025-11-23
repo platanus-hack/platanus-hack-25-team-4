@@ -54,7 +54,7 @@ class ProfileConsolidationOrchestrator:
 
     async def consolidate_user_profile(
         self,
-        user_id: int,
+        user_id: str,
     ) -> Result[UserProfile, Exception]:
         """
         Consolidate a user profile from all available data sources.
@@ -126,7 +126,7 @@ class ProfileConsolidationOrchestrator:
         # Create provider based on name
         return LLMProviderFactory.create(self.llm_provider_name)
 
-    def _get_strategy(self, user_id: int) -> ConsolidationStrategy:
+    def _get_strategy(self, user_id: str) -> ConsolidationStrategy:
         """
         Get consolidation strategy - either injected or default.
 

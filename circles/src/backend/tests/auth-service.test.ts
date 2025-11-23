@@ -1,40 +1,52 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 
-import { resetRepositories } from './helpers/resetRepositories.js';
-import { authService } from '../services/authService.js';
-import { AppError } from '../types/app-error.js';
+import { AuthService } from '../services/auth-service.js';
+import { AppError } from '../types/app-error.type.js';
+
+const prisma = new PrismaClient();
 
 describe('authService', () => {
-  beforeEach(() => {
-    resetRepositories();
+  let authService: AuthService;
+
+  beforeEach(async () => {
+    authService = new AuthService();
+    // Clean up database before each test
+    await prisma.magicLinkToken.deleteMany({});
+    await prisma.user.deleteMany({});
   });
 
-  it('signs up and logs in a user', () => {
+  afterEach(async () => {
+    await prisma.magicLinkToken.deleteMany({});
+    await prisma.user.deleteMany({});
+  });
+
+  it('signs up and logs in a user', async () => {
     const email = 'user@example.com';
     const password = 'strongpassword';
 
-    const signupResult = authService.signup({ email, password });
+    const signupResult = await authService.signup({ email, password });
     expect(signupResult.user.email).toBe(email);
     expect(typeof signupResult.token).toBe('string');
     expect(signupResult.token).not.toHaveLength(0);
 
-    const loginResult = authService.login({ email, password });
+    const loginResult = await authService.login({ email, password });
     expect(loginResult.user.id).toBe(signupResult.user.id);
     expect(loginResult.token).not.toHaveLength(0);
   });
 
-  it('rejects duplicate email signup', () => {
+  it('rejects duplicate email signup', async () => {
     const email = 'duplicate@example.com';
     const password = 'anotherstrongpassword';
 
-    authService.signup({ email, password });
+    await authService.signup({ email, password });
 
-    expect(() => authService.signup({ email, password })).toThrow(AppError);
+    await expect(authService.signup({ email, password })).rejects.toThrow(AppError);
   });
 
-  it('rejects invalid login', () => {
-    expect(() => authService.login({ email: 'missing@example.com', password: 'test' })).toThrow(
-      AppError
-    );
+  it('rejects invalid login', async () => {
+    await expect(
+      authService.login({ email: 'missing@example.com', password: 'test' })
+    ).rejects.toThrow(AppError);
   });
 });

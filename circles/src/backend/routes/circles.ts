@@ -4,16 +4,14 @@ import { z } from 'zod';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
 import type { UpdateCircleInput } from '../repositories/circle-repository.js';
-import { circleService } from '../services/circle-service.js';
+import { CircleService } from '../services/circle-service.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
 const circleBaseSchema = z.object({
-  objectiveText: z.string().trim().min(1),
-  centerLat: z.number(),
-  centerLon: z.number(),
+  objective: z.string().trim().min(1),
   radiusMeters: z.number().positive(),
-  startAt: z.string().datetime(),
-  expiresAt: z.string().datetime()
+  startAt: z.string().datetime().optional(),
+  expiresAt: z.string().datetime().optional().nullable()
 });
 
 const createCircleSchema = circleBaseSchema;
@@ -23,6 +21,9 @@ const updateCircleSchema = circleBaseSchema
   .extend({ status: z.enum(['active', 'paused', 'expired']).optional() });
 
 export const circlesRouter = Router();
+
+// Service instances
+const circleService = new CircleService();
 
 circlesRouter.post(
   '/circles',
@@ -35,14 +36,12 @@ circlesRouter.post(
     }
 
     const parsed = createCircleSchema.parse(req.body);
-    const circle = circleService.create({
+    const circle = await circleService.create({
       userId: req.user.userId,
-      objective: parsed.objectiveText,
-      centerLat: parsed.centerLat,
-      centerLon: parsed.centerLon,
+      objective: parsed.objective,
       radiusMeters: parsed.radiusMeters,
-      startAt: new Date(parsed.startAt),
-      expiresAt: new Date(parsed.expiresAt)
+      startAt: parsed.startAt ? new Date(parsed.startAt) : new Date(),
+      expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null
     });
     res.status(201).json({ circle });
   })
@@ -57,7 +56,7 @@ circlesRouter.get(
       return;
     }
 
-    const circles = circleService.listByUser(req.user.userId);
+    const circles = await circleService.listByUser(req.user.userId);
     res.json({ circles });
   })
 );
@@ -77,7 +76,7 @@ circlesRouter.get(
       return;
     }
 
-    const circle = circleService.getById(circleId, req.user.userId);
+    const circle = await circleService.getById(circleId, req.user.userId);
     res.json({ circle });
   })
 );
@@ -98,29 +97,26 @@ circlesRouter.patch(
       return;
     }
 
-    const parsed = circleBaseSchema.parse(req.body);
+    const parsed = updateCircleSchema.parse(req.body);
     const updateInput: UpdateCircleInput = {};
 
-    if (parsed.objectiveText !== undefined) {
-      updateInput.objective = parsed.objectiveText;
-    }
-    if (parsed.centerLat !== undefined) {
-      updateInput.centerLat = parsed.centerLat;
-    }
-    if (parsed.centerLon !== undefined) {
-      updateInput.centerLon = parsed.centerLon;
+    if (parsed.objective !== undefined) {
+      updateInput.objective = parsed.objective;
     }
     if (parsed.radiusMeters !== undefined) {
       updateInput.radiusMeters = parsed.radiusMeters;
     }
-    if (parsed.startAt !== undefined) {
+    if (parsed.startAt !== undefined && parsed.startAt !== null) {
       updateInput.startAt = new Date(parsed.startAt);
     }
     if (parsed.expiresAt !== undefined) {
-      updateInput.expiresAt = new Date(parsed.expiresAt);
+      updateInput.expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : null;
+    }
+    if (parsed.status !== undefined) {
+      updateInput.status = parsed.status;
     }
 
-    const circle = circleService.update(circleId, req.user.userId, updateInput);
+    const circle = await circleService.update(circleId, req.user.userId, updateInput);
     res.json({ circle });
   })
 );
@@ -140,7 +136,7 @@ circlesRouter.delete(
       return;
     }
 
-    circleService.remove(circleId, req.user.userId);
+    await circleService.remove(circleId, req.user.userId);
     res.status(204).send();
   })
 );

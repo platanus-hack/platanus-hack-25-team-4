@@ -12,8 +12,8 @@ from pydantic import ValidationError
 
 from ..etl.core.result import Result
 from ..profile_schema import UserProfile
+from .base_consolidation_strategy import BaseConsolidationStrategy
 from .llm_adapter import LLMProvider, parse_json_response
-from .sanitizer import sanitize_profile_data
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class ConsolidationStrategy(Protocol):
 
     async def consolidate(
         self,
-        user_id: int,
+        user_id: str,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result["UserProfile", Exception]:
@@ -59,7 +59,7 @@ class ConsolidationStrategy(Protocol):
         ...
 
 
-class DefaultConsolidationStrategy(ConsolidationStrategy):
+class DefaultConsolidationStrategy(BaseConsolidationStrategy):
     """
     Default implementation of ConsolidationStrategy.
 
@@ -67,7 +67,7 @@ class DefaultConsolidationStrategy(ConsolidationStrategy):
     Inherits validation and utility methods from BaseConsolidationStrategy.
     """
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: str):
         """
         Initialize strategy with user context.
 
@@ -78,7 +78,7 @@ class DefaultConsolidationStrategy(ConsolidationStrategy):
 
     async def consolidate(
         self,
-        user_id: int,
+        user_id: str,
         raw_data: Dict[str, Any],
         llm_provider: LLMProvider,
     ) -> Result[UserProfile, Exception]:
@@ -143,6 +143,12 @@ DETAILED USER DATA:
 
 Based on this data, generate a JSON response with the following structure:
 {{
+  "bio": "<A brief 1-2 sentence personal bio or description (optional)>",
+  "interests": [
+    {{"title": "Interest Title", "description": "Brief description of this interest"}},
+    {{"title": "Another Interest", "description": "What they do or why it matters to them"}}
+  ],
+  "profile_completed": <true/false - whether profile is comprehensive>,
   "personality_core": {{
     "openness": "<High/Medium/Low description>",
     "conscientiousness": "<High/Medium/Low description>",
@@ -220,9 +226,12 @@ Based on this data, generate a JSON response with the following structure:
 IMPORTANT REQUIREMENTS:
 1. Use only the data provided - infer conservatively
 2. If a section lacks sufficient data, provide reasonable defaults based on available information
-3. Ensure all values are strings or appropriate data types
-4. Be specific and actionable in descriptions
-5. Return ONLY the JSON object, no additional text"""
+3. Extract 3-7 key interests from calendar, emails, social posts, and other data
+4. Keep each interest title short (2-5 words) and description concise (1-2 sentences)
+5. All fields are optional - include only those with sufficient data support
+6. Ensure all values are strings or appropriate data types
+7. Be specific and actionable in descriptions
+8. Return ONLY the JSON object, no additional text"""
 
         return prompt
 
@@ -230,7 +239,7 @@ IMPORTANT REQUIREMENTS:
 class BaseConsolidationStrategy:
     """Base implementation for consolidation strategies with common functionality."""
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: str):
         """Initialize with user ID."""
         self.user_id = user_id
 

@@ -9,14 +9,13 @@ Uses asyncio.gather for parallel query execution to maximize performance.
 
 import asyncio
 import logging
-import re
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..etl.core.result import Result
-from ..etl.models.all_models import (
+from ..etl.models import (
     BlogPost,
     CalendarEvent,
     ChatTranscript,
@@ -40,7 +39,7 @@ class DataAggregator:
         self.session = session
 
     async def aggregate_user_data(
-        self, user_id: int
+        self, user_id: str
     ) -> Result[Dict[str, Any], Exception]:
         """
         Aggregate all available user data from multiple sources in parallel.
@@ -106,7 +105,7 @@ class DataAggregator:
             logger.error(f"Error aggregating user data for {user_id}: {e}")
             return Result.error(e)
 
-    async def _get_resume_data(self, user_id: int) -> Optional[Dict[str, Any]]:
+    async def _get_resume_data(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get resume data for user."""
         try:
             stmt = select(ResumeData).where(ResumeData.user_id == user_id)
@@ -123,7 +122,7 @@ class DataAggregator:
             logger.debug(f"Error fetching resume for user {user_id}: {e}")
             return None
 
-    async def _get_photo_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_photo_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get photo analyses for user."""
         try:
             stmt = select(Photo).where(Photo.user_id == user_id)
@@ -143,7 +142,7 @@ class DataAggregator:
             logger.debug(f"Error fetching photos for user {user_id}: {e}")
             return []
 
-    async def _get_voice_note_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_voice_note_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get voice note transcriptions for user."""
         try:
             stmt = select(VoiceNote).where(VoiceNote.user_id == user_id)
@@ -163,7 +162,7 @@ class DataAggregator:
             logger.debug(f"Error fetching voice notes for user {user_id}: {e}")
             return []
 
-    async def _get_chat_transcript_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_chat_transcript_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get chat transcript data for user."""
         try:
             stmt = select(ChatTranscript).where(ChatTranscript.user_id == user_id)
@@ -183,7 +182,7 @@ class DataAggregator:
             logger.debug(f"Error fetching chat transcripts for user {user_id}: {e}")
             return []
 
-    async def _get_calendar_event_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_calendar_event_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get calendar event data for user."""
         try:
             stmt = select(CalendarEvent).where(CalendarEvent.user_id == user_id)
@@ -203,7 +202,7 @@ class DataAggregator:
             logger.debug(f"Error fetching calendar events for user {user_id}: {e}")
             return []
 
-    async def _get_email_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_email_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get email data for user."""
         try:
             stmt = select(EmailData).where(EmailData.user_id == user_id)
@@ -222,7 +221,7 @@ class DataAggregator:
             logger.debug(f"Error fetching email data for user {user_id}: {e}")
             return []
 
-    async def _get_social_post_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_social_post_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get social media post data for user."""
         try:
             stmt = select(SocialMediaPost).where(SocialMediaPost.user_id == user_id)
@@ -242,7 +241,7 @@ class DataAggregator:
             logger.debug(f"Error fetching social posts for user {user_id}: {e}")
             return []
 
-    async def _get_blog_post_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_blog_post_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get blog post data for user."""
         try:
             stmt = select(BlogPost).where(BlogPost.user_id == user_id)
@@ -262,7 +261,7 @@ class DataAggregator:
             logger.debug(f"Error fetching blog posts for user {user_id}: {e}")
             return []
 
-    async def _get_screenshot_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_screenshot_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get screenshot data for user."""
         try:
             stmt = select(Screenshot).where(Screenshot.user_id == user_id)
@@ -282,7 +281,7 @@ class DataAggregator:
             logger.debug(f"Error fetching screenshots for user {user_id}: {e}")
             return []
 
-    async def _get_shared_image_data(self, user_id: int) -> List[Dict[str, Any]]:
+    async def _get_shared_image_data(self, user_id: str) -> List[Dict[str, Any]]:
         """Get shared image data for user."""
         try:
             stmt = select(SharedImage).where(SharedImage.user_id == user_id)
@@ -302,7 +301,7 @@ class DataAggregator:
             logger.debug(f"Error fetching shared images for user {user_id}: {e}")
             return []
 
-    def _validate_user_id(self, user_id: int) -> None:
+    def _validate_user_id(self, user_id: str) -> None:
         """
         Validate user_id is a positive integer.
 
