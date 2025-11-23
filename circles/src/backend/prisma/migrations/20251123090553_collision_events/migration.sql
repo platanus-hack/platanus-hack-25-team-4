@@ -148,6 +148,3 @@ ALTER TABLE "InterviewMission" ADD CONSTRAINT "InterviewMission_ownerCircleId_fk
 
 -- AddForeignKey
 ALTER TABLE "InterviewMission" ADD CONSTRAINT "InterviewMission_visitorCircleId_fkey" FOREIGN KEY ("visitorCircleId") REFERENCES "Circle"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- RenameIndex
-ALTER INDEX "CollisionEvent_status_idx" RENAME TO "idx_collision_status";
