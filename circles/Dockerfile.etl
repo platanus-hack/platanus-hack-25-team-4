@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project configuration
+COPY pyproject.toml ./
+
+# Install Python dependencies and uvicorn
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir "uvicorn[standard]>=0.27.0" && \
+    pip install --no-cache-dir "psycopg2-binary>=2.9.0" "asyncpg>=0.29.0" "python-multipart>=0.0.20"
+
+# Copy the entire src directory (ETL needs consolidation, utils, etc.)
+COPY src ./src
+
+# Expose port 8000
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the FastAPI application with uvicorn
+CMD ["uvicorn", "src.etl.main:app", "--host", "0.0.0.0", "--port", "8000"]

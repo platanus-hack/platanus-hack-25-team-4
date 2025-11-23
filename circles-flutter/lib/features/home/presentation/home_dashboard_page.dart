@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../core/widgets/app_logo.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/page_container.dart';
 import '../../app/app_state.dart';
@@ -30,16 +33,40 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
   void initState() {
     super.initState();
     widget.state.refreshCircles();
+    widget.state.refreshMatches();
+    widget.state.addListener(_onAppStateChanged);
+    // Run once after first layout to avoid triggering setState during build.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeShowCreateCircleModal();
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(_onAppStateChanged);
+    super.dispose();
+  }
+
+  void _onAppStateChanged() {
+    // Defer the modal check to the next frame so state notifications don't
+    // mutate widgets mid-build.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeShowCreateCircleModal();
+    });
   }
 
   void _maybeShowCreateCircleModal() {
     if (_isModalOpen ||
+        widget.state.loading ||
+        !widget.state.hasLoadedUiFlags ||
         widget.state.hasActiveCircles ||
         widget.state.hasShownZeroCirclesModal) {
       return;
     }
-    // Mark as shown for this session so it won't appear again on page changes
-    widget.state.markZeroCirclesModalShown();
+    // Mark as shown and persist so it won't appear again on page changes or relaunches
+    unawaited(widget.state.markZeroCirclesModalShown());
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _showCreateCircleModal();
@@ -78,8 +105,8 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer.withOpacity(
-                          0.9,
+                        color: theme.colorScheme.secondaryContainer.withValues(
+                          alpha: 0.9,
                         ),
                         shape: BoxShape.circle,
                       ),
@@ -149,12 +176,11 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    _maybeShowCreateCircleModal();
     final theme = Theme.of(context);
     final state = widget.state;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inicio'),
+        title: const AppLogo(text: 'Circles - Inicio'),
         actions: [
           IconButton(
             onPressed: widget.onOpenProfile,
@@ -174,13 +200,13 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               onCircles: widget.onNavigateToCircles,
               onMatches: widget.onNavigateToMatches,
               circles: state.circles.length,
-              matches: state.matchesForMe.length + state.matchesIAmIn.length,
+              matches: state.matches.length,
             ),
             const SizedBox(height: 16),
             _StatsGrid(
               circles: state.circles.length,
-              matchesForMe: state.matchesForMe.length,
-              matchesIAmIn: state.matchesIAmIn.length,
+              pendingMatches: state.pendingMatches.length,
+              activeMatches: state.activeMatches.length,
               onCircles: widget.onNavigateToCircles,
               onMatches: widget.onNavigateToMatches,
             ),
@@ -239,7 +265,7 @@ class _ColorChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -262,15 +288,15 @@ class _ColorChip extends StatelessWidget {
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({
     required this.circles,
-    required this.matchesForMe,
-    required this.matchesIAmIn,
+    required this.pendingMatches,
+    required this.activeMatches,
     required this.onCircles,
     required this.onMatches,
   });
 
   final int circles;
-  final int matchesForMe;
-  final int matchesIAmIn;
+  final int pendingMatches;
+  final int activeMatches;
   final VoidCallback onCircles;
   final VoidCallback onMatches;
 
@@ -286,17 +312,17 @@ class _StatsGrid extends StatelessWidget {
         onTap: onCircles,
       ),
       _StatCard(
-        title: 'Matches recibidos',
-        value: matchesForMe.toString(),
-        icon: Icons.people_alt,
+        title: 'Matches pendientes',
+        value: pendingMatches.toString(),
+        icon: Icons.hourglass_bottom_outlined,
         color: Theme.of(context).colorScheme.secondary,
         accent: Theme.of(context).colorScheme.tertiary,
         onTap: onMatches,
       ),
       _StatCard(
-        title: 'Matches enviados',
-        value: matchesIAmIn.toString(),
-        icon: Icons.outbond,
+        title: 'Matches activos',
+        value: activeMatches.toString(),
+        icon: Icons.handshake,
         color: Theme.of(context).colorScheme.tertiary,
         accent: Theme.of(context).colorScheme.primary,
         onTap: onMatches,
@@ -350,16 +376,16 @@ class _StatCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isLightColor =
         ThemeData.estimateBrightnessForColor(color) == Brightness.light;
-    final gradientStart = color.withOpacity(isLightColor ? 0.28 : 0.2);
-    final gradientEnd = accent.withOpacity(isLightColor ? 0.18 : 0.12);
-    final outline = color.withOpacity(isLightColor ? 0.32 : 0.22);
+    final gradientStart = color.withValues(alpha: isLightColor ? 0.28 : 0.2);
+    final gradientEnd = accent.withValues(alpha: isLightColor ? 0.18 : 0.12);
+    final outline = color.withValues(alpha: isLightColor ? 0.32 : 0.22);
     final titleColor = Color.alphaBlend(
-      color.withOpacity(isLightColor ? 0.6 : 0.45),
+      color.withValues(alpha: isLightColor ? 0.6 : 0.45),
       theme.colorScheme.onSurface,
     );
-    final avatarBg = color.withOpacity(isLightColor ? 0.30 : 0.22);
+    final avatarBg = color.withValues(alpha: isLightColor ? 0.30 : 0.22);
     final avatarFg = Color.alphaBlend(
-      color.withOpacity(isLightColor ? 0.7 : 0.5),
+      color.withValues(alpha: isLightColor ? 0.7 : 0.5),
       theme.colorScheme.onSurface,
     );
     final card = Container(
@@ -376,7 +402,7 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -459,7 +485,7 @@ class _HeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.10),
+            color: theme.colorScheme.primary.withValues(alpha: 0.10),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),

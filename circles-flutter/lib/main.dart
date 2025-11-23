@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/storage/credentials_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/background/location_reporting_worker.dart';
+import 'core/widgets/app_logo.dart';
 import 'features/app/presentation/authenticated_shell.dart';
 import 'features/auth/data/auth_api_client.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -219,10 +220,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         await _handleLocationPermissionStatus(status);
       }
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _checkingLocationPermission = false;
-      });
+      if (mounted) {
+        setState(() {
+          _checkingLocationPermission = false;
+        });
+      }
     }
   }
 
@@ -381,7 +383,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return AuthenticatedShell(
       session: session,
       baseUrl: widget.config.baseUrl,
-      mockApi: widget.config.mockAuth,
+      profileRepository: widget.profileRepository,
       onLogout: _handleLogout,
     );
   }
@@ -389,6 +391,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
 class LocationPermissionRequiredPage extends StatelessWidget {
   const LocationPermissionRequiredPage({
+    super.key,
     required this.status,
     required this.onRequestPermission,
     required this.onOpenSettings,
@@ -498,7 +501,7 @@ class _ProfileGateError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tu perfil'),
+        title: const AppLogo(text: 'Circles - Tu perfil'),
         actions: [
           IconButton(
             onPressed: () {
