@@ -12,7 +12,7 @@
 export const COLLISION_CONFIG = {
   // ===== LOCATION DEBOUNCING =====
   // Skip location updates with insignificant movement
-  MIN_MOVEMENT_METERS: 5,         // Minimum distance to trigger processing
+  MIN_MOVEMENT_METERS: 0,         // Minimum distance to trigger processing
   MIN_UPDATE_INTERVAL_MS: 2000,    // Minimum time between updates
 
   // ===== COLLISION STABILITY =====
