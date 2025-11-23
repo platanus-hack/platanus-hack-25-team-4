@@ -54,6 +54,14 @@
 - **Accessibility and responsiveness**
   - Follow breakpoints (phone/tablet/wide). Support text scaling, focus states, hover for web, 44x44 touch targets.
 
+## Frontend models (current)
+- **AuthSession**: `{ email: string, token: string }`.
+- **UserProfile**: `{ email: string, profileCompleted: bool, interests: UserInterest[], bio: string }`; `UserInterest` `{ title: string, description: string }`.
+- **Circle**: `{ id: string, objetivo: string, radiusMeters: double, expiraEn?: DateTime, creadoEn: DateTime }` with a `radiusKm` getter for UI.
+- **MatchCandidate**: `{ id: string, personId: string, nombre: string, circuloId: string, circuloObjetivo: string, distanciaKm?: double, expiraEn?: DateTime }`.
+- **ChatThread**: `{ id: string, personId: string, personName: string, circleObjective?: string, lastMessage?: string, unreadCount: int, messages: ChatMessage[] }`.
+- **ChatMessage**: `{ id: string, senderId: string, text: string, sentAt: DateTime }` (no status field yet; can extend with delivered/read later).
+
 ## API bodies (draft for MVP, adjustable)
 - **Auth**
   - `POST /auth/login` body: `{ "email": string, "password": string }` → `{ "token": string, "user": { "id": string, "nombre": string, "email": string } }`
@@ -63,17 +71,17 @@
   - `PUT /me` body: `{ "nombre": string, "bio"?: string, "ubicacion"?: { "lat": number, "lng": number, "ciudad"?: string } }`
 - **Circles**
   - `GET /circulos` → list of circles.
-  - `POST /circulos` body: `{ "objetivo": string, "descripcion"?: string, "expiraEn"?: string (ISO), "radioKm": number, "ubicacion"?: { "lat": number, "lng": number } }`
+  - `POST /circulos` body: `{ "objetivo": string, "descripcion"?: string, "expiraEn"?: string (ISO), "radiusMeters": number, "ubicacion"?: { "lat": number, "lng": number } }` (API may accept km and convert; frontend model uses meters + `radiusKm` getter).
   - `PUT /circulos/{id}` same as POST.
   - `DELETE /circulos/{id}`
 - **Matches**
-  - `GET /matches/mios` (personas que matchean mis círculos) → `[ { "personaId": string, "nombre": string, "circuloId": string, "circuloObjetivo": string, "distanciaKm"?: number, "expiraEn"?: string } ]`
+  - `GET /matches/mios` (personas que matchean mis círculos) → `[ { "id": string, "personId": string, "nombre": string, "circuloId": string, "circuloObjetivo": string, "distanciaKm"?: number, "expiraEn"?: string } ]`
   - `GET /matches/soy-match` (a quienes yo matcheo) → same shape.
 - **Interacciones**
   - `POST /matches/{id}/aceptar` body: `{}` → `{ "chatId": string, ... }`
 - **Chats**
-  - `GET /chats` → `[ { "chatId": string, "personaId": string, "nombre": string, "circuloObjetivo"?: string, "ultimoMensaje"?: string, "ultimoEnvio"?: string, "noLeidos": number } ]`
-  - `GET /chats/{id}/mensajes` → `[ { "id": string, "autorId": string, "texto": string, "enviadoEn": string, "estado": "enviado"|"entregado"|"leido" } ]`
+  - `GET /chats` → `[ { "chatId": string, "personId": string, "personName": string, "circuloObjetivo"?: string, "ultimoMensaje"?: string, "ultimoEnvio"?: string, "noLeidos": number } ]`
+  - `GET /chats/{id}/mensajes` → `[ { "id": string, "senderId": string, "texto": string, "enviadoEn": string, "estado"?: "enviado"|"entregado"|"leido" } ]` (frontend currently uses `senderId`, `texto`, `enviadoEn`; status optional).
   - `POST /chats/{id}/mensajes` body: `{ "texto": string }` → same message shape.
   - Optional websocket/polling endpoint for realtime: TBD (`/ws` or polling every 5–10s).
 

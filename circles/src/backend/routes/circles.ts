@@ -60,7 +60,7 @@ circlesRouter.get(
       return;
     }
 
-    const circles = circleService.listByUser(req.user.userId);
+    const circles = await circleService.listByUser(req.user.userId);
     res.json({ circles });
   })
 );
@@ -80,7 +80,7 @@ circlesRouter.get(
       return;
     }
 
-    const circle = circleService.getById(circleId, req.user.userId);
+    const circle = await circleService.getById(circleId, req.user.userId);
     res.json({ circle });
   })
 );
@@ -111,13 +111,16 @@ circlesRouter.patch(
       updateInput.radiusMeters = parsed.radiusMeters;
     }
     if (parsed.expiresAt !== undefined) {
-      updateInput.expiresAt = new Date(parsed.expiresAt);
+      updateInput.expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : null;
+    }
+    if (parsed.status !== undefined) {
+      updateInput.status = parsed.status;
     }
     if (parsed.status !== undefined) {
       updateInput.status = parsed.status;
     }
 
-    const circle = circleService.update(circleId, req.user.userId, updateInput);
+    const circle = await circleService.update(circleId, req.user.userId, updateInput);
     res.json({ circle });
   })
 );
@@ -137,7 +140,7 @@ circlesRouter.delete(
       return;
     }
 
-    circleService.remove(circleId, req.user.userId);
+    await circleService.remove(circleId, req.user.userId);
     res.status(204).send();
   })
 );

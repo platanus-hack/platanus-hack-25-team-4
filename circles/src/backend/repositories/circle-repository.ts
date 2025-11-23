@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 import { Circle, CreateCircleInput } from '../types/circle.type.js';
 import { CircleStatus } from '../types/enums.type.js';
@@ -17,7 +19,7 @@ export class CircleRepository {
         objective: input.objective,
         radiusMeters: input.radiusMeters,
         startAt: input.startAt,
-        expiresAt: input.expiresAt,
+        expiresAt: input.expiresAt ?? null,
         status: input.status ?? CircleStatus.ACTIVE
       }
     });
@@ -62,15 +64,20 @@ export class CircleRepository {
    * Update circle
    */
   async update(id: string, input: UpdateCircleInput): Promise<Circle | undefined> {
+    const data: Prisma.CircleUpdateInput = {
+      objective: input.objective ?? undefined,
+      radiusMeters: input.radiusMeters ?? undefined,
+      startAt: input.startAt ?? undefined,
+      status: input.status ?? undefined
+    };
+
+    if (input.expiresAt !== undefined) {
+      data.expiresAt = input.expiresAt;
+    }
+
     const circle = await prisma.circle.update({
       where: { id },
-      data: {
-        objective: input.objective ?? undefined,
-        radiusMeters: input.radiusMeters ?? undefined,
-        startAt: input.startAt ?? undefined,
-        expiresAt: input.expiresAt ?? undefined,
-        status: input.status ?? undefined
-      }
+      data
     });
 
     return this.mapToCircle(circle);

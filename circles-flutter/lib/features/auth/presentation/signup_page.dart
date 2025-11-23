@@ -52,11 +52,13 @@ class _SignUpPageState extends State<SignUpPage> {
       final session = await widget.authRepository.signUp(
         name: _nameController.text,
         email: _emailController.text,
-        emailConfirmation: _emailConfirmController.text,
         password: _passwordController.text,
-        passwordConfirmation: _passwordConfirmController.text,
       );
       widget.onSignedUp(session);
+      if (mounted) {
+        // Close the signup flow so the root navigator rebuilds with the profile wizard.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('AuthException: ', ''));
     } finally {
@@ -76,7 +78,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'La contraseña es obligatoria';
-    if (value.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
+    if (value.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
     return null;
   }
 
