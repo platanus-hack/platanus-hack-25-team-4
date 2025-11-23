@@ -65,6 +65,8 @@ export const OBSERVER_REDIS_KEYS = {
   circleEdgesIndex: (circleId: string) =>
     `graph:index:circle:${circleId}:edges`,
   activeEdgesIndex: () => "graph:index:edges:active",
+  activeUsersIndex: () => "observer:index:users:active",
+  activeConversationsIndex: () => "observer:index:conversations:active",
 
   // Conversation tracking
   conversationMission: (missionId: string) =>

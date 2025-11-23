@@ -1,5 +1,6 @@
 import { collisionDetectionService } from './collision-detection-service.js';
 import { COLLISION_CONFIG } from '../config/collision.config.js';
+import { Observe } from '../infrastructure/observer/index.js';
 import { getRedisClient } from '../infrastructure/redis.js';
 import { haversineDistance } from '../utils/geo.util.js';
 
@@ -18,6 +19,29 @@ export class LocationService {
    * Main entry point: Process user location update
    * Returns: result with processing status and collision count if detected
    */
+  @Observe({
+    eventType: 'location.updated',
+    extractUserId: (args) => String(args[0]),
+    buildMetadata: (args, result) => {
+      let skipped = false;
+      let collisionsDetected: unknown = undefined;
+
+      if (result && typeof result === 'object' && 'skipped' in result) {
+        const res: Record<string, unknown> = result;
+        skipped = Boolean(res.skipped);
+        collisionsDetected = res.collisionsDetected;
+      }
+
+      return {
+        latitude: args[1],
+        longitude: args[2],
+        accuracy: args[3],
+        timestamp: args[4],
+        skipped,
+        collisionsDetected,
+      };
+    },
+  })
   async updateUserLocation(
     userId: string,
     latitude: number,

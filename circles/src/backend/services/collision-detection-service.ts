@@ -1,4 +1,5 @@
 import { COLLISION_CONFIG } from '../config/collision.config.js';
+import { Observe } from '../infrastructure/observer/index.js';
 import { getRedisClient } from '../infrastructure/redis.js';
 import { prisma } from '../lib/prisma.js';
 import { makeCollisionKey } from '../utils/geo.util.js';
@@ -29,6 +30,31 @@ export class CollisionDetectionService {
    * Detect all collisions for a user's position
    * Checks if user position falls within any other user's circles
    */
+  @Observe({
+    eventType: 'collision.detected',
+    extractUserId: (args) => String(args[0]),
+    buildMetadata: (_args, result) => {
+      const collisions = Array.isArray(result) ? result : [];
+      function isCollisionRecord(
+        value: unknown,
+      ): value is Record<string, unknown> {
+        return typeof value === 'object' && value !== null;
+      }
+      return {
+        collisionCount: collisions.length,
+        collisions: collisions.map((c: unknown) => {
+          if (isCollisionRecord(c)) {
+            return {
+              circleId: c.circle2Id,
+              otherUserId: c.user2Id,
+              distance: c.distance,
+            };
+          }
+          return { circleId: null, otherUserId: null, distance: 0 };
+        }),
+      };
+    },
+  })
   async detectCollisionsForUser(
     userId: string,
     userLat: number,

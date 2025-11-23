@@ -94,7 +94,10 @@ describe("Observable Decorator", () => {
           extractUserId: (args) => String(args[0]),
           extractCircleId: (args) => String(args[1]),
         })
-        async createMission(_userId: string, _circleId: string): Promise<string> {
+        async createMission(
+          _userId: string,
+          _circleId: string,
+        ): Promise<string> {
           return "mission-id";
         }
       }

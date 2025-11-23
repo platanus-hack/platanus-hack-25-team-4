@@ -75,7 +75,12 @@ const mockRedis = {
   smembers: vi.fn(async (key: string) => {
     return Array.from(redisSets.get(key) || []);
   }),
-  pipeline: vi.fn(() => {
+  pipeline: vi.fn(),
+};
+
+// Factory function to create the default pipeline implementation
+const createPipelineImpl = () => {
+  return () => {
     const commands: Array<{ cmd: string; args: unknown[] }> = [];
 
     type PipelineChain = {
@@ -126,7 +131,11 @@ const mockRedis = {
       exec: vi.fn(async () => {
         // Execute commands in order
         for (const { cmd, args } of commands) {
-          if (cmd === "hset" && typeof args[0] === "string" && isStringRecord(args[1])) {
+          if (
+            cmd === "hset" &&
+            typeof args[0] === "string" &&
+            isStringRecord(args[1])
+          ) {
             await mockRedis.hset(args[0], args[1]);
           } else if (
             cmd === "hincrby" &&
@@ -165,8 +174,12 @@ const mockRedis = {
     };
 
     return chain;
-  }),
+  };
 };
+
+// Initialize pipeline with default implementation
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/consistent-type-assertions
+mockRedis.pipeline = vi.fn(createPipelineImpl()) as never;
 
 vi.mock("../../infrastructure/redis.js", () => ({
   getRedisClient: () => mockRedis,
@@ -190,11 +203,19 @@ describe("ConversationObserverService", () => {
       ownerCircleId: string;
       timestamp: number;
     }) => Promise<void>;
-    startThinking: (missionId: string, speaker: "owner" | "visitor") => Promise<void>;
+    startThinking: (
+      missionId: string,
+      speaker: "owner" | "visitor",
+    ) => Promise<void>;
     addTurn: (missionId: string, turn: ConversationTurn) => Promise<void>;
     storeJudgeDecision: (
       missionId: string,
-      decision: { approved: boolean; score: number; reasoning: string; timestamp: number },
+      decision: {
+        approved: boolean;
+        score: number;
+        reasoning: string;
+        timestamp: number;
+      },
     ) => Promise<void>;
     completeConversation: (
       missionId: string,
@@ -214,6 +235,10 @@ describe("ConversationObserverService", () => {
     redisStrings.clear();
     redisLists.clear();
     redisSets.clear();
+
+    // Restore default pipeline implementation
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/consistent-type-assertions
+    mockRedis.pipeline = vi.fn(createPipelineImpl()) as never;
 
     // Dynamically import to get fresh instance with mocked dependencies
     const module = await import(
@@ -250,6 +275,7 @@ describe("ConversationObserverService", () => {
 
     it("should handle initialization errors gracefully", async () => {
       // Mock Redis error
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/consistent-type-assertions
       mockRedis.pipeline = vi.fn(() => ({
         hset: vi.fn().mockReturnThis(),
         expire: vi.fn().mockReturnThis(),
@@ -596,6 +622,7 @@ describe("ConversationObserverService", () => {
       // Create a service that will use the current mocked Redis
       // Configure mockRedis to throw errors
       const originalPipeline = mockRedis.pipeline;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/consistent-type-assertions
       mockRedis.pipeline = vi.fn(() => ({
         hset: vi.fn().mockReturnThis(),
         expire: vi.fn().mockReturnThis(),
@@ -608,7 +635,7 @@ describe("ConversationObserverService", () => {
         exec: vi.fn(async () => {
           throw new Error("Redis error");
         }),
-      }));
+      })) as never;
 
       const errorService = new ConversationObserverService();
 

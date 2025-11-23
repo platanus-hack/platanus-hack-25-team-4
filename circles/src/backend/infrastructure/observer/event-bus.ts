@@ -25,6 +25,7 @@ import type {
  * Event Bus singleton for collecting and flushing observer events
  */
 export class EventBus {
+  private static readonly MAX_BUFFER_SIZE = 10000;
   private buffer: Array<Omit<ObserverEvent, "id" | "timestamp">> = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private circuitBreaker: CircuitBreaker;
@@ -65,6 +66,16 @@ export class EventBus {
     }
 
     try {
+      // Buffer overflow protection
+      if (this.buffer.length >= EventBus.MAX_BUFFER_SIZE) {
+        console.warn("[EventBus] Buffer overflow, dropping oldest events", {
+          bufferSize: this.buffer.length,
+          droppedCount: Math.floor(EventBus.MAX_BUFFER_SIZE / 2),
+        });
+        // Drop oldest half of buffer to make room
+        this.buffer = this.buffer.slice(-Math.floor(EventBus.MAX_BUFFER_SIZE / 2));
+      }
+
       // Add to buffer
       this.buffer.push(event);
 
