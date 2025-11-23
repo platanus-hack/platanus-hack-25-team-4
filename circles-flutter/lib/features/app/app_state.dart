@@ -26,6 +26,8 @@ class AppState extends ChangeNotifier {
   final List<ChatThread> _chats = [];
   bool _loading = false;
   String? _error;
+  bool _syncedCirclesFromBackend = false;
+  bool _loadedLocalCircles = false;
 
   static const _circlesKey = 'circles_cache_v1';
 
@@ -35,6 +37,7 @@ class AppState extends ChangeNotifier {
   List<ChatThread> get chats => List.unmodifiable(_chats);
   bool get loading => _loading;
   String? get error => _error;
+  bool get _useBackend => !(_circlesApiClient.mockApi || _circlesApiClient.baseUrl.isEmpty);
 
   // Session-scoped UI flags (not persisted)
   bool _hasShownZeroCirclesModal = false;
@@ -54,19 +57,56 @@ class AppState extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      if (_circlesApiClient.mockApi || _circlesApiClient.baseUrl.isEmpty) {
-        await _loadCirclesFromCacheOrSeed();
-      } else {
+      if (_useBackend) {
         await _syncCirclesFromBackend();
+        _syncedCirclesFromBackend = true;
+      } else {
+        await _loadCirclesFromCacheOrSeed();
+        _loadedLocalCircles = true;
       }
       _seedMatchesAndChats();
-      _loading = false;
     } catch (e) {
       _error = 'No se pudo cargar tus círculos: $e';
       await _loadCirclesFromCacheOrSeed();
+      _loadedLocalCircles = true;
+    } finally {
       _loading = false;
+      notifyListeners();
     }
+  }
+
+  Future<void> refreshCircles({bool force = false}) async {
+    if (_loading) return;
+
+    if (!_useBackend) {
+      if (_loadedLocalCircles && !force) return;
+      _loading = true;
+      _error = null;
+      notifyListeners();
+      try {
+        await _loadCirclesFromCacheOrSeed();
+        _loadedLocalCircles = true;
+      } finally {
+        _loading = false;
+        notifyListeners();
+      }
+      return;
+    }
+
+    if (_syncedCirclesFromBackend && !force) return;
+
+    _loading = true;
+    _error = null;
     notifyListeners();
+    try {
+      await _syncCirclesFromBackend();
+      _syncedCirclesFromBackend = true;
+    } catch (e) {
+      _error = 'No se pudo actualizar tus círculos: $e';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> saveCircle(Circle circle, {required bool isEditing}) async {
@@ -188,22 +228,24 @@ class AppState extends ChangeNotifier {
       return;
     }
     final now = DateTime.now();
-    _circles.addAll([
-      Circle(
-        id: 'c1',
-        objetivo: 'Formar equipo para hackathon',
-        radiusMeters: 10000,
-        expiraEn: now.add(const Duration(days: 10)),
-        creadoEn: now.subtract(const Duration(days: 1)),
-      ),
-      Circle(
-        id: 'c2',
-        objetivo: 'Salir a correr 10k',
-        radiusMeters: 5000,
-        expiraEn: null,
-        creadoEn: now.subtract(const Duration(days: 2)),
-      ),
-    ]);
+    _circles
+      ..clear()
+      ..addAll([
+        Circle(
+          id: 'c1',
+          objetivo: 'Formar equipo para hackathon',
+          radiusMeters: 10000,
+          expiraEn: now.add(const Duration(days: 10)),
+          creadoEn: now.subtract(const Duration(days: 1)),
+        ),
+        Circle(
+          id: 'c2',
+          objetivo: 'Salir a correr 10k',
+          radiusMeters: 5000,
+          expiraEn: null,
+          creadoEn: now.subtract(const Duration(days: 2)),
+        ),
+      ]);
     await _persistCircles();
   }
 

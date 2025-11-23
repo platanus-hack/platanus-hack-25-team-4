@@ -1,5 +1,5 @@
 import { BedrockInterviewAgentsRuntime } from './agentsRuntime.js';
-import { InterviewFlowService } from './interviewFlowService.js';
+import { InterviewFlowService, type IInterviewFlowService } from './interviewFlowService.js';
 import { BedrockInterviewJudge } from './judge.js';
 import { LoggingNotificationGateway } from './notificationGateway.js';
 import { InterviewMission } from './types.js';
@@ -14,7 +14,7 @@ export interface MissionJobHandler {
 }
 
 export const createMissionJobHandler = (
-  flowService: InterviewFlowService
+  flowService: IInterviewFlowService
 ): MissionJobHandler => {
   return async (job: MissionJob): Promise<void> => {
     await flowService.runMission(job.data);

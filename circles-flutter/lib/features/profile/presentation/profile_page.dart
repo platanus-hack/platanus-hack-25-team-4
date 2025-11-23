@@ -22,84 +22,124 @@ class ProfilePage extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.secondary.withValues(alpha: 0.14),
-                    theme.colorScheme.tertiary.withValues(alpha: 0.12),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: theme.colorScheme.secondary.withValues(
-                      alpha: 0.18,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.secondary.withValues(alpha: 0.14),
+                            theme.colorScheme.tertiary.withValues(alpha: 0.12),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: LayoutBuilder(
+                        builder: (context, box) {
+                          final isNarrow = box.maxWidth < 360;
+                          final info = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                session.email.split('@').first,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                session.email,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                          );
+                          if (isNarrow) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 32,
+                                  backgroundColor:
+                                      theme.colorScheme.secondary.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                  foregroundColor: theme.colorScheme.secondary,
+                                  child: const Icon(Icons.person, size: 32),
+                                ),
+                                const SizedBox(height: 12),
+                                info,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 32,
+                                backgroundColor:
+                                    theme.colorScheme.secondary.withValues(
+                                  alpha: 0.18,
+                                ),
+                                foregroundColor: theme.colorScheme.secondary,
+                                child: const Icon(Icons.person, size: 32),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(child: info),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                    foregroundColor: theme.colorScheme.secondary,
-                    child: const Icon(Icons.person, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session.email.split('@').first,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(height: 24),
+                    Card(
+                      color:
+                          theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.mail_outline,
+                          color: theme.colorScheme.primary,
+                        ),
+                        title: const Text('Correo'),
+                        subtitle: Text(session.email),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      color: theme.colorScheme.tertiaryContainer
+                          .withValues(alpha: 0.7),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.location_on_outlined,
+                          color: theme.colorScheme.tertiary,
+                        ),
+                        title: const Text('Ubicación'),
+                        subtitle: const Text(
+                          'Configura tu ubicación cuando haya backend.',
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(session.email, style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Card(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-              child: ListTile(
-                leading: Icon(
-                  Icons.mail_outline,
-                  color: theme.colorScheme.primary,
-                ),
-                title: const Text('Correo'),
-                subtitle: Text(session.email),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.7),
-              child: ListTile(
-                leading: Icon(
-                  Icons.location_on_outlined,
-                  color: theme.colorScheme.tertiary,
-                ),
-                title: const Text('Ubicación'),
-                subtitle: const Text(
-                  'Configura tu ubicación cuando haya backend.',
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.secondary,
+                      ),
+                      onPressed: () => _handleLogout(context),
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Cerrar sesión'),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.secondary,
-              ),
-              onPressed: () => _handleLogout(context),
-              icon: const Icon(Icons.logout),
-              label: const Text('Cerrar sesión'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

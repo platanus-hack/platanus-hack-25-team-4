@@ -53,6 +53,7 @@ services:
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
     volumes:
+      # Persist Prisma schema and migrations back to the host repo
       - ./circles/src/backend/prisma:/app/prisma
     depends_on:
       db:

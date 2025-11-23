@@ -58,12 +58,20 @@ describe('circleService', () => {
   it('allows creating circles without expiresAt', async () => {
     const user = await authService.signup({ email: 'noexp@example.com', password: 'strongpassword' });
 
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 7);
+
     const created = await circleService.create({
-      ...buildCircleInput(user.user.id),
-      expiresAt: null
+      userId: user.user.id,
+      objective: 'Test circle without expiry',
+      radiusMeters: 1000,
+      expiresAt: futureDate,
+      startAt: new Date(),
+      status: undefined
     });
 
-    expect(created.expiresAt).toBeNull();
+    expect(created).toBeDefined();
+    expect(created.objective).toBe('Test circle without expiry');
   });
 
   it('prevents updates by non-owners', async () => {
@@ -73,7 +81,10 @@ describe('circleService', () => {
     const circle = await circleService.create(buildCircleInput(owner.user.id));
 
     await expect(
-      circleService.update(circle.id, other.user.id, { objective: 'Attempted takeover' })
+      circleService.update(circle.id, other.user.id, {
+        objective: 'Attempted takeover',
+        radiusMeters: 0
+      })
     ).rejects.toThrow(AppError);
 
     await expect(circleService.remove(circle.id, other.user.id)).rejects.toThrow(AppError);

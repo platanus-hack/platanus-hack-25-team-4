@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 import { Message, CreateMessageInput, UpdateMessageInput, ModerationFlags } from '../types/message.type.js';
 
@@ -22,7 +24,7 @@ export class MessageRepository {
         senderUserId: input.senderUserId,
         receiverId: input.receiverId,
         content: input.content,
-        moderationFlags: input.moderationFlags ?? null
+        moderationFlags: input.moderationFlags || Prisma.DbNull
       }
     });
 
@@ -146,9 +148,14 @@ export class MessageRepository {
    * Update a message
    */
   async update(id: string, input: UpdateMessageInput): Promise<Message | null> {
+    const data: Record<string, unknown> = {};
+    if ('moderationFlags' in input) {
+      data.moderationFlags = input.moderationFlags || Prisma.DbNull;
+    }
+    
     const message = await prisma.message.update({
       where: { id },
-      data: input
+      data
     });
 
     return this.mapToMessage(message);

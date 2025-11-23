@@ -26,6 +26,12 @@ class HomeDashboardPage extends StatefulWidget {
 class _HomeDashboardPageState extends State<HomeDashboardPage> {
   bool _isModalOpen = false;
 
+  @override
+  void initState() {
+    super.initState();
+    widget.state.refreshCircles();
+  }
+
   void _maybeShowCreateCircleModal() {
     if (_isModalOpen ||
         widget.state.hasActiveCircles ||
@@ -160,6 +166,10 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
       body: PageContainer(
         child: ListView(
           children: [
+            if (state.loading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
             _HeroCard(
               onCircles: widget.onNavigateToCircles,
               onMatches: widget.onNavigateToMatches,

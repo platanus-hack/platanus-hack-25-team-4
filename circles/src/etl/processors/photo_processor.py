@@ -5,6 +5,8 @@ Extracts:
 - Visual captions via Claude's vision capabilities
 - Detailed analysis of image content
 - EXIF metadata (if available)
+
+Supports both single and batch processing with concurrent VLM API calls.
 """
 
 import asyncio
@@ -13,12 +15,13 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import aiofiles
 import anthropic
 
 from ..core import get_settings
+from ..services import ImageService
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +41,20 @@ class SimpleProcessorResult:
 
 
 class PhotoProcessor:
-    """Process images using Claude Vision API."""
+    """Process images using Claude Vision API with batch support."""
 
-    def __init__(self):
-        """Initialize processor with Anthropic client."""
+    def __init__(self, max_concurrent: int = 30):
+        """
+        Initialize processor with Anthropic client.
+
+        Args:
+            max_concurrent: Maximum concurrent VLM API calls (default 30)
+        """
         settings = get_settings()
         self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.model = "claude-3-5-sonnet-20241022"
+        self.max_concurrent = max_concurrent
+        self.semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process(self, file_path: Path) -> SimpleProcessorResult:
         """
@@ -107,24 +117,21 @@ class PhotoProcessor:
         try:
             # Run blocking API call in thread pool
             def _api_call():
-                return self.client.messages.create(
-                    model=self.model,
-                    max_tokens=1024,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": media_type,
-                                        "data": encoded_image,
-                                    },
+                messages: Any = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": encoded_image,
                                 },
-                                {
-                                    "type": "text",
-                                    "text": """Analyze this image and provide:
+                            },
+                            {
+                                "type": "text",
+                                "text": """Analyze this image and provide:
 1. A brief one-line caption describing what you see
 2. A detailed analysis including:
    - Main objects/subjects
@@ -135,17 +142,27 @@ class PhotoProcessor:
    - Any notable details
 
 Format your response as JSON with keys: caption (string) and analysis (object with the analysis details).""",
-                                },
-                            ],
-                        }
-                    ],
+                            },
+                        ],
+                    }
+                ]
+                return self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1024,
+                    messages=messages,
                 )
 
             # Execute in thread pool to avoid blocking
             message = await asyncio.to_thread(_api_call)
 
             # Parse response
-            response_text = message.content[0].text
+            if not message.content or len(message.content) == 0:
+                raise ValueError("Empty response from Claude API")
+
+            first_block = message.content[0]
+            response_text = getattr(first_block, "text", None)
+            if not response_text:
+                raise ValueError("Response does not contain text content")
 
             # Try to extract JSON from response
             try:
@@ -211,19 +228,19 @@ Format your response as JSON with keys: caption (string) and analysis (object wi
                 from PIL import Image
                 from PIL.ExifTags import TAGS
 
-                image = Image.open(file_path)
-                exif_dict = {}
+                with Image.open(file_path) as image:
+                    exif_dict = {}
 
-                if hasattr(image, "_getexif"):
-                    exif_data = image._getexif()
-                    if exif_data:
-                        for tag_id, value in exif_data.items():
-                            tag_name = TAGS.get(tag_id, tag_id)
-                            exif_dict[tag_name] = str(value)[
-                                :100
-                            ]  # Limit string length
+                    if hasattr(image, "_getexif"):
+                        exif_data = image._getexif()
+                        if exif_data:
+                            for tag_id, value in exif_data.items():
+                                tag_name = TAGS.get(tag_id, tag_id)
+                                exif_dict[tag_name] = str(value)[
+                                    :100
+                                ]  # Limit string length
 
-                return exif_dict
+                    return exif_dict
             except Exception as e:
                 logger.debug(f"Could not extract EXIF data: {e}")
                 return {}
@@ -237,22 +254,137 @@ Format your response as JSON with keys: caption (string) and analysis (object wi
         Extract EXIF data from image (synchronous version for backward compatibility).
 
         Returns empty dict if PIL not available or no EXIF data.
+
+        NOTE: Prefer _extract_exif_data_async() for use in async contexts.
         """
         try:
             from PIL import Image
             from PIL.ExifTags import TAGS
 
-            image = Image.open(file_path)
-            exif_dict = {}
+            with Image.open(file_path) as image:
+                exif_dict = {}
 
-            if hasattr(image, "_getexif"):
-                exif_data = image._getexif()
-                if exif_data:
-                    for tag_id, value in exif_data.items():
-                        tag_name = TAGS.get(tag_id, tag_id)
-                        exif_dict[tag_name] = str(value)[:100]  # Limit string length
+                if hasattr(image, "_getexif"):
+                    exif_data = image._getexif()
+                    if exif_data:
+                        for tag_id, value in exif_data.items():
+                            tag_name = TAGS.get(tag_id, tag_id)
+                            exif_dict[tag_name] = str(value)[
+                                :100
+                            ]  # Limit string length
 
-            return exif_dict
+                return exif_dict
         except Exception:
             # PIL not available or image doesn't have EXIF
             return {}
+
+    async def process_batch(
+        self, file_paths: List[Path], optimize_images: bool = True
+    ) -> List[SimpleProcessorResult]:
+        """
+        Process multiple images in parallel with concurrency control.
+
+        Uses semaphore to limit concurrent VLM API calls while maximizing throughput.
+        Optionally optimizes images before processing.
+
+        Args:
+            file_paths: List of image file paths
+            optimize_images: Whether to optimize images before processing (default True)
+
+        Returns:
+            List of SimpleProcessorResult for each image
+
+        Raises:
+            Exception if any processing fails (partial batch failures are included in results)
+        """
+        logger.info(
+            f"Processing batch of {len(file_paths)} images "
+            f"(max {self.max_concurrent} concurrent)"
+        )
+
+        # Create tasks with optimization if requested
+        tasks = []
+        for file_path in file_paths:
+            if optimize_images:
+                task = self._process_with_optimization(file_path)
+            else:
+                task = self._process_with_semaphore(file_path)
+            tasks.append(task)
+
+        # Execute all tasks concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results - convert exceptions to error results
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Error processing image {file_paths[i].name}: {result}")
+                # Create error result
+                error_result = SimpleProcessorResult(
+                    content={
+                        "caption": "Processing failed",
+                        "analysis": {"error": str(result)},
+                        "image_file": file_paths[i].name,
+                    },
+                    metadata={
+                        "file_type": file_paths[i].suffix.lower(),
+                        "file_size": 0,
+                        "processing_error": str(result),
+                    },
+                )
+                processed_results.append(error_result)
+            else:
+                processed_results.append(result)
+
+        logger.info(
+            f"Batch processing complete: {len([r for r in processed_results if 'error' not in r.metadata.get('processing_error', '')])} "
+            f"successful, {len([r for r in processed_results if 'error' in r.metadata.get('processing_error', '')])} failed"
+        )
+        return processed_results
+
+    async def _process_with_semaphore(self, file_path: Path) -> SimpleProcessorResult:
+        """
+        Process image with semaphore to control concurrency.
+
+        Args:
+            file_path: Path to image file
+
+        Returns:
+            SimpleProcessorResult
+
+        Raises:
+            Exception if processing fails
+        """
+        async with self.semaphore:
+            return await self.process(file_path)
+
+    async def _process_with_optimization(
+        self, file_path: Path
+    ) -> SimpleProcessorResult:
+        """
+        Process image with optimization before VLM processing.
+
+        Args:
+            file_path: Path to image file
+
+        Returns:
+            SimpleProcessorResult
+
+        Raises:
+            Exception if processing fails
+        """
+        async with self.semaphore:
+            # Optimize image for VLM
+            optimized_path, was_optimized = await ImageService.process_image_for_vlm(
+                file_path
+            )
+
+            try:
+                # Process optimized image
+                result = await self.process(optimized_path)
+                return result
+            finally:
+                # Clean up optimized version if created
+                await ImageService.cleanup_optimized_image(
+                    optimized_path, was_optimized
+                )

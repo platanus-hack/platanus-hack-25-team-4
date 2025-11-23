@@ -1,3 +1,5 @@
+import { CircleStatus as PrismaCircleStatus } from '@prisma/client';
+
 import { prisma } from '../lib/prisma.js';
 import type { Circle, CreateCircleInput, UpdateCircleInput } from '../types/circle.type.js';
 import { CircleStatus } from '../types/enums.type.js'
@@ -13,7 +15,7 @@ export class CircleRepository {
         objective: input.objective,
         radiusMeters: input.radiusMeters,
         startAt: input.startAt,
-        expiresAt: input.expiresAt ?? null,
+        expiresAt: input.expiresAt ?? new Date(),
         status: input.status ?? CircleStatus.ACTIVE
       }
     });
@@ -41,17 +43,7 @@ export class CircleRepository {
       orderBy: { createdAt: 'desc' }
     });
 
-    return circles.map((c: {
-      id: string;
-      userId: string;
-      objective: string;
-      radiusMeters: number | null;
-      startAt: Date | null;
-      expiresAt: Date | null;
-      status: CircleStatus;
-      createdAt: Date;
-      updatedAt: Date;
-    }) => this.mapToCircle(c));
+    return circles.map(c => this.mapToCircle(c));
   }
 
   /**
@@ -94,10 +86,16 @@ export class CircleRepository {
     radiusMeters: number | null;
     startAt: Date | null;
     expiresAt: Date | null;
-    status: CircleStatus;
+    status: PrismaCircleStatus;
     createdAt: Date;
     updatedAt: Date;
   }): Circle {
+    const statusMap: Record<PrismaCircleStatus, CircleStatus> = {
+      [PrismaCircleStatus.active]: CircleStatus.ACTIVE,
+      [PrismaCircleStatus.paused]: CircleStatus.PAUSED,
+      [PrismaCircleStatus.expired]: CircleStatus.EXPIRED,
+    };
+    
     return {
       id: circle.id,
       userId: circle.userId,
@@ -105,7 +103,7 @@ export class CircleRepository {
       radiusMeters: circle.radiusMeters,
       startAt: circle.startAt,
       expiresAt: circle.expiresAt,
-      status: circle.status,
+      status: statusMap[circle.status] ?? CircleStatus.ACTIVE,
       createdAt: circle.createdAt,
       updatedAt: circle.updatedAt
     };

@@ -15,7 +15,11 @@ const defaultConfig: InterviewFlowConfig = {
   max_owner_turns: 3
 };
 
-export class InterviewFlowService {
+export interface IInterviewFlowService {
+  runMission(mission: InterviewMission): Promise<InterviewMissionResult>;
+}
+
+export class InterviewFlowService implements IInterviewFlowService {
   private readonly agentsRuntime: InterviewAgentsRuntime;
   private readonly judge: InterviewJudge;
   private readonly notificationGateway: NotificationGateway;

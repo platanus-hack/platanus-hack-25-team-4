@@ -26,14 +26,14 @@ export type CreateCircleInput = {
   objective: string;
   radiusMeters: number;
   expiresAt?: Date | undefined;
-  startAt?: Date;
+  startAt: Date;
   status?: CircleStatus;
 };
 
 /**
  * Circle update input
  */
-export type UpdateCircleInput = Omit<CreateCircleInput, 'userId'>;
+export type UpdateCircleInput = Omit<CreateCircleInput, 'userId' | 'startAt'>;
 
 /**
  * Circle with user details (for responses)

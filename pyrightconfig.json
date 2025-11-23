@@ -1,0 +1,9 @@
+{
+  "venvPath": "circles",
+  "venv": ".venv",
+  "extraPaths": ["circles/src"],
+  "pythonVersion": "3.12",
+  "include": ["circles/src"],
+  "exclude": ["**/node_modules", "**/__pycache__", "**/.venv"]
+}
+
