@@ -20,6 +20,6 @@ export const errorHandler = (
   }
 
   const unexpectedError = error instanceof Error ? error : new Error('Unknown error');
-  logger.error(unexpectedError.message);
+  logger.error(unexpectedError.message, unexpectedError);
   res.status(500).json({ error: 'Internal server error' });
 };

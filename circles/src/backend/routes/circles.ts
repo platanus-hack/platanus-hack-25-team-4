@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { validateBody } from '../middlewares/validate-body.middleware.js';
-import type { UpdateCircleInput } from '../repositories/circle-repository.js';
 import { CircleService } from '../services/circle-service.js';
-import { CircleStatus, circleStatusSchema } from '../types/enums.type.js';
+import type { UpdateCircleInput } from '../types/circle.type.js';
+import { CircleStatus } from '../types/enums.type.js';
 import { asyncHandler } from '../utils/async-handler.util.js';
 
 const createCircleSchema = z.object({
@@ -15,10 +15,9 @@ const createCircleSchema = z.object({
 });
 
 const updateCircleSchema = z.object({
-  objective: z.string().trim().min(1).optional(),
-  radiusMeters: z.number().positive().optional(),
-  expiresAt: z.string().datetime().optional(),
-  status: circleStatusSchema.optional()
+  objective: z.string().trim().min(1),
+  radiusMeters: z.number().positive(),
+  expiresAt: z.string().datetime().optional()
 });
 
 export const circlesRouter = Router();
@@ -102,24 +101,11 @@ circlesRouter.patch(
     }
 
     const parsed = updateCircleSchema.parse(req.body);
-    const updateInput: UpdateCircleInput = {};
-
-    if (parsed.objective !== undefined) {
-      updateInput.objective = parsed.objective;
-    }
-    if (parsed.radiusMeters !== undefined) {
-      updateInput.radiusMeters = parsed.radiusMeters;
-    }
-    if (parsed.expiresAt !== undefined) {
-      updateInput.expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : null;
-    }
-    if (parsed.status !== undefined) {
-      updateInput.status = parsed.status;
-    }
-    if (parsed.status !== undefined) {
-      updateInput.status = parsed.status;
-    }
-
+    const updateInput: UpdateCircleInput = {
+      objective: parsed.objective,
+      radiusMeters: parsed.radiusMeters,
+      expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : undefined
+    };
     const circle = await circleService.update(circleId, req.user.userId, updateInput);
     res.json({ circle });
   })

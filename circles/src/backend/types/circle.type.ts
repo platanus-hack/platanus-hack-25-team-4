@@ -33,7 +33,7 @@ export type CreateCircleInput = {
 /**
  * Circle update input
  */
-export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>>;
+export type UpdateCircleInput = Omit<CreateCircleInput, 'userId'>;
 
 /**
  * Circle with user details (for responses)

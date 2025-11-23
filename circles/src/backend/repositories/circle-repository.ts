@@ -1,12 +1,6 @@
-import type { Prisma } from '@prisma/client';
-
 import { prisma } from '../lib/prisma.js';
-import { Circle, CreateCircleInput } from '../types/circle.type.js';
-import { CircleStatus } from '../types/enums.type.js';
-
-export type UpdateCircleInput = Partial<Omit<CreateCircleInput, 'userId'>> & {
-  status?: CircleStatus;
-};
+import type { Circle, CreateCircleInput, UpdateCircleInput } from '../types/circle.type.js';
+import { CircleStatus } from '../types/enums.type.js'
 
 export class CircleRepository {
   /**
@@ -64,11 +58,9 @@ export class CircleRepository {
    * Update circle
    */
   async update(id: string, input: UpdateCircleInput): Promise<Circle | undefined> {
-    const data: Prisma.CircleUpdateInput = {
-      objective: input.objective ?? undefined,
-      radiusMeters: input.radiusMeters ?? undefined,
-      startAt: input.startAt ?? undefined,
-      status: input.status ?? undefined
+    const data: UpdateCircleInput = {
+      objective: input.objective,
+      radiusMeters: input.radiusMeters
     };
 
     if (input.expiresAt !== undefined) {
