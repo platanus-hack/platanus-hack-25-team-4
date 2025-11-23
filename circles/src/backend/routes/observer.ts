@@ -69,7 +69,7 @@ observerRouter.get('/stats', (_req: Request, res: Response) => {
 observerRouter.get('/events/:type', (req: Request, res: Response) => {
   void (async () => {
   try {
-    const { type } = req.params;
+    const { type = 'all' } = req.params;
     const limit = Math.min(Number(req.query.limit) || 100, 1000); // Max 1000 events
 
     const redis = getRedisClient();
@@ -130,7 +130,7 @@ observerRouter.get('/users/:userId/activity', (req: Request, res: Response) => {
 
     // Filter events by userId
     const userEvents = events
-      .map((entry) => {
+      .map((entry): Record<string, string> & { id: string } => {
         const [eventId, fields] = entry;
         const eventData: Record<string, string> = {};
         for (let i = 0; i < fields.length; i += 2) {
@@ -146,8 +146,8 @@ observerRouter.get('/users/:userId/activity', (req: Request, res: Response) => {
         };
       })
       .filter((event) => {
-        const userId = event.userId;
-        const relatedUserId = event.relatedUserId;
+        const userId = event['userId'];
+        const relatedUserId = event['relatedUserId'];
         return userId === req.params.userId || relatedUserId === req.params.userId;
       })
       .slice(0, limit);

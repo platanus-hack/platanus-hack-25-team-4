@@ -2,8 +2,8 @@ import { collisionDetectionService } from './collision-detection-service.js';
 import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { Observe } from '../infrastructure/observer/index.js';
 import { getRedisClient } from '../infrastructure/redis.js';
+import { prisma } from '../lib/prisma.js';
 import { haversineDistance } from '../utils/geo.util.js';
-import { prisma } from "../lib/prisma.js";
 
 /**
  * Service for handling location updates and debouncing

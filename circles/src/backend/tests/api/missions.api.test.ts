@@ -1,4 +1,5 @@
 import type { Application } from "express";
+import { MissionStatus } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,7 +36,7 @@ describe("Mission API Endpoints", () => {
     ownerCircleId: "circle-1",
     visitorCircleId: "circle-2",
     collisionEventId: "collision-1",
-    status: "pending",
+    status: MissionStatus.pending,
     transcript: null,
     judgeDecision: null,
     createdAt: new Date(),
@@ -281,7 +282,7 @@ describe("Mission API Endpoints", () => {
         mockMission,
       ]);
 
-      const response = await request(app)
+      const _response = await request(app)
         .get("/api/missions")
         .set("Authorization", `Bearer ${user1Token}`)
         .expect(200);
@@ -458,7 +459,7 @@ describe("Mission API Endpoints", () => {
         mission2,
       ]);
 
-      const response = await request(app)
+      const _response = await request(app)
         .get("/api/missions")
         .set("Authorization", `Bearer ${user1Token}`)
         .expect(200);
