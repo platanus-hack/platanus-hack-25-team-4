@@ -1,6 +1,6 @@
+import { collisionDetectionService } from './collision-detection-service.js';
 import { COLLISION_CONFIG } from '../config/collision.config.js';
 import { getRedisClient } from '../infrastructure/redis.js';
-import { prisma } from '../lib/prisma.js';
 import { haversineDistance } from '../utils/geo.util.js';
 
 /**
@@ -34,19 +34,21 @@ export class LocationService {
       // 2. Update cache
       await this.cacheUserPosition(userId, latitude, longitude, accuracy);
 
-      // 3. Load user's active circles
-      const userCircles = await this.getUserCircles(userId);
-      if (userCircles.length === 0) {
-        return { skipped: true, collisionsDetected: 0 };
-      }
+      // 3. Detect collisions with other users' circles
+      // Note: User position should already be in DB via PUT /users/position endpoint
+      const collisions = await collisionDetectionService.detectCollisionsForUser(
+        userId,
+        latitude,
+        longitude
+      );
 
       console.info('Location update processed', {
         userId,
-        circleCount: userCircles.length,
+        collisionsDetected: collisions.length,
         location: { latitude, longitude },
       });
 
-      return { skipped: false, collisionsDetected: 0 };
+      return { skipped: false, collisionsDetected: collisions.length };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       console.error('Location update failed', { userId, error: errorMsg });
@@ -125,34 +127,6 @@ export class LocationService {
     }
   }
 
-  /**
-   * Get active circles for the user
-   * Called when user location changes significantly
-   */
-  private async getUserCircles(
-    userId: string
-  ): Promise<{ id: string }[]> {
-    try {
-      const circles = await prisma.circle.findMany({
-        where: {
-          userId,
-          status: 'active' as const,
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true },
-      });
-
-      console.debug('Loaded user circles for location update', {
-        userId,
-        count: circles.length,
-      });
-
-      return circles;
-    } catch (error) {
-      console.error('Failed to load user circles', { userId, error });
-      throw error;
-    }
-  }
 }
 
 export const locationService = new LocationService();

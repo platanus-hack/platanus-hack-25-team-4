@@ -1,5 +1,4 @@
 import { CleanupWorker } from './cleanup-worker.js';
-import { MissionWorker } from './mission-worker.js';
 import { StabilityWorker } from './stability-worker.js';
 
 /**
@@ -8,26 +7,22 @@ import { StabilityWorker } from './stability-worker.js';
  */
 export class WorkerRunner {
   private stabilityWorker: StabilityWorker;
-  private missionWorker: MissionWorker;
   private cleanupWorker: CleanupWorker;
 
   constructor() {
     this.stabilityWorker = new StabilityWorker();
-    this.missionWorker = new MissionWorker(3); // Process up to 3 missions in parallel
     this.cleanupWorker = new CleanupWorker();
   }
 
   /**
    * Start all workers
+   * Note: Mission processing is handled by BullMQ worker (missionWorkerRunner.ts)
    */
   startAll(): void {
     console.info('Starting all workers...');
 
     // Start stability worker (5 second interval)
     this.stabilityWorker.start(5000);
-
-    // Start mission worker (10 second interval)
-    this.missionWorker.start(10000);
 
     // Start cleanup worker (10 minute interval)
     this.cleanupWorker.start(10 * 60 * 1000);
@@ -44,14 +39,6 @@ export class WorkerRunner {
   }
 
   /**
-   * Start only mission worker
-   */
-  startMissionWorker(): void {
-    console.info('Starting mission worker...');
-    this.missionWorker.start(10000);
-  }
-
-  /**
    * Start only cleanup worker
    */
   startCleanupWorker(): void {
@@ -65,7 +52,6 @@ export class WorkerRunner {
   stopAll(): void {
     console.info('Stopping all workers...');
     this.stabilityWorker.stop();
-    this.missionWorker.stop();
     this.cleanupWorker.stop();
     console.info('All workers stopped');
   }
@@ -73,6 +59,7 @@ export class WorkerRunner {
 
 /**
  * Determine which worker(s) to start based on environment variable
+ * Note: 'mission' is no longer supported - use missionWorkerRunner.ts instead
  */
 function getWorkersToStart(): string[] {
   const workerEnv = process.env.WORKERS || 'all';
@@ -80,13 +67,11 @@ function getWorkersToStart(): string[] {
   switch (workerEnv.toLowerCase()) {
     case 'stability':
       return ['stability'];
-    case 'mission':
-      return ['mission'];
     case 'cleanup':
       return ['cleanup'];
     case 'all':
     default:
-      return ['stability', 'mission', 'cleanup'];
+      return ['stability', 'cleanup'];
   }
 }
 
@@ -102,9 +87,6 @@ export async function startWorkers(): Promise<void> {
 
   if (workersToStart.includes('stability')) {
     runner.startStabilityWorker();
-  }
-  if (workersToStart.includes('mission')) {
-    runner.startMissionWorker();
   }
   if (workersToStart.includes('cleanup')) {
     runner.startCleanupWorker();
@@ -124,7 +106,8 @@ export async function startWorkers(): Promise<void> {
   });
 
   console.info('Workers running. Started:', workersToStart);
-  console.info('Set WORKERS environment variable to: stability, mission, cleanup, or all (default)');
+  console.info('Set WORKERS environment variable to: stability, cleanup, or all (default)');
+  console.info('Note: Mission processing uses BullMQ (start with: npm run dev:mission-worker)');
 }
 
 // Start workers if this is the main module
