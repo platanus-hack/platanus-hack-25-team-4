@@ -303,6 +303,40 @@ def temp_upload_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
+def temp_file(tmp_path) -> Path:
+    """
+    Create a temporary file with some content.
+
+    Returns the path to the temporary file.
+    """
+    file_path = tmp_path / "test_file.txt"
+    file_path.write_text("Test content")
+    return file_path
+
+
+@pytest.fixture
+def temp_directory(tmp_path) -> Path:
+    """
+    Create a temporary directory.
+
+    Returns the path to the temporary directory.
+    """
+    dir_path = tmp_path / "test_directory"
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+
+@pytest.fixture
+def nonexistent_path(tmp_path) -> Path:
+    """
+    Provide a path that does not exist.
+
+    Useful for testing file-not-found error handling.
+    """
+    return tmp_path / "nonexistent_file.txt"
+
+
+@pytest.fixture
 def sample_files_dir(temp_fixtures_dir) -> Path:
     """
     Get the path to the sample files directory.

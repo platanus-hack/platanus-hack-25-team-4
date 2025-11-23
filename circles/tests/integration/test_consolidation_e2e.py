@@ -10,6 +10,7 @@ Run with: pytest -m "e2e" circles/tests/integration/test_consolidation_e2e.py
 import logging
 
 import pytest
+
 from src.consolidation.llm_adapter import LLMProviderFactory
 from src.consolidation.orchestrator import ProfileConsolidationOrchestrator
 from src.consolidation.strategy import DefaultConsolidationStrategy
@@ -66,7 +67,7 @@ def sample_minimal_raw_data():
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.e2e
-async def test_claude_consolidation_with_real_api(db_session, sample_minimal_raw_data):
+async def test_claude_consolidation_with_real_api(async_session, sample_minimal_raw_data):
     """
     E2E test: Claude consolidator with real API call.
 
@@ -113,7 +114,7 @@ async def test_claude_consolidation_with_real_api(db_session, sample_minimal_raw
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.e2e
-async def test_openai_consolidation_with_real_api(db_session, sample_minimal_raw_data):
+async def test_openai_consolidation_with_real_api(async_session, sample_minimal_raw_data):
     """
     E2E test: OpenAI consolidator with real API call.
 
@@ -153,7 +154,7 @@ async def test_openai_consolidation_with_real_api(db_session, sample_minimal_raw
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.e2e
-async def test_orchestrator_e2e_with_claude(db_session, sample_minimal_raw_data):
+async def test_orchestrator_e2e_with_claude(async_session, sample_minimal_raw_data):
     """
     E2E test: Complete orchestration pipeline with Claude.
 
@@ -174,7 +175,7 @@ async def test_orchestrator_e2e_with_claude(db_session, sample_minimal_raw_data)
 
     # Create orchestrator with Claude provider
     orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
-        db_session, llm_provider_name="anthropic"
+        async_session, llm_provider_name="anthropic"
     )
 
     # Mock the aggregator to return our test data
@@ -205,7 +206,7 @@ async def test_orchestrator_e2e_with_claude(db_session, sample_minimal_raw_data)
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.e2e
-async def test_orchestrator_e2e_with_openai(db_session, sample_minimal_raw_data):
+async def test_orchestrator_e2e_with_openai(async_session, sample_minimal_raw_data):
     """
     E2E test: Complete orchestration pipeline with OpenAI.
 
@@ -226,7 +227,7 @@ async def test_orchestrator_e2e_with_openai(db_session, sample_minimal_raw_data)
 
     # Create orchestrator with OpenAI provider
     orchestrator = ProfileConsolidationOrchestrator.create_with_llm_provider(
-        db_session, llm_provider_name="openai"
+        async_session, llm_provider_name="openai"
     )
 
     # Mock the aggregator to return our test data
@@ -299,7 +300,7 @@ async def test_profile_validation_with_real_llm_output(sample_minimal_raw_data):
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.e2e
-async def test_consolidation_with_diverse_data_sources(db_session):
+async def test_consolidation_with_diverse_data_sources(async_session):
     """
     E2E test: Consolidation with more diverse data sources.
 

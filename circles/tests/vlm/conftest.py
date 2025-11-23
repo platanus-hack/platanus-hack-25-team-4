@@ -46,17 +46,19 @@ def mock_transformers():
     mock_processor.return_value.to.return_value = MagicMock()
     mock_processor.batch_decode.return_value = ["Generated text from model"]
 
-    with patch("src.etl.adapters.vlm.smolvlm.AutoProcessor", mock_processor_class):
-        with patch(
-            "src.etl.adapters.vlm.smolvlm.AutoModelForVision2Seq",
-            mock_model_class,
-        ):
-            yield {
-                "processor_class": mock_processor_class,
-                "model_class": mock_model_class,
-                "processor": mock_processor,
-                "model": mock_model,
-            }
+    # Create a mock transformers module with the classes as attributes
+    mock_transformers_module = MagicMock()
+    mock_transformers_module.AutoProcessor = mock_processor_class
+    mock_transformers_module.AutoModelForVision2Seq = mock_model_class
+
+    # Patch into sys.modules to handle lazy imports
+    with patch.dict("sys.modules", {"transformers": mock_transformers_module}):
+        yield {
+            "processor_class": mock_processor_class,
+            "model_class": mock_model_class,
+            "processor": mock_processor,
+            "model": mock_model,
+        }
 
 
 @pytest.fixture

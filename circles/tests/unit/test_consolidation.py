@@ -210,7 +210,7 @@ async def test_data_aggregator_with_partial_data(db_session):
 async def test_data_aggregator_error_handling(db_session):
     """Test aggregator handles database errors gracefully."""
     aggregator = DataAggregator(db_session)
-    user_id = "550e8400-e29b-41d4-a716-446655441153"
+    user_id = "10"
 
     # Mock a database error
     with patch.object(aggregator, "_get_resume_data", new_callable=AsyncMock) as mock_resume:
@@ -253,7 +253,7 @@ async def test_consolidation_strategy_with_valid_data(sample_raw_data, sample_co
 @pytest.mark.asyncio
 async def test_consolidation_strategy_with_empty_data():
     """Test consolidation strategy rejects empty data."""
-    user_id = "550e8400-e29b-41d4-a716-446655441155"
+    user_id = "11"
 
     mock_llm_provider = MagicMock()
     strategy = DefaultConsolidationStrategy(user_id)
@@ -298,7 +298,7 @@ async def test_llm_json_response_parsing():
 @pytest.mark.asyncio
 async def test_consolidation_strategy_invalid_response(sample_raw_data):
     """Test consolidation strategy handles invalid LLM response."""
-    user_id = "550e8400-e29b-41d4-a716-446655441156"
+    user_id = "12"
 
     mock_llm_provider = MagicMock()
     mock_llm_provider.call = AsyncMock(return_value="Invalid response, not JSON")
@@ -320,7 +320,7 @@ async def test_consolidation_with_different_llm_providers(
     sample_raw_data, sample_consolidated_profile
 ):
     """Test consolidation strategy works with different LLM providers."""
-    user_id = "550e8400-e29b-41d4-a716-446655441157"
+    user_id = "13"
 
     # Test with Anthropic provider mock
     anthropic_provider = MagicMock()
@@ -455,7 +455,7 @@ async def test_orchestrator_with_llm_provider_selection(db_session, sample_raw_d
 @pytest.mark.asyncio
 async def test_orchestrator_aggregation_error(db_session):
     """Test orchestrator handles aggregation errors."""
-    user_id = "550e8400-e29b-41d4-a716-446655441160"
+    user_id = "14"
 
     with patch.object(
         DataAggregator, "aggregate_user_data", new_callable=AsyncMock
@@ -472,7 +472,7 @@ async def test_orchestrator_aggregation_error(db_session):
 @pytest.mark.asyncio
 async def test_orchestrator_consolidation_error(db_session, sample_raw_data):
     """Test orchestrator handles consolidation strategy errors."""
-    user_id = "550e8400-e29b-41d4-a716-446655441161"
+    user_id = "15"
 
     # Create mock strategy that fails
     mock_strategy = AsyncMock()

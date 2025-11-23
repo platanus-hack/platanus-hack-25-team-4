@@ -9,34 +9,13 @@ Ensures:
 """
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.etl.repositories import PhotoRepository
 
 
-@pytest.fixture
-async def async_db():
-    """Create test database session."""
-    # Use in-memory SQLite for testing
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-
-    # Create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-
-    # Create session factory
-    async_session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-
-    async with async_session_factory() as session:
-        yield session
-
-    await engine.dispose()
-
-
 @pytest.mark.asyncio
-async def test_user_isolation(async_db: AsyncSession):
+async def test_user_isolation(async_session: AsyncSession):
     """Test that queries are scoped by user_id."""
     repo = PhotoRepository()
 
@@ -46,7 +25,7 @@ async def test_user_isolation(async_db: AsyncSession):
         "vlm_analysis": {"subject": "test"},
         "file_reference": {"filename": "photo1.jpg"},
     }
-    photo1 = await repo.create(user_id=1, data=photo1_data, session=async_db)
+    photo1 = await repo.create(user_id=1, data=photo1_data, session=async_session)
 
     # Create photos for user 2
     photo2_data = {
@@ -54,27 +33,27 @@ async def test_user_isolation(async_db: AsyncSession):
         "vlm_analysis": {"subject": "test"},
         "file_reference": {"filename": "photo2.jpg"},
     }
-    photo2 = await repo.create(user_id=2, data=photo2_data, session=async_db)
+    photo2 = await repo.create(user_id=2, data=photo2_data, session=async_session)
 
     # User 1 should only see their photos
-    user1_photos = await repo.get_all(user_id=1, session=async_db, limit=100)
+    user1_photos = await repo.get_all(user_id=1, session=async_session, limit=100)
     assert len(user1_photos) == 1
     assert user1_photos[0].vlm_caption == "User 1 photo"
 
     # User 2 should only see their photos
-    user2_photos = await repo.get_all(user_id=2, session=async_db, limit=100)
+    user2_photos = await repo.get_all(user_id=2, session=async_session, limit=100)
     assert len(user2_photos) == 1
     assert user2_photos[0].vlm_caption == "User 2 photo"
 
     # User 1 cannot access user 2's photos by ID
     user2_photo_from_user1 = await repo.get_by_id(
-        model_id=photo2.id, user_id=1, session=async_db
+        model_id=photo2.id, user_id=1, session=async_session
     )
     assert user2_photo_from_user1 is None  # Data leak prevention
 
 
 @pytest.mark.asyncio
-async def test_create_batch(async_db: AsyncSession):
+async def test_create_batch(async_session: AsyncSession):
     """Test efficient batch creation."""
     repo = PhotoRepository()
 
@@ -88,16 +67,16 @@ async def test_create_batch(async_db: AsyncSession):
         for i in range(10)
     ]
 
-    await repo.create_batch(user_id=1, records=records, session=async_db)
+    await repo.create_batch(user_id=1, records=records, session=async_session)
 
     # Verify all were saved
-    all_photos = await repo.get_all(user_id=1, session=async_db, limit=100)
+    all_photos = await repo.get_all(user_id=1, session=async_session, limit=100)
     assert len(all_photos) == 10
     assert all(p.user_id == 1 for p in all_photos)
 
 
 @pytest.mark.asyncio
-async def test_get_recent(async_db: AsyncSession):
+async def test_get_recent(async_session: AsyncSession):
     """Test getting recent photos ordered by creation time."""
     repo = PhotoRepository()
 
@@ -110,11 +89,11 @@ async def test_get_recent(async_db: AsyncSession):
                 "vlm_analysis": {},
                 "file_reference": {"filename": f"photo{i}.jpg"},
             },
-            session=async_db,
+            session=async_session,
         )
 
     # Get recent (should be ordered descending by created_at)
-    recent = await repo.get_recent(user_id=1, session=async_db, limit=3)
+    recent = await repo.get_recent(user_id=1, session=async_session, limit=3)
 
     assert len(recent) == 3
     # Most recent should be first
@@ -122,7 +101,7 @@ async def test_get_recent(async_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_pagination(async_db: AsyncSession):
+async def test_pagination(async_session: AsyncSession):
     """Test pagination with limit and offset."""
     repo = PhotoRepository()
 
@@ -135,19 +114,19 @@ async def test_pagination(async_db: AsyncSession):
                 "vlm_analysis": {},
                 "file_reference": {"filename": f"photo{i}.jpg"},
             },
-            session=async_db,
+            session=async_session,
         )
 
     # Get page 1 (10 items)
-    page1 = await repo.get_all(user_id=1, session=async_db, limit=10, offset=0)
+    page1 = await repo.get_all(user_id=1, session=async_session, limit=10, offset=0)
     assert len(page1) == 10
 
     # Get page 2 (10 items)
-    page2 = await repo.get_all(user_id=1, session=async_db, limit=10, offset=10)
+    page2 = await repo.get_all(user_id=1, session=async_session, limit=10, offset=10)
     assert len(page2) == 10
 
     # Get page 3 (5 items)
-    page3 = await repo.get_all(user_id=1, session=async_db, limit=10, offset=20)
+    page3 = await repo.get_all(user_id=1, session=async_session, limit=10, offset=20)
     assert len(page3) == 5
 
     # Verify no duplicates across pages
@@ -156,7 +135,7 @@ async def test_pagination(async_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_count(async_db: AsyncSession):
+async def test_count(async_session: AsyncSession):
     """Test count with user scoping."""
     repo = PhotoRepository()
 
@@ -169,7 +148,7 @@ async def test_count(async_db: AsyncSession):
                 "vlm_analysis": {},
                 "file_reference": {"filename": f"photo{i}.jpg"},
             },
-            session=async_db,
+            session=async_session,
         )
 
     # Create photos for user 2
@@ -181,19 +160,19 @@ async def test_count(async_db: AsyncSession):
                 "vlm_analysis": {},
                 "file_reference": {"filename": f"photo{i}.jpg"},
             },
-            session=async_db,
+            session=async_session,
         )
 
     # Count should be user-specific
-    count1 = await repo.count(user_id=1, session=async_db)
-    count2 = await repo.count(user_id=2, session=async_db)
+    count1 = await repo.count(user_id=1, session=async_session)
+    count2 = await repo.count(user_id=2, session=async_session)
 
     assert count1 == 15
     assert count2 == 5
 
 
 @pytest.mark.asyncio
-async def test_update_with_user_scope(async_db: AsyncSession):
+async def test_update_with_user_scope(async_session: AsyncSession):
     """Test that updates are scoped by user_id."""
     repo = PhotoRepository()
 
@@ -205,7 +184,7 @@ async def test_update_with_user_scope(async_db: AsyncSession):
             "vlm_analysis": {},
             "file_reference": {"filename": "test.jpg"},
         },
-        session=async_db,
+        session=async_session,
     )
 
     # User 2 should not be able to update user 1's photo
@@ -213,7 +192,7 @@ async def test_update_with_user_scope(async_db: AsyncSession):
         model_id=photo.id,
         user_id=2,
         data={"vlm_caption": "Hacked caption"},
-        session=async_db,
+        session=async_session,
     )
     assert result is None  # Should not find the photo
 
@@ -222,14 +201,14 @@ async def test_update_with_user_scope(async_db: AsyncSession):
         model_id=photo.id,
         user_id=1,
         data={"vlm_caption": "Updated caption"},
-        session=async_db,
+        session=async_session,
     )
     assert result is not None
     assert result.vlm_caption == "Updated caption"
 
 
 @pytest.mark.asyncio
-async def test_delete_with_user_scope(async_db: AsyncSession):
+async def test_delete_with_user_scope(async_session: AsyncSession):
     """Test that deletes are scoped by user_id."""
     repo = PhotoRepository()
 
@@ -241,7 +220,7 @@ async def test_delete_with_user_scope(async_db: AsyncSession):
             "vlm_analysis": {},
             "file_reference": {"filename": "test1.jpg"},
         },
-        session=async_db,
+        session=async_session,
     )
 
     await repo.create(
@@ -251,28 +230,28 @@ async def test_delete_with_user_scope(async_db: AsyncSession):
             "vlm_analysis": {},
             "file_reference": {"filename": "test2.jpg"},
         },
-        session=async_db,
+        session=async_session,
     )
 
     # User 2 should not be able to delete user 1's photo
-    deleted = await repo.delete(model_id=photo1.id, user_id=2, session=async_db)
+    deleted = await repo.delete(model_id=photo1.id, user_id=2, session=async_session)
     assert deleted is False
 
     # User 1 should be able to delete their own photo
-    deleted = await repo.delete(model_id=photo1.id, user_id=1, session=async_db)
+    deleted = await repo.delete(model_id=photo1.id, user_id=1, session=async_session)
     assert deleted is True
 
     # User 1's photo should be gone
-    remaining = await repo.get_all(user_id=1, session=async_db, limit=100)
+    remaining = await repo.get_all(user_id=1, session=async_session, limit=100)
     assert len(remaining) == 0
 
     # User 2's photo should still exist
-    remaining = await repo.get_all(user_id=2, session=async_db, limit=100)
+    remaining = await repo.get_all(user_id=2, session=async_session, limit=100)
     assert len(remaining) == 1
 
 
 @pytest.mark.asyncio
-async def test_create_from_processor_result(async_db: AsyncSession):
+async def test_create_from_processor_result(async_session: AsyncSession):
     """Test creating photo from processor result."""
     repo = PhotoRepository()
 
@@ -293,7 +272,7 @@ async def test_create_from_processor_result(async_db: AsyncSession):
     processor_result = MockProcessorResult()
 
     photo = await repo.create_from_processor_result(
-        user_id=1, source_id=10, processor_result=processor_result, session=async_db
+        user_id=1, source_id=10, processor_result=processor_result, session=async_session
     )
 
     assert photo.user_id == 1
@@ -304,7 +283,7 @@ async def test_create_from_processor_result(async_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_batch_isolation(async_db: AsyncSession):
+async def test_batch_isolation(async_session: AsyncSession):
     """Test that batch operations maintain user isolation."""
     repo = PhotoRepository()
 
@@ -317,7 +296,7 @@ async def test_batch_isolation(async_db: AsyncSession):
         }
         for i in range(5)
     ]
-    await repo.create_batch(user_id=1, records=records1, session=async_db)
+    await repo.create_batch(user_id=1, records=records1, session=async_session)
 
     # Create batch for user 2
     records2 = [
@@ -328,11 +307,11 @@ async def test_batch_isolation(async_db: AsyncSession):
         }
         for i in range(3)
     ]
-    await repo.create_batch(user_id=2, records=records2, session=async_db)
+    await repo.create_batch(user_id=2, records=records2, session=async_session)
 
     # Verify isolation
-    user1_photos = await repo.get_all(user_id=1, session=async_db, limit=100)
-    user2_photos = await repo.get_all(user_id=2, session=async_db, limit=100)
+    user1_photos = await repo.get_all(user_id=1, session=async_session, limit=100)
+    user2_photos = await repo.get_all(user_id=2, session=async_session, limit=100)
 
     assert len(user1_photos) == 5
     assert len(user2_photos) == 3
