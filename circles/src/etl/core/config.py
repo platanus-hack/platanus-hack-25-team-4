@@ -127,6 +127,9 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = (
+            "allow"  # Allow extra fields like postgres_user, postgres_password, etc.
+        )
 
     def validate_required_keys(self) -> list[str]:
         """

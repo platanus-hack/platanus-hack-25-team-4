@@ -38,18 +38,15 @@ class AdapterRegistry:
         """
         Register an adapter for a data type.
 
+        Replaces existing adapter if already registered.
+
         Args:
             data_type: String identifier (e.g., "resume", "photo")
             adapter: BaseAdapter instance
 
         Returns:
             Result.ok(None) if registered successfully
-            Result.error(str) if data_type already registered
         """
-        if data_type in self._adapters:
-            error = f"Adapter already registered for: {data_type}"
-            return Result.error(error)
-
         self._adapters[data_type] = adapter
         return Result.ok(None)
 
@@ -86,6 +83,30 @@ class AdapterRegistry:
     def is_registered(self, data_type: str) -> bool:
         """Check if adapter is registered for data type."""
         return data_type in self._adapters
+
+    def get(self, data_type: str) -> BaseAdapter:
+        """
+        Get adapter for a data type (direct access, no Result wrapper).
+
+        Args:
+            data_type: String identifier (e.g., "resume", "photo")
+
+        Returns:
+            BaseAdapter instance
+
+        Raises:
+            ValueError: If adapter not found for data_type
+        """
+        adapter = self._adapters.get(data_type)
+        if adapter is None:
+            raise ValueError(f"No adapter registered for: {data_type}")
+        return adapter
+
+    def clear(self) -> None:
+        """Clear all registered adapters from the registry."""
+        self._adapters.clear()
+        self._initialized = False
+        self._initialization_errors.clear()
 
     async def initialize_all(self) -> Result[None, str]:
         """
