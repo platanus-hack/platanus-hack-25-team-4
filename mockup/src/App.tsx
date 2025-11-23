@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Home } from './components/Home';
 import { CreateCircle } from './components/CreateCircle';
 import { MatchCard } from './components/MatchCard';
 import { ChatView } from './components/ChatView';
 import { Onboarding } from './components/Onboarding';
 import { Profile } from './components/Profile';
+import { Dashboard } from './pages/Dashboard';
 
 type View = 'onboarding' | 'home' | 'create-circle' | 'match' | 'chat' | 'profile';
 
@@ -27,14 +29,12 @@ interface Match {
   suggestedOpener: string;
 }
 
-export default function App() {
+function MobileApp() {
   const [currentView, setCurrentView] = useState<View>('onboarding');
   const [circles, setCircles] = useState<Circle[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleOnboardingComplete = () => {
-    setIsAuthenticated(true);
     setCurrentView('home');
   };
 
@@ -118,5 +118,17 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MobileApp />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
